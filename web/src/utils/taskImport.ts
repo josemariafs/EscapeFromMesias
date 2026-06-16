@@ -14,6 +14,15 @@ const LOCATION_NOISE = new Set([
   'the lab',
   'laboratory',
   'active',
+  'side',
+  'story',
+  'operational',
+  'task',
+  'trader',
+  'type',
+  'location',
+  'status',
+  'progress',
 ]);
 
 export function normalizeQuestName(name: string): string {
@@ -55,68 +64,167 @@ function similarityRatio(a: string, b: string): number {
   return 1 - distance / Math.max(a.length, b.length);
 }
 
-function isNoiseLine(line: string): boolean {
-  if (LOCATION_NOISE.has(line)) return true;
-  if (/^\d+%?$/.test(line)) return true;
-  if (/^(task|trader|type|location|status|progress)$/i.test(line)) return true;
+function extractPartNumber(name: string): number | null {
+  const match = name.match(/(?:parte?|pt)\s*(\d+)/i);
+  return match ? Number.parseInt(match[1], 10) : null;
+}
+
+function extractSeriesBase(name: string): string {
+  return name.replace(/\s*(?:parte?|pt)\s*\d+.*$/i, '').trim();
+}
+
+function isEmbeddedPrefix(questNorm: string, line: string): boolean {
+  const idx = line.indexOf(questNorm);
+  if (idx < 0) return false;
+  const after = line[idx + questNorm.length];
+  return Boolean(after && /[a-z0-9]/.test(after));
+}
+
+function partsMismatch(questNorm: string, line: string): boolean {
+  const questPart = extractPartNumber(questNorm);
+  const linePart = extractPartNumber(line);
+
+  if (questPart != null) {
+    if (linePart == null) return true;
+    if (linePart !== questPart) return true;
+
+    const questBase = extractSeriesBase(questNorm);
+    const lineBase = extractSeriesBase(line);
+    if (questBase && lineBase && similarityRatio(questBase, lineBase) < 0.55) {
+      return true;
+    }
+  }
+
+  if (linePart != null && questPart == null) {
+    const lineBase = extractSeriesBase(line);
+    if (lineBase.length > questNorm.length * 1.4) return true;
+  }
+
   return false;
 }
 
-function extractCandidateLines(text: string): string[] {
-  const rawLines = text
-    .split(/\r?\n/)
-    .map((line) => normalizeQuestName(line))
-    .filter((line) => line.length >= 4 && !isNoiseLine(line));
-
-  const candidates = new Set<string>(rawLines);
-  const joined = normalizeQuestName(text.replace(/\r?\n/g, ' '));
-  if (joined.length >= 4) candidates.add(joined);
-
-  for (let i = 0; i < rawLines.length - 1; i++) {
-    const merged = normalizeQuestName(`${rawLines[i]} ${rawLines[i + 1]}`);
-    if (merged.length >= 4) candidates.add(merged);
-  }
-
-  return [...candidates];
+function isNoiseLine(line: string): boolean {
+  if (LOCATION_NOISE.has(line)) return true;
+  if (/^\d+%?$/.test(line)) return true;
+  if (line.length < 4) return true;
+  return false;
 }
 
-function bestTaskSimilarity(norm: string, compact: string, text: string): number {
-  const normalizedText = normalizeQuestName(text);
-  const compactText = compactQuestName(text);
-  const lines = extractCandidateLines(text);
+function stripLocationSuffix(line: string): string {
+  for (const location of LOCATION_NOISE) {
+    if (line === location) return '';
+    if (line.endsWith(` ${location}`)) {
+      return line.slice(0, -(location.length + 1)).trim();
+    }
+  }
+  return line;
+}
 
-  let best = 0;
+function cleanOcrLine(line: string): string {
+  let cleaned = line
+    .replace(/^\d+\s+/, '')
+    .replace(/^[^a-z0-9]+/i, '')
+    .trim();
 
-  if (normalizedText.includes(norm) || compactText.includes(compact)) {
-    return 1;
+  if (/^[a-z]\s+[a-z]/i.test(cleaned)) {
+    cleaned = cleaned.slice(2).trim();
   }
 
-  best = Math.max(best, similarityRatio(norm, normalizedText));
+  return cleaned;
+}
 
-  for (const line of lines) {
-    const lineCompact = line.replace(/\s+/g, '');
-    best = Math.max(best, similarityRatio(norm, line));
-    best = Math.max(best, similarityRatio(compact, lineCompact));
-    if (line.includes(norm) || norm.includes(line)) {
-      best = Math.max(best, 0.88);
+function isGarbageLine(line: string): boolean {
+  const letters = (line.match(/[a-z]/g) ?? []).length;
+  if (letters < 5) return true;
+  const compact = line.replace(/\s+/g, '');
+  return letters / compact.length < 0.55;
+}
+
+/** Líneas OCR que parecen nombres de misión (una por fila del listado). */
+export function extractOcrQuestLines(text: string): string[] {
+  const rawLines = text
+    .split(/\r?\n/)
+    .map((line) => cleanOcrLine(normalizeQuestName(line)))
+    .map(stripLocationSuffix)
+    .filter((line) => line.length >= 4 && !isNoiseLine(line) && !isGarbageLine(line));
+
+  const lines: string[] = [];
+
+  for (let i = 0; i < rawLines.length; i++) {
+    let line = rawLines[i];
+    const next = rawLines[i + 1];
+
+    if (
+      next
+      && /(?:pvp|fvp)\s*$/i.test(line)
+      && /^(?:\d+\s*)?zone/i.test(next)
+    ) {
+      line = normalizeQuestName(`${line} ${next}`);
+      i += 1;
+    }
+
+    if (line.length >= 4 && !isNoiseLine(line) && !isGarbageLine(line)) {
+      lines.push(line);
     }
   }
 
-  const minWindow = Math.max(6, compact.length - 2);
-  const maxWindow = compact.length + 4;
-  for (let size = minWindow; size <= maxWindow; size++) {
-    for (let i = 0; i <= compactText.length - size; i++) {
-      best = Math.max(best, similarityRatio(compact, compactText.slice(i, i + size)));
+  return lines;
+}
+
+function lineMatchScore(questNorm: string, questCompact: string, line: string): number {
+  if (partsMismatch(questNorm, line)) return 0;
+
+  if (questNorm.length < line.length * 0.65) {
+    if (line.includes(questNorm) && isEmbeddedPrefix(questNorm, line)) return 0;
+  }
+
+  const lineCompact = line.replace(/\s+/g, '');
+
+  if (line === questNorm || lineCompact === questCompact) return 1;
+
+  const ratio = similarityRatio(questNorm, line);
+  const compactRatio = similarityRatio(questCompact, lineCompact);
+  let score = Math.max(ratio, compactRatio);
+
+  const shorter = Math.min(questNorm.length, line.length);
+  const longer = Math.max(questNorm.length, line.length);
+
+  if (longer > shorter * 1.35) {
+    if (line.includes(questNorm) && shorter >= 10 && !isEmbeddedPrefix(questNorm, line)) {
+      score = Math.max(score, 0.92);
+    } else if (questNorm.includes(line) && line.length < questNorm.length * 0.75) {
+      return 0;
+    } else if (line.includes(questNorm) && questNorm.length < line.length * 0.75) {
+      return 0;
     }
   }
 
-  return best;
+  // Evita que "gunsmith part 1" coincida con "gunsmith part 2" por similitud alta.
+  const questPart = extractPartNumber(questNorm);
+  const linePart = extractPartNumber(line);
+  if (questPart != null && linePart != null && questPart === linePart) {
+    return score;
+  }
+
+  if (questPart != null && linePart != null) {
+    return 0;
+  }
+
+  return score;
+}
+
+function minLineMatchThreshold(nameLength: number): number {
+  if (nameLength >= 24) return 0.72;
+  if (nameLength >= 14) return 0.8;
+  if (nameLength >= 8) return 0.86;
+  return 0.92;
 }
 
 function normalizeOcrText(text: string): string {
   return text
     .replace(/(\w)\s*=\s*(\w)/g, '$1 - $2')
-    .replace(/(\w)\s*—\s*(\w)/g, '$1 - $2');
+    .replace(/(\w)\s*—\s*(\w)/g, '$1 - $2')
+    .replace(/\[?\s*fvp/gi, '[pvp');
 }
 
 function getTaskMatchNames(task: Task, englishNamesById?: Map<string, string>): string[] {
@@ -126,42 +234,55 @@ function getTaskMatchNames(task: Task, englishNamesById?: Map<string, string>): 
   return [...names];
 }
 
-function minSimilarityThreshold(nameLength: number): number {
-  if (nameLength >= 20) return 0.68;
-  if (nameLength >= 12) return 0.72;
-  return 0.78;
-}
-
 export function matchTasksInText(
   text: string,
   tasks: Task[],
   englishNamesById?: Map<string, string>,
 ): Task[] {
   const cleanedText = normalizeOcrText(text);
-  if (!cleanedText.trim()) return [];
+  const lines = extractOcrQuestLines(cleanedText);
+  if (lines.length === 0) return [];
 
-  const matched = new Set<string>();
-  const sorted = [...tasks].sort((a, b) => b.name.length - a.name.length);
+  const matched = new Map<string, number>();
 
-  for (const task of sorted) {
+  for (const line of lines) {
+    let bestTaskId: string | null = null;
     let bestScore = 0;
-    let bestNameLength = 0;
 
-    for (const name of getTaskMatchNames(task, englishNamesById)) {
-      const norm = normalizeQuestName(name);
-      const compact = compactQuestName(name);
-      if (norm.length < 4) continue;
+    for (const task of tasks) {
+      for (const name of getTaskMatchNames(task, englishNamesById)) {
+        const norm = normalizeQuestName(name);
+        const compact = compactQuestName(name);
+        if (norm.length < 4) continue;
 
-      bestScore = Math.max(bestScore, bestTaskSimilarity(norm, compact, cleanedText));
-      bestNameLength = Math.max(bestNameLength, norm.length);
+        const score = lineMatchScore(norm, compact, line);
+        const threshold = minLineMatchThreshold(norm.length);
+        if (score >= threshold && score > bestScore) {
+          bestScore = score;
+          bestTaskId = task.id;
+        }
+      }
     }
 
-    if (bestScore >= minSimilarityThreshold(bestNameLength)) {
-      matched.add(task.id);
+    if (bestTaskId) {
+      const prev = matched.get(bestTaskId) ?? 0;
+      matched.set(bestTaskId, Math.max(prev, bestScore));
     }
   }
 
   return tasks.filter((task) => matched.has(task.id));
+}
+
+function isCompleteRequirement(statuses: string[]): boolean {
+  return statuses.some((status) => {
+    switch (status) {
+      case 'complete':
+      case 'completed':
+        return true;
+      default:
+        return false;
+    }
+  });
 }
 
 export function collectPrerequisiteTaskIds(
@@ -178,6 +299,8 @@ export function collectPrerequisiteTaskIds(
 
   const result: string[] = [];
   for (const req of task.taskRequirements) {
+    if (!isCompleteRequirement(req.status)) continue;
+
     const prereqId = req.task.id;
     if (excludeIds.has(prereqId)) continue;
     result.push(prereqId);
