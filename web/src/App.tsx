@@ -6,6 +6,7 @@ import { StoryDetail } from './components/StoryDetail';
 import { TaskCard } from './components/TaskCard';
 import { TaskDetail } from './components/TaskDetail';
 import { useLanguage } from './i18n/useLanguage';
+import { useViewMode } from './hooks/useViewMode';
 import { useProgress } from './hooks/useProgress';
 import { useStoryProgress } from './hooks/useStoryProgress';
 import { useTasks } from './hooks/useTasks';
@@ -20,6 +21,7 @@ type AllQuestTab = 'story' | 'side';
 
 export default function App() {
   const { lang, setLang, t } = useLanguage();
+  const { viewMode, setViewMode } = useViewMode();
   const { tasks, loading, error, reload } = useTasks(lang);
   const {
     progress,
@@ -127,7 +129,7 @@ export default function App() {
   }
 
   return (
-    <div className="app">
+    <div className={`app${viewMode === 'compact' ? ' compact' : ''}`}>
       <header className={`app-header${viewTab === 'all' ? ' app-header--with-search' : ''}`}>
         <div className="header-grid">
           <div className="header-logo">
@@ -195,6 +197,35 @@ export default function App() {
                   onChange={(e) => setPlayerLevel(Number(e.target.value))}
                 />
               </label>
+              <div className="view-mode-toggle" role="group" aria-label={t.viewMode}>
+                <button
+                  type="button"
+                  className={`view-mode-btn${viewMode === 'normal' ? ' active' : ''}`}
+                  onClick={() => setViewMode('normal')}
+                  aria-pressed={viewMode === 'normal'}
+                  title={t.viewModeNormal}
+                >
+                  <svg viewBox="0 0 20 14" width="18" height="13" aria-hidden="true">
+                    <rect x="1" y="1" width="18" height="5.5" rx="1.2" fill="currentColor" opacity="0.85" />
+                    <rect x="1" y="7.5" width="18" height="5.5" rx="1.2" fill="currentColor" opacity="0.85" />
+                  </svg>
+                  <span className="sr-only">{t.viewModeNormal}</span>
+                </button>
+                <button
+                  type="button"
+                  className={`view-mode-btn${viewMode === 'compact' ? ' active' : ''}`}
+                  onClick={() => setViewMode('compact')}
+                  aria-pressed={viewMode === 'compact'}
+                  title={t.viewModeCompact}
+                >
+                  <svg viewBox="0 0 20 14" width="18" height="13" aria-hidden="true">
+                    <rect x="1" y="1" width="18" height="3" rx="0.9" fill="currentColor" />
+                    <rect x="1" y="5.5" width="18" height="3" rx="0.9" fill="currentColor" />
+                    <rect x="1" y="10" width="18" height="3" rx="0.9" fill="currentColor" />
+                  </svg>
+                  <span className="sr-only">{t.viewModeCompact}</span>
+                </button>
+              </div>
               <div className="lang-flags" role="group" aria-label={t.language}>
                 <button
                   type="button"

@@ -39,6 +39,7 @@ export function TaskCard({
     <article
       className={`task-card state-${state}${selected ? ' selected' : ''}${traderImage ? ' has-trader-bg' : ''}${isCollector ? ' task-card-collector' : ''}`}
       style={cardStyle}
+      aria-label={`${task.name} — ${t.state[state]}`}
       onClick={onSelect}
       tabIndex={0}
       onKeyDown={(e) => {

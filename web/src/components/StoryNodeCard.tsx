@@ -28,6 +28,7 @@ export function StoryNodeCard({
   return (
     <article
       className={`task-card story-node-card state-${state}${selected ? ' selected' : ''}`}
+      aria-label={`${node.name} — ${t.state[state]}`}
       onClick={onSelect}
       tabIndex={0}
       onKeyDown={(e) => {

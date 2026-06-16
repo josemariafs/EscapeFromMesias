@@ -48,6 +48,9 @@ export interface Translations {
   storyItems: string;
   storyNodeType: Record<'default' | 'optional' | 'choice', string>;
   language: string;
+  viewMode: string;
+  viewModeNormal: string;
+  viewModeCompact: string;
   kappa: string;
   requires: string;
   levelShort: (n: number) => string;
@@ -126,6 +129,9 @@ export const translations: Record<Lang, Translations> = {
       choice: 'Elección',
     },
     language: 'Idioma',
+    viewMode: 'Vista',
+    viewModeNormal: 'Normal',
+    viewModeCompact: 'Compacto',
     kappa: 'Kappa',
     requires: 'Requiere:',
     levelShort: (n) => `Niv. ${n}`,
@@ -208,6 +214,9 @@ export const translations: Record<Lang, Translations> = {
       choice: 'Choice',
     },
     language: 'Language',
+    viewMode: 'View',
+    viewModeNormal: 'Normal',
+    viewModeCompact: 'Compact',
     kappa: 'Kappa',
     requires: 'Requires:',
     levelShort: (n) => `Lvl ${n}`,

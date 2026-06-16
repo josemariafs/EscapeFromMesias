@@ -374,6 +374,54 @@ body {
   transform: scale(0.96);
 }
 
+.view-mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.view-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 1.35rem;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 4px;
+  background: var(--bg-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, color 0.15s, transform 0.08s;
+}
+
+.view-mode-btn:hover {
+  color: var(--text);
+  border-color: var(--accent-dim);
+}
+
+.view-mode-btn.active {
+  color: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.view-mode-btn:active {
+  transform: scale(0.96);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .stats-bar {
   display: flex;
   flex-wrap: wrap;
@@ -1215,4 +1263,110 @@ body {
 .story-items-list li {
   margin-bottom: 0.35rem;
   font-size: 0.9rem;
+}
+
+/* Compact view mode */
+.app.compact .task-list {
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 0.55rem;
+}
+
+.app.compact .map-section-grid {
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 0.55rem;
+}
+
+.app.compact .task-card {
+  min-height: 118px;
+  padding: 0.5rem 0.6rem;
+  padding-right: 34%;
+  border-top-width: 3px;
+  border-top-style: solid;
+}
+
+.app.compact .task-card.state-available { border-top-color: var(--available); }
+.app.compact .task-card.state-started { border-top-color: var(--started); }
+.app.compact .task-card.state-completed { border-top-color: var(--completed); }
+.app.compact .task-card.state-locked { border-top-color: var(--locked); }
+.app.compact .task-card.state-failed { border-top-color: var(--danger); }
+
+.app.compact .task-card.selected {
+  border-top-color: var(--accent);
+}
+
+.app.compact .task-card .state-badge {
+  display: none;
+}
+
+.app.compact .task-card-header:not(:has(.story-type-badge)) {
+  display: none;
+}
+
+.app.compact .task-card-header {
+  margin-bottom: 0.2rem;
+  padding-right: 2.25rem;
+}
+
+.app.compact .kappa-corner {
+  top: 0.3rem;
+  font-size: 0.62rem;
+}
+
+.app.compact .task-name {
+  margin: 0 0 0.25rem;
+  font-size: 0.9rem;
+  line-height: 1.25;
+}
+
+.app.compact .task-meta,
+.app.compact .task-prereqs,
+.app.compact .task-keys {
+  margin-bottom: 0.25rem;
+}
+
+.app.compact .task-meta .map-tag,
+.app.compact .chapter-tag {
+  font-size: 0.66rem;
+  padding: 0.05rem 0.35rem;
+}
+
+.app.compact .key-chip {
+  font-size: 0.66rem;
+  padding: 0.1rem 0.3rem;
+}
+
+.app.compact .key-chip img {
+  width: 14px;
+  height: 14px;
+}
+
+.app.compact .story-item-hints {
+  margin-bottom: 0.25rem;
+  font-size: 0.68rem;
+}
+
+.app.compact .task-prereqs {
+  font-size: 0.7rem;
+  line-height: 1.3;
+}
+
+.app.compact .task-actions {
+  margin-top: 0.3rem;
+  gap: 0.35rem;
+}
+
+.app.compact .task-actions .btn-start {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.76rem;
+}
+
+.app.compact .task-actions .btn-complete,
+.app.compact .task-actions .btn-reset {
+  padding: 0.2rem 0.45rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
+.app.compact .story-node-card {
+  padding-right: 0.6rem;
 }
