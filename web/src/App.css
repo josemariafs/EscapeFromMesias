@@ -626,10 +626,9 @@ body {
 
 .map-section-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, var(--card-width));
+  grid-template-columns: repeat(auto-fill, minmax(var(--card-width), 1fr));
   gap: 0.75rem;
   align-items: stretch;
-  justify-content: start;
 }
 
 .task-list.active-tab {
@@ -695,11 +694,10 @@ body {
   overflow-x: clip;
   padding: 1rem;
   display: grid;
-  grid-template-columns: repeat(auto-fill, var(--card-width));
+  grid-template-columns: repeat(auto-fill, minmax(var(--card-width), 1fr));
   gap: 0.75rem;
   align-content: start;
   align-items: stretch;
-  justify-content: start;
   max-height: calc(100vh - var(--header-height) - var(--footer-height));
   container-type: inline-size;
   container-name: cards;
@@ -723,9 +721,8 @@ body {
 }
 
 .task-card:not(.task-card-collector) {
-  width: var(--card-width);
-  max-width: 100%;
-  justify-self: start;
+  width: 100%;
+  max-width: none;
 }
 
 .task-card {
@@ -1382,11 +1379,19 @@ body {
 }
 
 .app.compact .task-list {
+  grid-template-columns: repeat(auto-fill, var(--card-width));
   gap: 0.55rem;
 }
 
 .app.compact .map-section-grid {
+  grid-template-columns: repeat(auto-fill, var(--card-width));
   gap: 0.55rem;
+}
+
+.app.compact .task-card:not(.task-card-collector) {
+  width: var(--card-width);
+  max-width: 100%;
+  justify-self: start;
 }
 
 .app.compact .task-card {
