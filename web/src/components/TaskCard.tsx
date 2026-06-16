@@ -40,9 +40,13 @@ export function TaskCard({
       className={`task-card state-${state}${selected ? ' selected' : ''}${traderImage ? ' has-trader-bg' : ''}${isCollector ? ' task-card-collector' : ''}`}
       style={cardStyle}
       onClick={onSelect}
-      role="button"
       tabIndex={0}
-      onKeyDown={(e) => e.key === 'Enter' && onSelect()}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onSelect();
+        }
+      }}
     >
       {task.kappaRequired && (
         <span className="kappa-corner" title={t.kappaRequired}>{t.kappa}</span>
@@ -87,23 +91,25 @@ export function TaskCard({
         </div>
       )}
 
-      <div className="task-actions" onClick={(e) => e.stopPropagation()}>
-        {state === 'available' && (
-          <button type="button" className="btn btn-start" onClick={onStart}>
-            {t.start}
-          </button>
-        )}
-        {state === 'started' && (
-          <button type="button" className="btn btn-complete" onClick={onComplete}>
-            {t.complete}
-          </button>
-        )}
-        {(state === 'started' || state === 'completed' || state === 'failed') && (
-          <button type="button" className="btn btn-reset" onClick={onReset}>
-            {t.reset}
-          </button>
-        )}
-      </div>
+      {(state === 'available' || state === 'started' || state === 'completed' || state === 'failed') && (
+        <div className="task-actions">
+          {state === 'available' && (
+            <button type="button" className="btn btn-start" onClick={onStart}>
+              {t.start}
+            </button>
+          )}
+          {state === 'started' && (
+            <button type="button" className="btn btn-complete" onClick={onComplete}>
+              {t.complete}
+            </button>
+          )}
+          {(state === 'started' || state === 'completed' || state === 'failed') && (
+            <button type="button" className="btn btn-reset" onClick={onReset}>
+              {t.reset}
+            </button>
+          )}
+        </div>
+      )}
     </article>
   );
 }
