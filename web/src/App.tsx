@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ActiveTasksView } from './components/ActiveTasksView';
+import { ScreenshotImportButton } from './components/ScreenshotImportButton';
 import { StoryView } from './components/StoryView';
 import { getChapterDesc } from './utils/storylineData';
 import { StoryDetail } from './components/StoryDetail';
@@ -29,6 +30,7 @@ export default function App() {
     startTask,
     completeTask,
     resetTask,
+    importActiveTasks,
   } = useProgress(tasks);
   const {
     nodes: storyNodes,
@@ -246,6 +248,16 @@ export default function App() {
                   <img src="/flags/en.svg" alt="English" />
                 </button>
               </div>
+              <div className="header-actions">
+                <ScreenshotImportButton
+                  tasks={tasks}
+                  t={t}
+                  onImport={importActiveTasks}
+                />
+                <button type="button" className="btn btn-wipe" onClick={handleWipeAll}>
+                  {t.wipeAll}
+                </button>
+              </div>
             </div>
 
             <div className="header-stats">
@@ -255,9 +267,6 @@ export default function App() {
                 <span className="stat completed">{t.statCompleted(counts.completed)}</span>
                 <span className="stat locked">{t.statLocked(counts.locked)}</span>
               </div>
-              <button type="button" className="btn btn-wipe" onClick={handleWipeAll}>
-                {t.wipeAll}
-              </button>
             </div>
           </div>
 

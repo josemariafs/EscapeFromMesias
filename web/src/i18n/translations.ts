@@ -34,6 +34,13 @@ export interface Translations {
   confirmReset: string;
   wipeAll: string;
   confirmWipeAll: string;
+  importScreenshot: string;
+  importScreenshotHint: string;
+  importScreenshotProcessing: string;
+  importScreenshotResult: (n: number) => string;
+  importScreenshotNoMatch: string;
+  importScreenshotNoImage: string;
+  importScreenshotError: string;
   noTasksFilter: string;
   noActiveTasks: string;
   selectTask: string;
@@ -111,6 +118,13 @@ export const translations: Record<Lang, Translations> = {
     wipeAll: 'Wipe All',
     confirmWipeAll:
       'Se borrarán todos los datos guardados en el navegador (progreso de misiones, campaña Story, idioma, etc.). Esta acción no se puede deshacer.\n\n¿Continuar?',
+    importScreenshot: 'Importar activas',
+    importScreenshotHint: 'Pega la captura (Ctrl+V)',
+    importScreenshotProcessing: 'Leyendo captura…',
+    importScreenshotResult: (n) => `${n} misión${n === 1 ? '' : 'es'} marcada${n === 1 ? '' : 's'} en curso`,
+    importScreenshotNoMatch: 'No se encontraron misiones en la imagen',
+    importScreenshotNoImage: 'No hay imagen en el portapapeles',
+    importScreenshotError: 'No se pudo leer la imagen',
     noTasksFilter: 'No hay misiones con estos filtros.',
     noActiveTasks: 'No tienes misiones en curso.',
     selectTask: 'Selecciona una misión para ver los detalles',
@@ -196,6 +210,13 @@ export const translations: Record<Lang, Translations> = {
     wipeAll: 'Wipe All',
     confirmWipeAll:
       'All data stored in the browser will be deleted (quest progress, Story campaign, language, etc.). This cannot be undone.\n\nContinue?',
+    importScreenshot: 'Import active',
+    importScreenshotHint: 'Paste screenshot (Ctrl+V)',
+    importScreenshotProcessing: 'Reading screenshot…',
+    importScreenshotResult: (n) => `${n} quest${n === 1 ? '' : 's'} marked in progress`,
+    importScreenshotNoMatch: 'No quests found in the image',
+    importScreenshotNoImage: 'No image in clipboard',
+    importScreenshotError: 'Could not read the image',
     noTasksFilter: 'No quests match these filters.',
     noActiveTasks: 'You have no quests in progress.',
     selectTask: 'Select a quest to view details',

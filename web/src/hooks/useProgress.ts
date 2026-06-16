@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { PlayerProgress, Task, TaskProgressState } from '../types';
 import { STORAGE_KEY } from '../types';
+import { buildImportStateUpdate } from '../utils/taskImport';
 import { recalculateStates } from '../utils/unlock';
 
 const defaultProgress = (): PlayerProgress => ({
@@ -65,6 +66,25 @@ export function useProgress(tasks: Task[]) {
     });
   }, [tasks]);
 
+  const importActiveTasks = useCallback((activeTaskIds: string[]) => {
+    if (activeTaskIds.length === 0) return;
+
+    setProgress((prev) => {
+      const { activeIds, completedIds } = buildImportStateUpdate(tasks, activeTaskIds);
+      const taskStates = { ...prev.taskStates };
+
+      for (const id of completedIds) {
+        taskStates[id] = 'completed';
+      }
+      for (const id of activeIds) {
+        taskStates[id] = 'started';
+      }
+
+      const next = { ...prev, taskStates, updatedAt: new Date().toISOString() };
+      return { ...next, taskStates: recalculateStates(tasks, next) };
+    });
+  }, [tasks]);
+
   const traders = useMemo(() => {
     const map = new Map<string, { id: string; name: string }>();
     for (const task of tasks) {
@@ -80,5 +100,6 @@ export function useProgress(tasks: Task[]) {
     startTask,
     completeTask,
     resetTask,
+    importActiveTasks,
   };
 }
