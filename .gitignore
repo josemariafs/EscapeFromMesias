@@ -1,0 +1,16 @@
+# Dependencies & build (web app)
+web/node_modules/
+web/dist/
+
+# Vercel local link
+web/.vercel/
+
+# Environment
+.env
+.env.*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

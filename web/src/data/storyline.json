@@ -1,0 +1,3229 @@
+{
+  "chapters": [
+    {
+      "id": 1,
+      "title": "Tour",
+      "desc": "During the assault on the TerraGroup office, a massive explosion erupted on top of one of the nearby high-rises. I got left on my own, with no contact.",
+      "image": "https://i.ibb.co/tM7rfF7L/u-YMhd-ZC-d.webp"
+    },
+    {
+      "id": 2,
+      "title": "Falling Skies",
+      "desc": "In the nature reserve, I came across a downed plane - or rather, what's left of it. I've got a strong feeling this plane is important.",
+      "image": "https://i.ibb.co/vvwSzx0M/W8i5d17.png"
+    },
+    {
+      "id": 3,
+      "title": "The Ticket",
+      "desc": "I've got a feeling I've gotten myself into some weird stuff... On the other hand, I'm holding a Ticket out of Tarkov, so it's not all bad.",
+      "image": "https://i.ibb.co/jPZbhg6r/OAApNzb.png"
+    },
+    {
+      "id": 4,
+      "title": "Batya",
+      "desc": "Turns out BEAR didn't send just regular squads into Tarkov, there were real SOF guys here. I'd like to know more about those units and what exactly they were doing.",
+      "image": "https://i.ibb.co/Wv1yTqJY/d4lASW7.png"
+    },
+    {
+      "id": 5,
+      "title": "The Unheard",
+      "desc": "I came across a strange note on a TerraGroup sheet. It mentions the will of The Unheard and some fuel needed for purification.",
+      "image": "https://i.ibb.co/YFZQKJC9/t2-FAl-Mo-d.webp"
+    },
+    {
+      "id": 6,
+      "title": "Blue Fire",
+      "desc": "During the raid on the office, some kind of special weapon went off on one of the roofs... I remember a bright blue flash before I blacked out.",
+      "image": "https://i.ibb.co/5g3RYnrB/3rH0dSU.png"
+    },
+    {
+      "id": 7,
+      "title": "They Are Already Here",
+      "desc": "I came across something strange in Tarkov. That circle and those symbols have to mean something. But what exactly?",
+      "image": "https://i.ibb.co/Q79cy4jg/cqn-X1k-V-d.webp"
+    },
+    {
+      "id": 8,
+      "title": "Accidental Witness",
+      "desc": "Kozlov was probably not the only debtor in the industrial zone. Perhaps he was being hunted for a reason?",
+      "image": "https://i.ibb.co/Q3hQLgVC/p-UCETx-X-d.webp"
+    },
+    {
+      "id": 9,
+      "title": "The Labyrinth",
+      "desc": "Jaeger's friend is trying to learn what happened to the BEAR squad that stormed The Labyrinth during the evacuation.",
+      "image": "https://i.ibb.co/MF1LsW5/5-Uc8p-WZ-d.webp"
+    }
+  ],
+  "trees": {
+    "1": {
+      "id": 1,
+      "title": "TOUR",
+      "nodes": [
+        {
+          "id": "t_start",
+          "name": "Escape Ground Zero",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": []
+        },
+        {
+          "id": "t_1",
+          "name": "Talk to Therapist",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "t_start"
+              }
+            }
+          ]
+        },
+        {
+          "id": "t_2",
+          "name": "Ensure access to the Streets of Tarkov",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "t_1"
+              }
+            }
+          ]
+        },
+        {
+          "id": "t_2_opt",
+          "name": "Hand over 250,000 Roubles to Therapist",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "t_2"
+              }
+            }
+          ]
+        },
+        {
+          "id": "t_3",
+          "name": "Talk to Ragman",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "t_2_opt"
+              }
+            }
+          ]
+        },
+        {
+          "id": "t_4",
+          "name": "Survive and extract from Interchange",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "t_3"
+              }
+            }
+          ]
+        },
+        {
+          "id": "t_5",
+          "name": "Talk to Ragman Again",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "t_4"
+              }
+            }
+          ]
+        },
+        {
+          "id": "t_6",
+          "name": "Talk to Skier",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "t_5"
+              }
+            }
+          ]
+        },
+        {
+          "id": "t_7",
+          "name": "Survive and extract from Customs",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "t_6"
+              }
+            }
+          ]
+        },
+        {
+          "id": "t_8",
+          "name": "Hand over items:",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "t_6"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "5x Any Building Materials",
+              "count": 5,
+              "fir": true
+            }
+          ]
+        },
+        {
+          "id": "t_9",
+          "name": "Talk to Mechanic",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "t_7"
+              }
+            },
+            {
+              "task": {
+                "id": "t_8"
+              }
+            }
+          ]
+        },
+        {
+          "id": "t_10",
+          "name": "Survive and extract from Factory",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "t_9"
+              }
+            }
+          ]
+        },
+        {
+          "id": "t_11",
+          "name": "Hand over items:",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "t_9"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "2x Any Weapon",
+              "count": 2,
+              "fir": true
+            }
+          ]
+        },
+        {
+          "id": "t_12",
+          "name": "Talk to Skier",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "t_10"
+              }
+            },
+            {
+              "task": {
+                "id": "t_11"
+              }
+            }
+          ]
+        },
+        {
+          "id": "t_13",
+          "name": "Eliminate any 3 targets on Woods",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "t_12"
+              }
+            }
+          ]
+        },
+        {
+          "id": "t_14",
+          "name": "Survive and extract from Woods",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "t_12"
+              }
+            }
+          ]
+        },
+        {
+          "id": "t_15",
+          "name": "Locate the entrance to the port Terminal",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "t_13"
+              }
+            },
+            {
+              "task": {
+                "id": "t_14"
+              }
+            }
+          ]
+        },
+        {
+          "id": "t_16",
+          "name": "Find a way to contact the soldiers at the Terminal",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "t_15"
+              }
+            }
+          ]
+        },
+        {
+          "id": "t_17",
+          "name": "Use the intercom to contact the port garrison",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "t_16"
+              }
+            }
+          ]
+        },
+        {
+          "id": "t_18",
+          "name": "Learn how to escape Tarkov",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "t_17"
+              }
+            }
+          ]
+        },
+        {
+          "id": "t_19",
+          "name": "Ensure access to Lighthouse",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "t_17"
+              }
+            }
+          ]
+        },
+        {
+          "id": "t_20",
+          "name": "Hand over 20,000 Dollars to Mechanic",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "t_19"
+              }
+            }
+          ]
+        },
+        {
+          "id": "t_21",
+          "name": "Ensure access to Reserve",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "t_20"
+              }
+            }
+          ]
+        },
+        {
+          "id": "t_22",
+          "name": "Hand over items:",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "t_21"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "5x PMC Dogtags",
+              "count": 5,
+              "fir": true
+            }
+          ]
+        },
+        {
+          "id": "t_23",
+          "name": "Survive and extract from Shoreline",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "t_21"
+              }
+            }
+          ]
+        },
+        {
+          "id": "t_24",
+          "name": "Ensure access to The Lab",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "t_22"
+              }
+            },
+            {
+              "task": {
+                "id": "t_23"
+              }
+            }
+          ]
+        },
+        {
+          "id": "t_25",
+          "name": "Locate the escape path through the drainage system in TheLab",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "t_24"
+              }
+            }
+          ]
+        },
+        {
+          "id": "t_26",
+          "name": "Search the server room in The Lab",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "t_24"
+              }
+            }
+          ]
+        },
+        {
+          "id": "t_27",
+          "name": "Search the top management offices in The Lab",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "t_24"
+              }
+            }
+          ]
+        },
+        {
+          "id": "t_28",
+          "name": "Talk to Skier",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "t_25"
+              }
+            },
+            {
+              "task": {
+                "id": "t_26"
+              }
+            },
+            {
+              "task": {
+                "id": "t_27"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "2": {
+      "id": 2,
+      "title": "FALLING SKIES",
+      "nodes": [
+        {
+          "id": "fs_start",
+          "name": "Locate the fallen plane",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": []
+        },
+        {
+          "id": "fs_1",
+          "name": "Reach Loyalty Level 2 with Prapor",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "fs_start"
+              }
+            }
+          ]
+        },
+        {
+          "id": "fs_2",
+          "name": "Ask the traders about the fallen plane",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "fs_1"
+              }
+            }
+          ]
+        },
+        {
+          "id": "fs_2_opt",
+          "name": "Hand over 2,000$ to Therapist for information",
+          "type": "optional",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "fs_2"
+              }
+            }
+          ]
+        },
+        {
+          "id": "fs_3",
+          "name": "Retrieve the flash drive from one of the G-Wagon SUVs",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "fs_2"
+              }
+            }
+          ]
+        },
+        {
+          "id": "fs_4",
+          "name": "Hand over flash drive to Prapor",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "fs_3"
+              }
+            }
+          ]
+        },
+        {
+          "id": "fs_5",
+          "name": "Wait for information from Prapor",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "fs_4"
+              }
+            }
+          ]
+        },
+        {
+          "id": "fs_6",
+          "name": "Retrieve the plane's flight recorder",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "fs_5"
+              }
+            }
+          ]
+        },
+        {
+          "id": "fs_7",
+          "name": "Leave the flight recorder in the specified spot on Shoreline",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "fs_6"
+              }
+            }
+          ]
+        },
+        {
+          "id": "fs_8",
+          "name": "Hand over items:",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "fs_7"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "2x Toolset",
+              "count": 2,
+              "fir": true
+            },
+            {
+              "name": "3x Rechargeable Battery",
+              "count": 3,
+              "fir": true
+            },
+            {
+              "name": "5x Printed Circuit Board",
+              "count": 5,
+              "fir": true
+            }
+          ]
+        },
+        {
+          "id": "fs_9",
+          "name": "Wait for information from Prapor",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "fs_8"
+              }
+            }
+          ]
+        },
+        {
+          "id": "fs_10",
+          "name": "Hand over the flight crew's transcript to Prapor",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "fs_9"
+              }
+            }
+          ]
+        },
+        {
+          "id": "fs_11",
+          "name": "Hand over Elektronik's secure flash drive to Prapor",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "fs_9"
+              }
+            }
+          ]
+        },
+        {
+          "id": "fs_12",
+          "name": "Wait for information from Prapor",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "fs_10"
+              }
+            },
+            {
+              "task": {
+                "id": "fs_11"
+              }
+            }
+          ]
+        },
+        {
+          "id": "fs_13",
+          "name": "Retrieve the armored case",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "fs_12"
+              }
+            }
+          ]
+        },
+        {
+          "id": "fs_14",
+          "name": "Hand over the armored case to Prapor",
+          "type": "choice",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "fs_13"
+              }
+            }
+          ]
+        },
+        {
+          "id": "fs_15",
+          "name": "Keep the armored case for yourself",
+          "type": "choice",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "fs_13"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "3": {
+      "id": 3,
+      "title": "THE TICKET",
+      "nodes": [
+        {
+          "id": "tt_start_prapor",
+          "name": "The case has been given to Prapor",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": []
+        },
+        {
+          "id": "tt_1_prapor",
+          "name": "Talk to Mr. Kerman",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_start_prapor"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_2_prapor",
+          "name": "Wait for Mr.Kerman to Contact",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_1_prapor"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_3_prapor",
+          "name": "Locate the camp of Prapor's people on Lighthouse",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_2_prapor"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Find any clues about Prapor's people's intentions",
+              "count": 2,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "tt_4_prapor",
+          "name": "Talk to Mr. Kerman",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_3_prapor"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_5_prapor",
+          "name": "Gain access & Talk to Lightkeeper",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_4_prapor"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Hand over 3x Terragroup 'Blue Folders' materials",
+              "count": 2,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "tt_6_prapor",
+          "name": "Go To Interchange",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_5_prapor"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Launch a yellow signal flare in front of ULTRA's main entrance",
+              "count": 2,
+              "fir": false
+            },
+            {
+              "name": "Eliminate any 15 targets on Interchange in a single raid",
+              "count": 2,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "tt_7_prapor",
+          "name": "Talk to Lightkeeper",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_6_prapor"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Obtain the Case",
+              "count": 2,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "tt_start_kept_case",
+          "name": "The case is kept for yourself",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": []
+        },
+        {
+          "id": "tt_1_kept",
+          "name": "Talk to Mr. Kerman",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_start_kept_case"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_2_kept",
+          "name": "Ask Mechanic For Help",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_1_kept"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_3_kept",
+          "name": "Obtain the experimental signal jammer",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_2_kept"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_4_kept",
+          "name": "Talk to Mechanic",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_3_kept"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_8_prapor",
+          "name": "Ask Mechanic For Help",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_7_prapor"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_mechanic_1",
+          "name": "Obtain the experimental signal jammer",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_8_prapor"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_mechanic_2",
+          "name": "Talk to Mechanic",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_mechanic_1"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_mechanic_3",
+          "name": "Unlock the armored case",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_mechanic_2"
+              }
+            },
+            {
+              "task": {
+                "id": "tt_4_kept"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_mechanic_4",
+          "name": "Read the instructions from the armored case",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_mechanic_3"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_mechanic_5",
+          "name": "Contact Mr. Kerman",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_mechanic_4"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_choice_1",
+          "name": "Work with Mr. Kerman",
+          "type": "choice",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_mechanic_5"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_choice_2",
+          "name": "Reject Working with Mr. Kerman",
+          "type": "choice",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_mechanic_5"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_choice_1_1",
+          "name": "Obtain the Following:",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_choice_1"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Obtain an RFID card encryption device on Labs (Scripted Fail)",
+              "count": 2,
+              "fir": false
+            },
+            {
+              "name": "Obtain the Laboratory master pass",
+              "count": 2,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "tt_choice_1_2",
+          "name": "Talk to Mr. Kerman",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_choice_1_1"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Talk to Mechanic",
+              "count": 2,
+              "fir": false
+            },
+            {
+              "name": "Wait Mechanic to Call",
+              "count": 2,
+              "fir": false
+            },
+            {
+              "name": "Hand over 40 Bitcoins",
+              "count": 2,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "tt_choice_1_3",
+          "name": "Find Elektronik's apartment",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_choice_1_2"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Find the RFID device",
+              "count": 2,
+              "fir": false
+            },
+            {
+              "name": "Survive & Extract",
+              "count": 2,
+              "fir": false
+            },
+            {
+              "name": "Use the RFID card encryption device to start the craft",
+              "count": 2,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "tt_choice_1_4",
+          "name": "Head to Shoreline and use the crafted card on the intercom near the entrance to the terminal",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_choice_1_3"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_choice_1_5",
+          "name": "Talk to Mr. Kerman",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_choice_1_4"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_choice_2_1",
+          "name": "Head to Shoreline and use the crafted card on the intercom near the entrance to the terminal",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_choice_2"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_choice_2_2",
+          "name": "Talk to Prapor",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_choice_2_1"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Hand over the amount of Roubles Prapor wants",
+              "count": 2,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "tt_choice_2_3",
+          "name": "Complete Prapor's Tasks",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_choice_2_2"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Complete a craft in the Hideout and record the incriminating data onto a flash drive",
+              "count": 2,
+              "fir": false
+            },
+            {
+              "name": "Kill 50 any targets on Streets of Tarkov",
+              "count": 2,
+              "fir": false
+            },
+            {
+              "name": "Kill 4 PMCs in a single raid and survive",
+              "count": 2,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "tt_choice_2_4",
+          "name": "Talk to Prapor",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_choice_2_3"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_choice_2_5",
+          "name": "Obtain Prapor's letter for the port checkpoint",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_choice_2_4"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_new_choice_1",
+          "name": "Help Mr. Kerman collecting info against TerraGroup",
+          "type": "choice",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_choice_1_5"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_new_choice_1_1a",
+          "name": "Hand over All information regarding TerraGroup's activities.",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_new_choice_1"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_new_choice_1_1a1",
+          "name": "Wait for Mr.Kerman to Contact",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_new_choice_1_1a"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_new_choice_1_1a2",
+          "name": "Receive Alpha-1 from Mr.Kerman",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_new_choice_1_1a1"
+              }
+            },
+            {
+              "task": {
+                "id": "tt_new_choice_1_2"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_new_choice_1_1a3",
+          "name": "Increase reputation with Fence to 4.0 or higher",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_new_choice_1_1a2"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_new_choice_1_1a4",
+          "name": "Complete Fence's Tasks:",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_new_choice_1_1a3"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Co-op extract on Woods",
+              "count": 2,
+              "fir": false
+            },
+            {
+              "name": "Co-op extract on Reserve",
+              "count": 2,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "tt_new_choice_1_1a5",
+          "name": "Increase reputation with BTR to 0.40",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_new_choice_1_1a4"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_new_choice_1_1a6",
+          "name": "Obtain the flash drive containing Kerman's hash codes",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_new_choice_1_1a5"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_new_choice_1_1a7",
+          "name": "Build Solar Power",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_new_choice_1_1a6"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_new_choice_1_1a8",
+          "name": "Start the craft with the flash drive containing Kerman's hash codes",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_new_choice_1_1a7"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_new_choice_1_1a9",
+          "name": "Head to Terminal",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_new_choice_1_1a8"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_new_choice_1_1a10",
+          "name": "Escape from Tarkov - Savior Ending",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_new_choice_1_1a9"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_new_choice_1_1b",
+          "name": "Cannot find the remaining info against TerraGroup",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_new_choice_1"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_new_choice_1_2",
+          "name": "Continue collecting the documents",
+          "type": "choice",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_new_choice_1_1b"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_new_choice_1_3",
+          "name": "Refuse to collect the documents",
+          "type": "choice",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_new_choice_1_1b"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_new_choice_1_4",
+          "name": "Talk to Lightkeeper",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_new_choice_1_3"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_new_choice_1_5",
+          "name": "Complete Lightkeeper's Tasks:",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_new_choice_1_4"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Find the topographic maps on Factory",
+              "count": 2,
+              "fir": false
+            },
+            {
+              "name": "Find the topographic maps on Interchange",
+              "count": 2,
+              "fir": false
+            },
+            {
+              "name": "Find the topographic maps on Customs",
+              "count": 2,
+              "fir": false
+            },
+            {
+              "name": "Find the topographic maps on Woods",
+              "count": 2,
+              "fir": false
+            },
+            {
+              "name": "Find the topographic maps on Lighthouse",
+              "count": 2,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "tt_new_choice_1_6",
+          "name": "Craft the Special Flash Drive with Topographic Maps",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_new_choice_1_5"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_new_choice_1_7",
+          "name": "Talk to Lightkeeper",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_new_choice_1_6"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_new_choice_1_8",
+          "name": "Complete Lightkeeper's Tasks:",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_new_choice_1_7"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Kill 30 PMCs on Woods",
+              "count": 2,
+              "fir": false
+            },
+            {
+              "name": "Deliver 100 PMC Dogtags",
+              "count": 2,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "tt_new_choice_1_9",
+          "name": "Talk to Lightkeeper",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_new_choice_1_8"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_new_choice_1_10",
+          "name": "Complete Lightkeeper's Tasks:",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_new_choice_1_9"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Find Sacred Amulet on Customs",
+              "count": 2,
+              "fir": false
+            },
+            {
+              "name": "Find Sacred Amulet on Reserve",
+              "count": 2,
+              "fir": false
+            },
+            {
+              "name": "Find Sacred Amulet on Streets of Tarkov",
+              "count": 2,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "tt_new_choice_1_11",
+          "name": "Plant the Sacred Amulets on Lighthouse Marked Room",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_new_choice_1_10"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_new_choice_1_12",
+          "name": "Talk to Lightkeeper",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_new_choice_1_11"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_new_choice_1_13",
+          "name": "Escape from Tarkov - Debtor Ending",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_new_choice_1_12"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_new_choice_2",
+          "name": "Refuse to Help Mr. Kerman",
+          "type": "choice",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_choice_1_5"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_choice_2_6",
+          "name": "Escape from Tarkov - Survivor Ending",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_choice_2_5"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_new_choice_2_1",
+          "name": "Talk to Prapor",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_new_choice_2"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_new_choice_2_2",
+          "name": "Complete Prapor's Tasks",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_new_choice_2_1"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Deliver 40 Weapon or Armor Repair Kits",
+              "count": 2,
+              "fir": false
+            },
+            {
+              "name": "Deliver 50x Advanced or Military Electronics",
+              "count": 2,
+              "fir": false
+            },
+            {
+              "name": "Deliver one secured pouch: Tetta, Epsilon, or Gamma",
+              "count": 2,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "tt_new_choice_2_3",
+          "name": "Obtain Prapor's Case",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_new_choice_2_2"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Obtain the Case from RB-PKPTS on Reserve",
+              "count": 2,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "tt_new_choice_2_4",
+          "name": "Handover 1,000,000$ to Prapor",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_new_choice_2_3"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_new_choice_2_5",
+          "name": "Answer the Call from Prapor",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_new_choice_2_4"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_new_choice_2_6",
+          "name": "Craft the Reprogrammed RFID keycard with Prapor's hash codes",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_new_choice_2_5"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tt_new_choice_2_7",
+          "name": "Escape from Tarkov - Fallen Ending",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tt_new_choice_2_6"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "4": {
+      "id": 4,
+      "title": "BATYA",
+      "nodes": [
+        {
+          "id": "bt_start",
+          "name": "Locate the traces of the BEAR special squad",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": []
+        },
+        {
+          "id": "bt_1",
+          "name": "Talk to Jaeger",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "bt_start"
+              }
+            }
+          ]
+        },
+        {
+          "id": "bt_2",
+          "name": "Locate the Gnezdo outpost",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "bt_1"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Find: BEAR Note",
+              "count": 15,
+              "fir": false
+            },
+            {
+              "name": "Find: Map with triangulated signal",
+              "count": 4,
+              "fir": false
+            },
+            {
+              "name": "Find: Bogatyr squad operations report",
+              "count": 10,
+              "fir": false
+            },
+            {
+              "name": "Find: First piece of code note",
+              "count": 5,
+              "fir": false
+            },
+            {
+              "name": "Find: Moreman's personal file",
+              "count": 10,
+              "fir": false
+            },
+            {
+              "name": "Find: Audio tape with report",
+              "count": 15,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "bt_3",
+          "name": "Locate the Ryabina outpost",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "bt_1"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Find: Hostage evacuation report",
+              "count": 15,
+              "fir": false
+            },
+            {
+              "name": "Find: Strelets' amulet",
+              "count": 4,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "bt_4",
+          "name": "Locate the Carousel outpost",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "bt_1"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Find: Voevoda's tape recorder",
+              "count": 15,
+              "fir": false
+            },
+            {
+              "name": "Find: Voevoda's thoughts audio tape",
+              "count": 4,
+              "fir": false
+            },
+            {
+              "name": "Find: Taran's personal file",
+              "count": 10,
+              "fir": false
+            },
+            {
+              "name": "Find: Taran's postcard",
+              "count": 5,
+              "fir": false
+            },
+            {
+              "name": "Find: Strelets' personal file",
+              "count": 10,
+              "fir": false
+            },
+            {
+              "name": "Find: Strelets' note",
+              "count": 15,
+              "fir": false
+            },
+            {
+              "name": "Find: Voevoda's personal file",
+              "count": 15,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "bt_5",
+          "name": "Locate the Ambush Spot",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "bt_2"
+              }
+            },
+            {
+              "task": {
+                "id": "bt_3"
+              }
+            },
+            {
+              "task": {
+                "id": "bt_4"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Find: Moreman's dogtag",
+              "count": 15,
+              "fir": false
+            },
+            {
+              "name": "Find: Moreman's phone",
+              "count": 4,
+              "fir": false
+            },
+            {
+              "name": "Find: Second piece of code",
+              "count": 4,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "bt_6",
+          "name": "Retrieve more information about the ambush from Moreman's phone",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "bt_5"
+              }
+            }
+          ]
+        },
+        {
+          "id": "bt_7",
+          "name": "Build Level 3 Intelligence Center",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "bt_6"
+              }
+            }
+          ]
+        },
+        {
+          "id": "bt_8",
+          "name": "Contact the Bogatyr squad",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "bt_7"
+              }
+            }
+          ]
+        },
+        {
+          "id": "bt_9",
+          "name": "Gain access to Lightkeeper",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "bt_8"
+              }
+            }
+          ]
+        },
+        {
+          "id": "bt_10",
+          "name": "Bring Bogatyr items to Lightkeeper",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "bt_9"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Bring: Voevoda's audio recorder",
+              "count": 15,
+              "fir": false
+            },
+            {
+              "name": "Bring: Taran's postcard",
+              "count": 4,
+              "fir": false
+            },
+            {
+              "name": "Bring: Strelets' amulet",
+              "count": 4,
+              "fir": false
+            },
+            {
+              "name": "Bring: Moreman's dogtag",
+              "count": 4,
+              "fir": false
+            },
+            {
+              "name": "Bring: Bogatyr squad patch",
+              "count": 4,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "bt_11",
+          "name": "Wait for Voevoda to reach out",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "bt_10"
+              }
+            }
+          ]
+        },
+        {
+          "id": "bt_12",
+          "name": "Voevoda contacted me. I need to:",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "bt_11"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Eliminate 15 Targets without dying",
+              "count": 15,
+              "fir": false
+            },
+            {
+              "name": "Eliminate 4 PMCs without dying",
+              "count": 4,
+              "fir": false
+            },
+            {
+              "name": "Level up Assault Rifles skill to 10",
+              "count": 10,
+              "fir": false
+            },
+            {
+              "name": "Level up Light Machine Guns to 5",
+              "count": 5,
+              "fir": false
+            },
+            {
+              "name": "Level up Stress Resistance to 10",
+              "count": 10,
+              "fir": false
+            },
+            {
+              "name": "Level up Strength to 15",
+              "count": 15,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "bt_13",
+          "name": "Contact Voevoda",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "bt_12"
+              }
+            }
+          ]
+        },
+        {
+          "id": "bt_14",
+          "name": "Locate the traces of the traitors",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "bt_13"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Find: #1 Note on Lighthouse",
+              "count": 15,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "bt_15",
+          "name": "Interrogate Prapor",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "bt_14"
+              }
+            }
+          ]
+        },
+        {
+          "id": "bt_16",
+          "name": "Figure out how the cultists are connected to the General",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "bt_15"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Find: #1 Note on Customs",
+              "count": 15,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "bt_17",
+          "name": "Talk to Lightkeeper",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "bt_16"
+              }
+            }
+          ]
+        },
+        {
+          "id": "bt_18",
+          "name": "Wait for information from Lightkeeper",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "bt_17"
+              }
+            }
+          ]
+        },
+        {
+          "id": "bt_19",
+          "name": "Read the agent network deployment report",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "bt_18"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "5": {
+      "id": 5,
+      "title": "THE UNHEARD",
+      "nodes": [
+        {
+          "id": "tu_start",
+          "name": "Learn more about the Unheard",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": []
+        },
+        {
+          "id": "tu_1",
+          "name": "Learn more about TerraGroup's activities",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tu_start"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Find: Document on changes on Labs",
+              "count": 15,
+              "fir": false
+            },
+            {
+              "name": "Find: Cargo transport fax document on Labs",
+              "count": 4,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "tu_2",
+          "name": "Find more information about the special catalyst shipment",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tu_1"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Find: Transport Log on Factory",
+              "count": 15,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "tu_3",
+          "name": "Locate Rzhevsky's service vehicle",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tu_2"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Find: Hard Drive with Data on Streets of Tarkov",
+              "count": 15,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "tu_4",
+          "name": "Retrieve the data from the hard drive in Rzhevsky's car",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tu_3"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tu_5",
+          "name": "Locate and obtain the documents on the Blue Ice fuel catalyst research",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tu_4"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Find: Document #1 on Factory",
+              "count": 15,
+              "fir": false
+            },
+            {
+              "name": "Find: Document #2 on Factory",
+              "count": 15,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "tu_6",
+          "name": "Search for any mention of A.P. in Lab",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tu_5"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Locate: The Whiteboard in the office on Labs",
+              "count": 15,
+              "fir": false
+            },
+            {
+              "name": "Find: Tape #1 on Labs",
+              "count": 15,
+              "fir": false
+            },
+            {
+              "name": "Find: Tape #2 on Labs",
+              "count": 15,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "tu_7",
+          "name": "Locate A.P.'s room in the Health Resort",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tu_6"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Find: Flash Drive on Shoreline",
+              "count": 15,
+              "fir": false
+            },
+            {
+              "name": "Find: Piece of a Note on Shoreline",
+              "count": 15,
+              "fir": false
+            },
+            {
+              "name": "Find: Key to A.P.'s apartment on Shoreline",
+              "count": 15,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "tu_8",
+          "name": "Decrypt the flash drive from A.P.'s room",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tu_7"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tu_9",
+          "name": "Ask Mechanic for help & Wait for the news from Elektronik",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tu_8"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Give 5,000,000 Roubles to Mechanic",
+              "count": 15,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "tu_10",
+          "name": "Intergrate the tech files from A.P.'s flash drive into a TerraGroup keycard (Green)",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tu_9"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tu_11",
+          "name": "Access the hidden room in A.P.'s apartment",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tu_10"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Find: Note #1",
+              "count": 15,
+              "fir": false
+            },
+            {
+              "name": "Find: Note #2",
+              "count": 15,
+              "fir": false
+            },
+            {
+              "name": "Find: Note #3",
+              "count": 15,
+              "fir": false
+            },
+            {
+              "name": "Find: Note #4",
+              "count": 15,
+              "fir": false
+            }
+          ]
+        }
+      ]
+    },
+    "6": {
+      "id": 6,
+      "title": "BLUE FIRE",
+      "nodes": [
+        {
+          "id": "bf_prestart",
+          "name": "Find the document on Woods",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": []
+        },
+        {
+          "id": "bf_start",
+          "name": "Talk to Mechanic about the EMP Blast",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "bf_prestart"
+              }
+            }
+          ]
+        },
+        {
+          "id": "bf_1",
+          "name": "Locate and obtain the device fragment",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "bf_start"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Find: Device Fragment on Streets of Tarkov",
+              "count": 15,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "bf_2",
+          "name": "Talk to Mechanic",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "bf_1"
+              }
+            }
+          ]
+        },
+        {
+          "id": "bf_3",
+          "name": "Plant the hacking device in the server room in The Lab",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "bf_2"
+              }
+            }
+          ]
+        },
+        {
+          "id": "bf_4",
+          "name": "Hand over the fragment of Item 1156 to Mechanic",
+          "type": "choice",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "bf_3"
+              }
+            }
+          ]
+        },
+        {
+          "id": "bf_5",
+          "name": "Keep the fragment of Item 1156 for yourself",
+          "type": "choice",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "bf_3"
+              }
+            }
+          ]
+        },
+        {
+          "id": "bf_6",
+          "name": "Find a lead on item 1156",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "bf_5"
+              }
+            }
+          ]
+        },
+        {
+          "id": "bf_7",
+          "name": "Investigate the Rus Post office on Streets of Tarkov",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "bf_6"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Find: Tape #1",
+              "count": 15,
+              "fir": false
+            },
+            {
+              "name": "Find: Tape #2",
+              "count": 15,
+              "fir": false
+            },
+            {
+              "name": "Find: Tape #3",
+              "count": 15,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "bf_8",
+          "name": "Locate the Rus Post Car",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "bf_7"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Find or Use: Rus Post car key",
+              "count": 15,
+              "fir": false
+            },
+            {
+              "name": "Find: Document #1",
+              "count": 15,
+              "fir": false
+            }
+          ]
+        }
+      ]
+    },
+    "7": {
+      "id": 7,
+      "title": "THEY ARE ALREADY HERE",
+      "nodes": [
+        {
+          "id": "tah_start",
+          "name": "Find: Note about the Eye of the World",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": []
+        },
+        {
+          "id": "tah_1",
+          "name": "Locate a place connected to the Eye of the World",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tah_start"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Find: Audio Cassette #2",
+              "count": 15,
+              "fir": false
+            },
+            {
+              "name": "Find: Cult victim's apartment key",
+              "count": 15,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "tah_2",
+          "name": "Locate the cult victim's apartment",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tah_1"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Find: The Cult Victim Tape #1",
+              "count": 15,
+              "fir": false
+            },
+            {
+              "name": "Find: The Note",
+              "count": 15,
+              "fir": false
+            },
+            {
+              "name": "Find: The Book",
+              "count": 15,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "tah_3",
+          "name": "Talk to Mechanic",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tah_2"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tah_4",
+          "name": "Locate and neutralize two cultist priests",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tah_3"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tah_5",
+          "name": "Obtain more information on the Eye of the World",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tah_4"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tah_6",
+          "name": "Locate the place on Lighthouse",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tah_5"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Find: Victim's Note",
+              "count": 15,
+              "fir": false
+            },
+            {
+              "name": "Find: Object 14-4 KORD Keycard",
+              "count": 15,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "tah_7",
+          "name": "Locate the place on Woods",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tah_5"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Find: Newspaper Note",
+              "count": 15,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "tah_8",
+          "name": "Locate the place on Shoreline",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tah_5"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Find: Note #1 on Dead Body",
+              "count": 15,
+              "fir": false
+            },
+            {
+              "name": "Repair the Tower with a Toolkit",
+              "count": 15,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "tah_9",
+          "name": "Talk to Mechanic",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tah_6"
+              }
+            },
+            {
+              "task": {
+                "id": "tah_7"
+              }
+            },
+            {
+              "task": {
+                "id": "tah_8"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Craft the repaired Station 14-4 KORD pass",
+              "count": 15,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "tah_10",
+          "name": "Access the secret facility of the NPO Cobalt",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tah_9"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Find: Mysterious Audio Tape [Mys. Tape]",
+              "count": 15,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "tah_11",
+          "name": "Talk to Mechanic",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tah_10"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "8": {
+      "id": 8,
+      "title": "ACCIDENTAL WITNESS",
+      "nodes": [
+        {
+          "id": "aw_start",
+          "name": "Figure out where Kozlov lived",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [],
+          "items": [
+            {
+              "name": "Read the note on Kozlov's door",
+              "count": 15,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "aw_1",
+          "name": "Find out what Kozlov was involved in",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "aw_start"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Find: Letter",
+              "count": 15,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "aw_2",
+          "name": "Ask the traders about Anastasia",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "aw_1"
+              }
+            }
+          ]
+        },
+        {
+          "id": "aw_3",
+          "name": "Access Skier's accomplice's apartment",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "aw_2"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Find: Letter",
+              "count": 15,
+              "fir": false
+            },
+            {
+              "name": "Find: Newspaper",
+              "count": 15,
+              "fir": false
+            },
+            {
+              "name": "Find: Document #1",
+              "count": 15,
+              "fir": false
+            },
+            {
+              "name": "Find: Document #2",
+              "count": 15,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "aw_4",
+          "name": "Talk to Skier",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "aw_3"
+              }
+            }
+          ]
+        },
+        {
+          "id": "aw_5",
+          "name": "Talk to Ragman",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "aw_4"
+              }
+            }
+          ]
+        },
+        {
+          "id": "aw_6",
+          "name": "Find Anastasia's Apartment",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "aw_5"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Find: Letter",
+              "count": 15,
+              "fir": false
+            },
+            {
+              "name": "Find: Newspaper",
+              "count": 15,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "aw_7",
+          "name": "Locate courier Pasha",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "aw_6"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Find: Letter",
+              "count": 15,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "aw_8",
+          "name": "Talk to Skier",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "aw_7"
+              }
+            }
+          ]
+        },
+        {
+          "id": "aw_9",
+          "name": "Locate Reshala's stash",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "aw_8"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Find: Letter #1",
+              "count": 15,
+              "fir": false
+            },
+            {
+              "name": "Find: Letter #2",
+              "count": 15,
+              "fir": false
+            },
+            {
+              "name": "Find: Letter #3",
+              "count": 15,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "aw_10",
+          "name": "Locate Kozlov's hideout",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "aw_9"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Find: Photo in Corpse's Hand",
+              "count": 15,
+              "fir": false
+            },
+            {
+              "name": "Find: Audio Tape",
+              "count": 15,
+              "fir": false
+            }
+          ]
+        }
+      ]
+    },
+    "9": {
+      "id": 9,
+      "title": "THE LABYRINTH",
+      "nodes": [
+        {
+          "id": "tl_start",
+          "name": "Ask one of the traders about the underground facility",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [],
+          "items": [
+            {
+              "name": "Talk to Jaeger",
+              "count": 15,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "tl_1",
+          "name": "Wait for information from Jaeger",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tl_start"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tl_2",
+          "name": "Locate the entrance to the underground facility beneath the Health Resort",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tl_1"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tl_3",
+          "name": "Access the facility",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tl_2"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tl_4",
+          "name": "Locate the traces of the BEAR squad in The Labyrinth",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tl_3"
+              }
+            }
+          ]
+        },
+        {
+          "id": "tl_5",
+          "name": "Access the locked office on the Labyrinth",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tl_4"
+              }
+            }
+          ],
+          "items": [
+            {
+              "name": "Find: Audio Tape",
+              "count": 15,
+              "fir": false
+            },
+            {
+              "name": "Find: Note",
+              "count": 15,
+              "fir": false
+            }
+          ]
+        },
+        {
+          "id": "tl_6",
+          "name": "Read the Labyrinth facility research report on Shoreline",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            {
+              "task": {
+                "id": "tl_5"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
