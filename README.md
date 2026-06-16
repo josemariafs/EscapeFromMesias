@@ -11,6 +11,8 @@ A web quest tracker for **Escape From Tarkov**. Browse trader side quests and th
 
 ## Screenshots
 
+English UI, desktop layout (1920×1080).
+
 ### Side Quests
 Quest grid with trader art, status badges, map tags, and required items.
 
@@ -92,6 +94,7 @@ Run from the repository root:
 node scripts/fetch-storyline.mjs    # Refresh Story data → web/src/data/storyline.json
 node scripts/download-traders.mjs     # Download trader images → web/public/traders/
 node scripts/fetch-tasks.mjs          # Smoke-test the tarkov.dev API from the CLI
+node scripts/capture-readme-screenshots.mjs  # Regenerate README screenshots (needs `web` preview running)
 ```
 
 ## Project layout

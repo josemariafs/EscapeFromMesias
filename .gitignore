@@ -2,6 +2,9 @@
 web/node_modules/
 web/dist/
 
+# Root tooling (screenshot script)
+node_modules/
+
 # Vercel local link
 web/.vercel/
 
