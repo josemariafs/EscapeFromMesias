@@ -146,7 +146,7 @@ export default function App() {
     <div className="app">
       <header className="top-bar">
         <div className="brand">
-          <h1>{t.appTitle}</h1>
+          <img src="/logo.png" alt={t.appTitle} className="brand-logo" />
           <p className="subtitle">{t.subtitle(sideTasks.length)}</p>
         </div>
 

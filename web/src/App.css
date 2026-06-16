@@ -71,12 +71,13 @@ body {
   align-items: flex-end;
 }
 
-.brand h1 {
-  margin: 0;
-  font-size: 1.5rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: var(--accent);
+.brand-logo {
+  display: block;
+  height: 3.25rem;
+  width: auto;
+  max-width: min(100%, 22rem);
+  object-fit: contain;
+  object-position: left center;
 }
 
 .subtitle {
