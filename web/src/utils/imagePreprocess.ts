@@ -1,7 +1,6 @@
-/** Regiones típicas de la columna "Task" en capturas de Tarkov (1920×1080 aprox.). */
+/** Regiones de la columna "Task" en capturas de Tarkov. */
 const TASK_COLUMN_CROPS = [
-  { x: 0.08, y: 0.15, w: 0.42, h: 0.78 },
-  { x: 0.12, y: 0.18, w: 0.28, h: 0.72 },
+  { x: 0.08, y: 0.15, w: 0.42, h: 0.82 },
 ] as const;
 
 function loadImage(blob: Blob): Promise<HTMLImageElement> {

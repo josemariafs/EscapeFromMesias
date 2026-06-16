@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { fetchTasks } from '../api/tarkov';
 import type { Lang } from '../i18n/translations';
 import type { Task } from '../types';
+import { englishNamesFromTasks, loadEnglishTaskNames } from '../utils/englishTaskNames';
 import {
   isCacheValid,
   purgeLegacyLocalStorageCache,
@@ -11,6 +12,7 @@ import {
 
 export function useTasks(lang: Lang) {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [englishNamesById, setEnglishNamesById] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,5 +55,25 @@ export function useTasks(lang: Lang) {
     void load();
   }, [load]);
 
-  return { tasks, loading, error, reload: () => load(true) };
+  useEffect(() => {
+    if (lang === 'en') {
+      setEnglishNamesById(englishNamesFromTasks(tasks));
+      return;
+    }
+
+    let cancelled = false;
+    void loadEnglishTaskNames()
+      .then((names) => {
+        if (!cancelled) setEnglishNamesById(names);
+      })
+      .catch(() => {
+        if (!cancelled) setEnglishNamesById(new Map());
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [lang, tasks]);
+
+  return { tasks, englishNamesById, loading, error, reload: () => load(true) };
 }

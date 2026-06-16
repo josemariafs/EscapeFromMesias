@@ -23,7 +23,7 @@ type AllQuestTab = 'story' | 'side';
 export default function App() {
   const { lang, setLang, t } = useLanguage();
   const { viewMode, setViewMode } = useViewMode();
-  const { tasks, loading, error, reload } = useTasks(lang);
+  const { tasks, englishNamesById, loading, error, reload } = useTasks(lang);
   const {
     progress,
     setPlayerLevel,
@@ -251,6 +251,7 @@ export default function App() {
               <div className="header-actions">
                 <ScreenshotImportButton
                   tasks={tasks}
+                  englishNamesById={englishNamesById}
                   t={t}
                   onImport={importActiveTasks}
                 />

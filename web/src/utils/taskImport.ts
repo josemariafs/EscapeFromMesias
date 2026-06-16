@@ -113,25 +113,50 @@ function bestTaskSimilarity(norm: string, compact: string, text: string): number
   return best;
 }
 
+function normalizeOcrText(text: string): string {
+  return text
+    .replace(/(\w)\s*=\s*(\w)/g, '$1 - $2')
+    .replace(/(\w)\s*—\s*(\w)/g, '$1 - $2');
+}
+
+function getTaskMatchNames(task: Task, englishNamesById?: Map<string, string>): string[] {
+  const names = new Set<string>([task.name]);
+  const englishName = englishNamesById?.get(task.id);
+  if (englishName) names.add(englishName);
+  return [...names];
+}
+
 function minSimilarityThreshold(nameLength: number): number {
   if (nameLength >= 20) return 0.68;
   if (nameLength >= 12) return 0.72;
   return 0.78;
 }
 
-export function matchTasksInText(text: string, tasks: Task[]): Task[] {
-  if (!text.trim()) return [];
+export function matchTasksInText(
+  text: string,
+  tasks: Task[],
+  englishNamesById?: Map<string, string>,
+): Task[] {
+  const cleanedText = normalizeOcrText(text);
+  if (!cleanedText.trim()) return [];
 
   const matched = new Set<string>();
   const sorted = [...tasks].sort((a, b) => b.name.length - a.name.length);
 
   for (const task of sorted) {
-    const norm = normalizeQuestName(task.name);
-    const compact = compactQuestName(task.name);
-    if (norm.length < 4) continue;
+    let bestScore = 0;
+    let bestNameLength = 0;
 
-    const score = bestTaskSimilarity(norm, compact, text);
-    if (score >= minSimilarityThreshold(norm.length)) {
+    for (const name of getTaskMatchNames(task, englishNamesById)) {
+      const norm = normalizeQuestName(name);
+      const compact = compactQuestName(name);
+      if (norm.length < 4) continue;
+
+      bestScore = Math.max(bestScore, bestTaskSimilarity(norm, compact, cleanedText));
+      bestNameLength = Math.max(bestNameLength, norm.length);
+    }
+
+    if (bestScore >= minSimilarityThreshold(bestNameLength)) {
       matched.add(task.id);
     }
   }

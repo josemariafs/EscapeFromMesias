@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Task } from '../types';
 import type { Translations } from '../i18n/translations';
+import { loadEnglishTaskNames } from '../utils/englishTaskNames';
 import { extractTextFromImages, getImagesFromClipboardEvent } from '../utils/screenshotOcr';
 import { matchTasksInText } from '../utils/taskImport';
 
 interface ScreenshotImportButtonProps {
   tasks: Task[];
+  englishNamesById: Map<string, string>;
   t: Translations;
   onImport: (taskIds: string[]) => void;
 }
 
-export function ScreenshotImportButton({ tasks, t, onImport }: ScreenshotImportButtonProps) {
+export function ScreenshotImportButton({ tasks, englishNamesById, t, onImport }: ScreenshotImportButtonProps) {
   const [listening, setListening] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -27,7 +29,10 @@ export function ScreenshotImportButton({ tasks, t, onImport }: ScreenshotImportB
 
     try {
       const text = await extractTextFromImages(images);
-      const matched = matchTasksInText(text, tasks);
+      const names = englishNamesById.size > 0
+        ? englishNamesById
+        : await loadEnglishTaskNames();
+      const matched = matchTasksInText(text, tasks, names);
 
       if (matched.length === 0) {
         setStatus(t.importScreenshotNoMatch);
@@ -43,7 +48,7 @@ export function ScreenshotImportButton({ tasks, t, onImport }: ScreenshotImportB
       setListening(false);
       listeningRef.current = false;
     }
-  }, [onImport, t, tasks]);
+  }, [englishNamesById, onImport, t, tasks]);
 
   useEffect(() => {
     if (!listening) return;
