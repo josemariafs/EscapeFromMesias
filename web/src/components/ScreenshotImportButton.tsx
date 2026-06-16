@@ -84,8 +84,29 @@ export function ScreenshotImportButton({ tasks, t, onImport }: ScreenshotImportB
     return () => window.clearTimeout(timer);
   }, [status]);
 
-  const handleClick = () => {
+  const handleClick = async () => {
     if (processing) return;
+
+    if (navigator.clipboard?.read) {
+      try {
+        const items = await navigator.clipboard.read();
+        const images: Blob[] = [];
+        for (const item of items) {
+          for (const type of item.types) {
+            if (type.startsWith('image/')) {
+              images.push(await item.getType(type));
+            }
+          }
+        }
+        if (images.length > 0) {
+          void processImages(images);
+          return;
+        }
+      } catch {
+        /* clipboard permission denied or empty — fall back to paste mode */
+      }
+    }
+
     listeningRef.current = true;
     setListening(true);
     setStatus(t.importScreenshotHint);
