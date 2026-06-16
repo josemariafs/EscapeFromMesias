@@ -78,7 +78,7 @@ export interface Translations {
 
 export const translations: Record<Lang, Translations> = {
   es: {
-    appTitle: 'Escape From Mesías',
+    appTitle: 'Escape From Gorditos',
     subtitle: (n) => `Tracker de misiones · ${n} quests · datos de tarkov.dev`,
     loading: 'Cargando misiones desde tarkov.dev…',
     loadError: 'Error al cargar',
@@ -160,7 +160,7 @@ export const translations: Record<Lang, Translations> = {
     },
   },
   en: {
-    appTitle: 'Escape From Mesías',
+    appTitle: 'Escape From Fat Boys',
     subtitle: (n) => `Quest tracker · ${n} quests · data from tarkov.dev`,
     loading: 'Loading quests from tarkov.dev…',
     loadError: 'Failed to load',
