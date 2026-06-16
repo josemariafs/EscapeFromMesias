@@ -171,6 +171,48 @@ export function extractOcrQuestLines(text: string): string[] {
   return lines;
 }
 
+/** Parte líneas que el OCR fusionó: "painkiller any location golden swag customs" → dos misiones. */
+function expandMergedLines(lines: string[]): string[] {
+  const locationSplit = /\s+(?:any location|customs|ground zero|factory|woods|shoreline|interchange|reserve|lighthouse|streets of tarkov|the lab|laboratory)\s+/i;
+  const expanded: string[] = [];
+
+  for (const line of lines) {
+    if (locationSplit.test(line)) {
+      const parts = line
+        .split(locationSplit)
+        .map((part) => part.trim())
+        .filter((part) => part.length >= 4 && !isNoiseLine(part) && !isGarbageLine(part));
+      expanded.push(...parts);
+    } else {
+      expanded.push(line);
+    }
+  }
+
+  return expanded;
+}
+
+function bestLineScoreForTask(
+  task: Task,
+  lines: string[],
+  englishNamesById?: Map<string, string>,
+): { score: number; nameLength: number } {
+  let bestScore = 0;
+  let nameLength = 0;
+
+  for (const line of lines) {
+    for (const name of getTaskMatchNames(task, englishNamesById)) {
+      const norm = normalizeQuestName(name);
+      const compact = compactQuestName(name);
+      if (norm.length < 4) continue;
+
+      bestScore = Math.max(bestScore, lineMatchScore(norm, compact, line));
+      nameLength = Math.max(nameLength, norm.length);
+    }
+  }
+
+  return { score: bestScore, nameLength };
+}
+
 function lineMatchScore(questNorm: string, questCompact: string, line: string): number {
   if (partsMismatch(questNorm, line)) return 0;
 
@@ -240,37 +282,20 @@ export function matchTasksInText(
   englishNamesById?: Map<string, string>,
 ): Task[] {
   const cleanedText = normalizeOcrText(text);
-  const lines = extractOcrQuestLines(cleanedText);
+  const lines = expandMergedLines(extractOcrQuestLines(cleanedText));
   if (lines.length === 0) return [];
 
-  const matched = new Map<string, number>();
+  const matched: Task[] = [];
 
-  for (const line of lines) {
-    let bestTaskId: string | null = null;
-    let bestScore = 0;
-
-    for (const task of tasks) {
-      for (const name of getTaskMatchNames(task, englishNamesById)) {
-        const norm = normalizeQuestName(name);
-        const compact = compactQuestName(name);
-        if (norm.length < 4) continue;
-
-        const score = lineMatchScore(norm, compact, line);
-        const threshold = minLineMatchThreshold(norm.length);
-        if (score >= threshold && score > bestScore) {
-          bestScore = score;
-          bestTaskId = task.id;
-        }
-      }
-    }
-
-    if (bestTaskId) {
-      const prev = matched.get(bestTaskId) ?? 0;
-      matched.set(bestTaskId, Math.max(prev, bestScore));
+  for (const task of tasks) {
+    const { score, nameLength } = bestLineScoreForTask(task, lines, englishNamesById);
+    if (nameLength < 4) continue;
+    if (score >= minLineMatchThreshold(nameLength)) {
+      matched.push(task);
     }
   }
 
-  return tasks.filter((task) => matched.has(task.id));
+  return matched;
 }
 
 function isCompleteRequirement(statuses: string[]): boolean {
