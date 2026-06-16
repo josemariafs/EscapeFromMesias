@@ -145,62 +145,66 @@ export default function App() {
   return (
     <div className="app">
       <header className="top-bar">
-        <div className="brand">
+        <div className="top-bar-brand">
           <img src="/logo.png" alt={t.appTitle} className="brand-logo" />
-          <p className="subtitle">{t.subtitle(sideTasks.length)}</p>
+        </div>
+
+        <div className="top-bar-center">
+          <nav className="view-tabs header-tabs">
+            <button
+              type="button"
+              className={`view-tab${viewTab === 'all' ? ' active' : ''}`}
+              onClick={() => setViewTab('all')}
+            >
+              {t.tabAll}
+            </button>
+            <button
+              type="button"
+              className={`view-tab${viewTab === 'active' ? ' active' : ''}`}
+              onClick={() => setViewTab('active')}
+            >
+              {t.tabActive}
+              {taskCounts.started > 0 && <span className="tab-badge">{taskCounts.started}</span>}
+            </button>
+          </nav>
+
+          {viewTab === 'all' && (
+            <nav className="view-tabs sub-tabs header-sub-tabs">
+              <button
+                type="button"
+                className={`view-tab${allQuestTab === 'story' ? ' active' : ''}`}
+                onClick={() => handleQuestTabChange('story')}
+              >
+                {t.tabStory}
+                <span className="tab-badge muted">{storyNodes.length + storyApiTasks.length}</span>
+              </button>
+              <button
+                type="button"
+                className={`view-tab${allQuestTab === 'side' ? ' active' : ''}`}
+                onClick={() => handleQuestTabChange('side')}
+              >
+                {t.tabSideQuest}
+                <span className="tab-badge muted">{sideTasks.length}</span>
+              </button>
+            </nav>
+          )}
         </div>
 
         <div className="top-bar-right">
-          <div className="stats-bar">
-            <span className="stat available">{t.statAvailable(counts.available)}</span>
-            <span className="stat started">{t.statStarted(counts.started)}</span>
-            <span className="stat completed">{t.statCompleted(counts.completed)}</span>
-            <span className="stat locked">{t.statLocked(counts.locked)}</span>
+          <p className="subtitle">{t.subtitle(sideTasks.length)}</p>
+          <div className="top-bar-actions">
+            <div className="stats-bar">
+              <span className="stat available">{t.statAvailable(counts.available)}</span>
+              <span className="stat started">{t.statStarted(counts.started)}</span>
+              <span className="stat completed">{t.statCompleted(counts.completed)}</span>
+              <span className="stat locked">{t.statLocked(counts.locked)}</span>
+            </div>
+            <button type="button" className="btn btn-wipe" onClick={handleWipeAll}>
+              {t.wipeAll}
+            </button>
           </div>
-          <button type="button" className="btn btn-wipe" onClick={handleWipeAll}>
-            {t.wipeAll}
-          </button>
         </div>
       </header>
-
-      <nav className="view-tabs">
-        <button
-          type="button"
-          className={`view-tab${viewTab === 'all' ? ' active' : ''}`}
-          onClick={() => setViewTab('all')}
-        >
-          {t.tabAll}
-        </button>
-        <button
-          type="button"
-          className={`view-tab${viewTab === 'active' ? ' active' : ''}`}
-          onClick={() => setViewTab('active')}
-        >
-          {t.tabActive}
-          {taskCounts.started > 0 && <span className="tab-badge">{taskCounts.started}</span>}
-        </button>
-      </nav>
-
-      {viewTab === 'all' && (
-        <nav className="view-tabs sub-tabs">
-          <button
-            type="button"
-            className={`view-tab${allQuestTab === 'story' ? ' active' : ''}`}
-            onClick={() => handleQuestTabChange('story')}
-          >
-            {t.tabStory}
-            <span className="tab-badge muted">{storyNodes.length + storyApiTasks.length}</span>
-          </button>
-          <button
-            type="button"
-            className={`view-tab${allQuestTab === 'side' ? ' active' : ''}`}
-            onClick={() => handleQuestTabChange('side')}
-          >
-            {t.tabSideQuest}
-            <span className="tab-badge muted">{sideTasks.length}</span>
-          </button>
-        </nav>
-      )}
 
       <div className="toolbar">
         {viewTab === 'all' && (

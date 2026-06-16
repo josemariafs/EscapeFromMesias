@@ -160,7 +160,7 @@ export const translations: Record<Lang, Translations> = {
     },
   },
   en: {
-    appTitle: 'Escape From Fat Boys',
+    appTitle: 'Escape From Gorditos',
     subtitle: (n) => `Quest tracker · ${n} quests · data from tarkov.dev`,
     loading: 'Loading quests from tarkov.dev…',
     loadError: 'Failed to load',

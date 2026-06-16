@@ -1,13 +1,13 @@
-# Escape From Mesías
+# Escape From Gorditos
 
-[![Live Demo](https://img.shields.io/badge/demo-escape--from--mesias.vercel.app-black?style=for-the-badge&logo=vercel)](https://escape-from-mesias.vercel.app)
+[![Live Demo](https://img.shields.io/badge/demo-escapefromgorditos.vercel.app-black?style=for-the-badge&logo=vercel)](https://escapefromgorditos.vercel.app)
 [![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vite.dev)
 [![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 
 A web quest tracker for **Escape From Tarkov**. Browse trader side quests and the main Story campaign, track your progress locally, and see which missions are available based on prerequisites.
 
-**Live demo:** [escape-from-mesias.vercel.app](https://escape-from-mesias.vercel.app)
+**Live demo:** [escapefromgorditos.vercel.app](https://escapefromgorditos.vercel.app)
 
 ## Screenshots
 
