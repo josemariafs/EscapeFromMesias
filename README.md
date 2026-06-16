@@ -104,4 +104,4 @@ docs/screenshots/   README screenshots
 
 ## License
 
-Private / personal project. Escape From Tarkov is a trademark of Battlestate Games.
+Licensed under [AGPL-3.0](LICENSE). Escape From Tarkov is a trademark of Battlestate Games.
