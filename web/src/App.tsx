@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ActiveTasksView } from './components/ActiveTasksView';
-import { getChapterDesc, StoryView } from './components/StoryView';
+import { StoryView } from './components/StoryView';
+import { getChapterDesc } from './utils/storylineData';
 import { StoryDetail } from './components/StoryDetail';
 import { TaskCard } from './components/TaskCard';
 import { TaskDetail } from './components/TaskDetail';

@@ -18,5 +18,9 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      // Data-fetching and progress sync effects intentionally update state on mount.
+      'react-hooks/set-state-in-effect': 'off',
+    },
   },
 ])

@@ -32,3 +32,7 @@ export function getStoryNodeById(
 export function getStoryNodeCount(): number {
   return flattenStoryNodes().length;
 }
+
+export function getChapterDesc(chapterId: number): string | null {
+  return storylineData.chapters.find((c) => c.id === chapterId)?.desc ?? null;
+}

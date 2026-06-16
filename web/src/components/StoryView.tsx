@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import type { Task, TaskProgressState } from '../types';
 import type { Translations } from '../i18n/translations';
 import type { StoryNodeFlat } from '../types/storyline';
-import { storylineData } from '../utils/storylineData';
 import { storyApiTaskMatchesChapter } from '../utils/taskCategory';
 import { sortStoryNodesForDisplay } from '../utils/storylineUnlock';
 import { sortTasksForDisplay } from '../utils/unlock';
@@ -121,8 +120,4 @@ export function StoryView({
       })}
     </>
   );
-}
-
-export function getChapterDesc(chapterId: number): string | null {
-  return storylineData.chapters.find((c) => c.id === chapterId)?.desc ?? null;
 }
