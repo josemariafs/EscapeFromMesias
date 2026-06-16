@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { ActiveTasksView } from './components/ActiveTasksView';
+import { AppFooter } from './components/AppFooter';
 import { ScreenshotImportButton } from './components/ScreenshotImportButton';
 import { StoryView } from './components/StoryView';
 import { getChapterDesc } from './utils/storylineData';
@@ -394,6 +395,8 @@ export default function App() {
           />
         )}
       </main>
+
+      <AppFooter locale={locale} />
     </div>
   );
 }
