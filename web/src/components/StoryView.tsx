@@ -8,8 +8,6 @@ import { sortTasksForDisplay } from '../utils/unlock';
 import { StoryNodeCard } from './StoryNodeCard';
 import { TaskCard } from './TaskCard';
 
-type StatusFilter = 'all' | TaskProgressState;
-
 interface StoryViewProps {
   nodes: StoryNodeFlat[];
   storyApiTasks: Task[];
@@ -17,7 +15,6 @@ interface StoryViewProps {
   taskStates: Record<string, TaskProgressState>;
   search: string;
   chapterFilter: number | 'all';
-  statusFilter: StatusFilter;
   selectedId: string | null;
   locale: string;
   t: Translations;
@@ -38,7 +35,6 @@ export function StoryView({
   taskStates,
   search,
   chapterFilter,
-  statusFilter,
   selectedId,
   locale,
   t,
@@ -55,29 +51,25 @@ export function StoryView({
 
   const filteredNodes = useMemo(() => {
     const filtered = nodes.filter((node) => {
-      const state = nodeStates[node.id] ?? 'locked';
       if (chapterFilter !== 'all' && node.chapterId !== chapterFilter) return false;
-      if (statusFilter !== 'all' && state !== statusFilter) return false;
       if (q && !node.name.toLowerCase().includes(q) && !node.chapterTitle.toLowerCase().includes(q)) {
         return false;
       }
       return true;
     });
     return sortStoryNodesForDisplay(filtered, nodeStates, locale);
-  }, [nodes, nodeStates, q, chapterFilter, statusFilter, locale]);
+  }, [nodes, nodeStates, q, chapterFilter, locale]);
 
   const filteredApiTasks = useMemo(() => {
     const filtered = storyApiTasks.filter((task) => {
-      const state = taskStates[task.id] ?? 'locked';
       if (!storyApiTaskMatchesChapter(task, chapterFilter)) return false;
-      if (statusFilter !== 'all' && state !== statusFilter) return false;
       if (q && !task.name.toLowerCase().includes(q) && !task.trader.name.toLowerCase().includes(q)) {
         return false;
       }
       return true;
     });
     return sortTasksForDisplay(filtered, taskStates, locale);
-  }, [storyApiTasks, taskStates, q, chapterFilter, statusFilter, locale]);
+  }, [storyApiTasks, taskStates, q, chapterFilter, locale]);
 
   if (filteredNodes.length === 0 && filteredApiTasks.length === 0) {
     return <p className="empty-list">{t.noTasksFilter}</p>;

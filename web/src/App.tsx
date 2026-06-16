@@ -9,14 +9,12 @@ import { useLanguage } from './i18n/useLanguage';
 import { useProgress } from './hooks/useProgress';
 import { useStoryProgress } from './hooks/useStoryProgress';
 import { useTasks } from './hooks/useTasks';
-import type { TaskProgressState } from './types';
 import { storylineData } from './utils/storylineData';
 import { countStoryByState } from './utils/storylineUnlock';
 import { countByState, sortTasksForDisplay } from './utils/unlock';
 import { isSideTask, isStoryApiTask } from './utils/taskCategory';
 import './App.css';
 
-type StatusFilter = 'all' | TaskProgressState;
 type ViewTab = 'all' | 'active';
 type AllQuestTab = 'story' | 'side';
 
@@ -42,9 +40,7 @@ export default function App() {
   const [viewTab, setViewTab] = useState<ViewTab>('all');
   const [allQuestTab, setAllQuestTab] = useState<AllQuestTab>('side');
   const [search, setSearch] = useState('');
-  const [traderFilter, setTraderFilter] = useState('all');
   const [chapterFilter, setChapterFilter] = useState<number | 'all'>('all');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const locale = lang === 'en' ? 'en-US' : 'es-ES';
@@ -52,14 +48,6 @@ export default function App() {
 
   const sideTasks = useMemo(() => tasks.filter(isSideTask), [tasks]);
   const storyApiTasks = useMemo(() => tasks.filter(isStoryApiTask), [tasks]);
-
-  const sideTraders = useMemo(() => {
-    const map = new Map<string, { id: string; name: string }>();
-    for (const task of sideTasks) {
-      map.set(task.trader.id, { id: task.trader.id, name: task.trader.name });
-    }
-    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, locale));
-  }, [sideTasks, locale]);
 
   const taskCounts = useMemo(
     () => countByState(sideTasks, progress.taskStates),
@@ -85,16 +73,13 @@ export default function App() {
   const filteredTasks = useMemo(() => {
     const q = search.trim().toLowerCase();
     const filtered = sideTasks.filter((task) => {
-      const state = progress.taskStates[task.id] ?? 'locked';
-      if (traderFilter !== 'all' && task.trader.id !== traderFilter) return false;
-      if (statusFilter !== 'all' && state !== statusFilter) return false;
       if (q && !task.name.toLowerCase().includes(q) && !task.trader.name.toLowerCase().includes(q)) {
         return false;
       }
       return true;
     });
     return sortTasksForDisplay(filtered, progress.taskStates, locale);
-  }, [sideTasks, progress.taskStates, search, traderFilter, statusFilter, locale]);
+  }, [sideTasks, progress.taskStates, search, locale]);
 
   const selectedStoryApiTask = storyApiTasks.find((task) => task.id === selectedId) ?? null;
 
@@ -111,7 +96,6 @@ export default function App() {
     setAllQuestTab(tab);
     setSelectedId(null);
     setSearch('');
-    setStatusFilter('all');
   };
 
   const handleWipeAll = () => {
@@ -144,132 +128,136 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className="top-bar">
-        <div className="top-bar-brand">
-          <img src="/logo.png" alt={t.appTitle} className="brand-logo" />
-        </div>
+      <header className={`app-header${viewTab === 'all' ? ' app-header--with-search' : ''}`}>
+        <div className="header-grid">
+          <div className="header-logo">
+            <img src="/logo.png" alt={t.appTitle} className="brand-logo" />
+          </div>
 
-        <div className="top-bar-center">
-          <nav className="view-tabs header-tabs">
-            <button
-              type="button"
-              className={`view-tab${viewTab === 'all' ? ' active' : ''}`}
-              onClick={() => setViewTab('all')}
-            >
-              {t.tabAll}
-            </button>
-            <button
-              type="button"
-              className={`view-tab${viewTab === 'active' ? ' active' : ''}`}
-              onClick={() => setViewTab('active')}
-            >
-              {t.tabActive}
-              {taskCounts.started > 0 && <span className="tab-badge">{taskCounts.started}</span>}
-            </button>
-          </nav>
+          <div className="header-tabs">
+            <div className="segmented" role="tablist" aria-label={t.tabAll}>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={viewTab === 'all'}
+                className={`segmented-item${viewTab === 'all' ? ' active' : ''}`}
+                onClick={() => setViewTab('all')}
+              >
+                {t.tabAll}
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={viewTab === 'active'}
+                className={`segmented-item${viewTab === 'active' ? ' active' : ''}`}
+                onClick={() => setViewTab('active')}
+              >
+                {t.tabActive}
+                {taskCounts.started > 0 && <span className="seg-count">{taskCounts.started}</span>}
+              </button>
+            </div>
+
+            {viewTab === 'all' && (
+              <div className="segmented segmented-sub" role="tablist" aria-label={t.tabAll}>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={allQuestTab === 'story'}
+                  className={`segmented-item${allQuestTab === 'story' ? ' active' : ''}`}
+                  onClick={() => handleQuestTabChange('story')}
+                >
+                  {t.tabStory}
+                  <span className="seg-count">{storyNodes.length + storyApiTasks.length}</span>
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={allQuestTab === 'side'}
+                  className={`segmented-item${allQuestTab === 'side' ? ' active' : ''}`}
+                  onClick={() => handleQuestTabChange('side')}
+                >
+                  {t.tabSideQuest}
+                  <span className="seg-count">{sideTasks.length}</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="header-right">
+            <div className="header-controls-top">
+              <label className="header-level">
+                <span className="header-level-label">{t.playerLevel}</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={79}
+                  value={progress.playerLevel}
+                  onChange={(e) => setPlayerLevel(Number(e.target.value))}
+                />
+              </label>
+              <div className="lang-flags" role="group" aria-label={t.language}>
+                <button
+                  type="button"
+                  className={`lang-flag${lang === 'es' ? ' active' : ''}`}
+                  onClick={() => setLang('es')}
+                  aria-pressed={lang === 'es'}
+                  title="Español"
+                >
+                  <img src="/flags/es.svg" alt="Español" />
+                </button>
+                <button
+                  type="button"
+                  className={`lang-flag${lang === 'en' ? ' active' : ''}`}
+                  onClick={() => setLang('en')}
+                  aria-pressed={lang === 'en'}
+                  title="English"
+                >
+                  <img src="/flags/en.svg" alt="English" />
+                </button>
+              </div>
+            </div>
+
+            <div className="header-stats">
+              <div className="stats-bar">
+                <span className="stat available">{t.statAvailable(counts.available)}</span>
+                <span className="stat started">{t.statStarted(counts.started)}</span>
+                <span className="stat completed">{t.statCompleted(counts.completed)}</span>
+                <span className="stat locked">{t.statLocked(counts.locked)}</span>
+              </div>
+              <button type="button" className="btn btn-wipe" onClick={handleWipeAll}>
+                {t.wipeAll}
+              </button>
+            </div>
+          </div>
 
           {viewTab === 'all' && (
-            <nav className="view-tabs sub-tabs header-sub-tabs">
-              <button
-                type="button"
-                className={`view-tab${allQuestTab === 'story' ? ' active' : ''}`}
-                onClick={() => handleQuestTabChange('story')}
-              >
-                {t.tabStory}
-                <span className="tab-badge muted">{storyNodes.length + storyApiTasks.length}</span>
-              </button>
-              <button
-                type="button"
-                className={`view-tab${allQuestTab === 'side' ? ' active' : ''}`}
-                onClick={() => handleQuestTabChange('side')}
-              >
-                {t.tabSideQuest}
-                <span className="tab-badge muted">{sideTasks.length}</span>
-              </button>
-            </nav>
+            <div className="header-search">
+              <input
+                type="search"
+                placeholder={isStoryTab ? t.searchStoryPlaceholder : t.searchPlaceholder}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="search-input"
+              />
+              {isStoryTab && (
+                <select
+                  className="header-chapter-select"
+                  value={chapterFilter === 'all' ? 'all' : String(chapterFilter)}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setChapterFilter(v === 'all' ? 'all' : Number(v));
+                  }}
+                >
+                  <option value="all">{t.allChapters}</option>
+                  {storylineData.chapters.map((ch) => (
+                    <option key={ch.id} value={ch.id}>{ch.title}</option>
+                  ))}
+                </select>
+              )}
+            </div>
           )}
         </div>
-
-        <div className="top-bar-right">
-          <p className="subtitle">{t.subtitle(sideTasks.length)}</p>
-          <div className="top-bar-actions">
-            <div className="stats-bar">
-              <span className="stat available">{t.statAvailable(counts.available)}</span>
-              <span className="stat started">{t.statStarted(counts.started)}</span>
-              <span className="stat completed">{t.statCompleted(counts.completed)}</span>
-              <span className="stat locked">{t.statLocked(counts.locked)}</span>
-            </div>
-            <button type="button" className="btn btn-wipe" onClick={handleWipeAll}>
-              {t.wipeAll}
-            </button>
-          </div>
-        </div>
       </header>
-
-      <div className="toolbar">
-        {viewTab === 'all' && (
-          <>
-            <input
-              type="search"
-              placeholder={isStoryTab ? t.searchStoryPlaceholder : t.searchPlaceholder}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="search-input"
-            />
-
-            {isStoryTab ? (
-              <select
-                value={chapterFilter === 'all' ? 'all' : String(chapterFilter)}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setChapterFilter(v === 'all' ? 'all' : Number(v));
-                }}
-              >
-                <option value="all">{t.allChapters}</option>
-                {storylineData.chapters.map((ch) => (
-                  <option key={ch.id} value={ch.id}>{ch.title}</option>
-                ))}
-              </select>
-            ) : (
-              <select value={traderFilter} onChange={(e) => setTraderFilter(e.target.value)}>
-                <option value="all">{t.allTraders}</option>
-                {sideTraders.map((tr) => (
-                  <option key={tr.id} value={tr.id}>{tr.name}</option>
-                ))}
-              </select>
-            )}
-
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}>
-              <option value="all">{t.allStatuses}</option>
-              <option value="available">{t.statusAvailable}</option>
-              <option value="started">{t.statusStarted}</option>
-              <option value="completed">{t.statusCompleted}</option>
-              <option value="locked">{t.statusLocked}</option>
-            </select>
-          </>
-        )}
-
-        {!isStoryTab && (
-          <label className="level-control">
-            {t.playerLevel}
-            <input
-              type="number"
-              min={0}
-              max={79}
-              value={progress.playerLevel}
-              onChange={(e) => setPlayerLevel(Number(e.target.value))}
-            />
-          </label>
-        )}
-
-        <label className="lang-control">
-          {t.language}
-          <select value={lang} onChange={(e) => setLang(e.target.value as 'es' | 'en')}>
-            <option value="es">ES</option>
-            <option value="en">EN</option>
-          </select>
-        </label>
-      </div>
 
       <main className="main-layout">
         <div className={`task-list${viewTab === 'active' ? ' active-tab' : ''}`}>
@@ -292,7 +280,6 @@ export default function App() {
               taskStates={progress.taskStates}
               search={search}
               chapterFilter={chapterFilter}
-              statusFilter={statusFilter}
               selectedId={selectedId}
               locale={locale}
               t={t}
