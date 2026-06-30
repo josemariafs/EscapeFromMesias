@@ -6,6 +6,13 @@ export const ANY_MAP_ID = '__any__';
 const MAP_GROUP_ALIASES: Record<string, string> = {
   'ground-zero-21': 'ground-zero',
   'ground-zero-tutorial': 'ground-zero',
+  'night-factory': 'factory',
+};
+
+/** Etiqueta mostrada para el grupo unificado (clave = normalizedName del mapa base). */
+const MAP_GROUP_LABELS: Record<string, string> = {
+  'factory': 'Factory',
+  'ground-zero': 'Ground Zero',
 };
 
 export function getMapGroupKey(map: GameMap): string {
@@ -14,6 +21,7 @@ export function getMapGroupKey(map: GameMap): string {
 
 export function getMapGroupLabel(map: GameMap): string {
   const key = getMapGroupKey(map);
+  if (MAP_GROUP_LABELS[key]) return MAP_GROUP_LABELS[key];
   if (key === map.normalizedName) return map.name;
   return map.name.replace(/\s+(21\+|Tutorial)$/i, '').trim();
 }
