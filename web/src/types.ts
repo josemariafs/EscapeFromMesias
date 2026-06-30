@@ -30,6 +30,18 @@ export interface TraderRequirement {
   trader: { id: string; name: string };
 }
 
+export interface MapPosition {
+  x: number;
+  y: number;
+  z?: number;
+}
+
+export interface TaskZone {
+  id: string;
+  map: GameMap;
+  position?: MapPosition | null;
+}
+
 export interface TaskObjective {
   id: string;
   type: string;
@@ -48,7 +60,7 @@ export interface TaskObjective {
   exitName?: string | null;
   exitStatus?: string | null;
   questItem?: ItemRef | null;
-  zones?: { id: string; map: GameMap }[];
+  zones?: TaskZone[];
 }
 
 export interface TaskRewardItem {

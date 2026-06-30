@@ -36,15 +36,16 @@ export function ActiveTasksView({
   const [openMap, setOpenMap] = useState<{
     normalizedName: string;
     name: string;
+    tasks: Task[];
   } | null>(null);
 
   const activeTasks = tasks.filter((task) => taskStates[task.id] === 'started');
   const groups = groupActiveTasksByMap(activeTasks, completedObjectives, t.anyMap);
 
-  const openMapViewer = (normalizedName: string, name: string) => {
+  const openMapViewer = (normalizedName: string, name: string, mapTasks: Task[]) => {
     const svgUrl = getMapSvgUrl(normalizedName);
     if (svgUrl) {
-      setOpenMap({ normalizedName, name });
+      setOpenMap({ normalizedName, name, tasks: mapTasks });
       return;
     }
     window.open(getTarkovDevMapUrl(normalizedName), '_blank', 'noopener,noreferrer');
@@ -65,7 +66,10 @@ export function ActiveTasksView({
       {openMap && openMapSvgUrl && (
         <MapViewerModal
           mapName={openMap.name}
+          mapKey={openMap.normalizedName}
           mapUrl={openMapSvgUrl}
+          mapTasks={openMap.tasks}
+          completedObjectives={completedObjectives}
           tarkovDevUrl={getTarkovDevMapUrl(openMap.normalizedName)}
           t={t}
           onClose={() => setOpenMap(null)}
@@ -80,7 +84,7 @@ export function ActiveTasksView({
               <button
                 type="button"
                 className="btn btn-ghost btn-map"
-                onClick={() => openMapViewer(map.normalizedName, map.name)}
+                onClick={() => openMapViewer(map.normalizedName, map.name, mapTasks)}
               >
                 {t.viewMap}
               </button>

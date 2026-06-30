@@ -87,6 +87,8 @@ export interface Translations {
   activeByMap: (n: number) => string;
   viewMap: string;
   viewMapOnTarkovDev: string;
+  mapMarkersTitle: (n: number) => string;
+  mapMarkersNoLocation: (n: number) => string;
   close: string;
   state: Record<TaskProgressState, string>;
 }
@@ -180,6 +182,9 @@ export const translations: Record<Lang, Translations> = {
     activeByMap: (n) => `${n} en curso`,
     viewMap: 'Map',
     viewMapOnTarkovDev: 'Ver en tarkov.dev →',
+    mapMarkersTitle: (n) => `${n} ubicación${n === 1 ? '' : 'es'} en el mapa`,
+    mapMarkersNoLocation: (n) =>
+      `${n} misión${n === 1 ? '' : 'es'} sin ubicación exacta en el mapa`,
     close: 'Cerrar',
     state: {
       locked: 'Bloqueada',
@@ -277,6 +282,9 @@ export const translations: Record<Lang, Translations> = {
     activeByMap: (n) => `${n} in progress`,
     viewMap: 'Map',
     viewMapOnTarkovDev: 'View on tarkov.dev →',
+    mapMarkersTitle: (n) => `${n} map location${n === 1 ? '' : 's'}`,
+    mapMarkersNoLocation: (n) =>
+      `${n} quest${n === 1 ? '' : 's'} without an exact map location`,
     close: 'Close',
     state: {
       locked: 'Locked',

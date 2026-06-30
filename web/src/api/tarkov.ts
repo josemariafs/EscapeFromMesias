@@ -37,9 +37,10 @@ const TASKS_QUERY = `
           count
           foundInRaid
           requiredKeys { id name shortName iconLink }
+          zones { id map { normalizedName name } position { x y z } }
         }
         ... on TaskObjectiveBasic {
-          zones { id map { normalizedName name } }
+          zones { id map { normalizedName name } position { x y z } }
           requiredKeys { id name shortName iconLink }
         }
         ... on TaskObjectiveShoot {
@@ -54,6 +55,7 @@ const TASKS_QUERY = `
         }
         ... on TaskObjectiveMark {
           markerItem { id name shortName iconLink }
+          zones { id map { normalizedName name } position { x y z } }
         }
         ... on TaskObjectiveExtract {
           exitName
@@ -65,6 +67,7 @@ const TASKS_QUERY = `
         ... on TaskObjectiveQuestItem {
           questItem { id name shortName iconLink }
           count
+          zones { id map { normalizedName name } position { x y z } }
         }
       }
       finishRewards {
