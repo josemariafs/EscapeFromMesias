@@ -59,7 +59,7 @@ export interface StoryChapterLayout {
   height: number;
 }
 
-function layoutChapterGraph(
+export function layoutChapterGraph(
   graph: StoryGraph,
   offsetY: number,
 ): { nodes: LayoutNode[]; edges: LayoutEdge[]; width: number; height: number } {
@@ -106,10 +106,28 @@ function layoutChapterGraph(
     return { from: edge.from, to: edge.to, points };
   });
 
-  const width = Math.max(maxX - minX + 48, 320);
+  const contentMinX = minX === Infinity ? 0 : minX;
+  const contentMaxX = maxX === -Infinity ? NODE_WIDTH : maxX;
+  const contentWidth = contentMaxX - contentMinX;
+  const padX = 32;
+
+  const centeredNodes = layoutNodes.map((node) => ({
+    ...node,
+    x: node.x - contentMinX + padX,
+  }));
+
+  const centeredEdges = layoutEdges.map((edge) => ({
+    ...edge,
+    points: edge.points.map((p) => ({
+      x: p.x - contentMinX + padX,
+      y: p.y,
+    })),
+  }));
+
+  const width = Math.max(contentWidth + padX * 2, 320);
   const height = maxY + 48;
 
-  return { nodes: layoutNodes, edges: layoutEdges, width, height };
+  return { nodes: centeredNodes, edges: centeredEdges, width, height };
 }
 
 export function layoutStoryChapters(

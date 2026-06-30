@@ -2,8 +2,13 @@ import { useMemo } from 'react';
 import type { Task, TaskProgressState } from '../types';
 import type { Translations } from '../i18n/translations';
 import type { StoryNodeFlat } from '../types/storyline';
-import { storyApiTaskMatchesChapter } from '../utils/taskCategory';
-import { sortTasksForDisplay } from '../utils/unlock';
+import { storylineData } from '../utils/storylineData';
+import {
+  getStoryApiChapterId,
+  isLightkeeperStoryTask,
+  storyApiTaskMatchesChapter,
+} from '../utils/taskCategory';
+import { StoryApiTreeView } from './StoryApiTreeView';
 import { StoryTreeView } from './StoryTreeView';
 import { TaskCard } from './TaskCard';
 
@@ -35,7 +40,6 @@ export function StoryView({
   search,
   chapterFilter,
   selectedId,
-  locale,
   t,
   onSelect,
   onStartTask,
@@ -45,15 +49,30 @@ export function StoryView({
   const q = search.trim().toLowerCase();
 
   const filteredApiTasks = useMemo(() => {
-    const filtered = storyApiTasks.filter((task) => {
+    return storyApiTasks.filter((task) => {
       if (!storyApiTaskMatchesChapter(task, chapterFilter)) return false;
       if (q && !task.name.toLowerCase().includes(q) && !task.trader.name.toLowerCase().includes(q)) {
         return false;
       }
       return true;
     });
-    return sortTasksForDisplay(filtered, taskStates, locale);
-  }, [storyApiTasks, taskStates, q, chapterFilter, locale]);
+  }, [storyApiTasks, q, chapterFilter]);
+
+  const apiTasksByChapter = useMemo(() => {
+    const map = new Map<number, Task[]>();
+    for (const task of filteredApiTasks) {
+      const chapterId = getStoryApiChapterId(task);
+      if (chapterId == null) continue;
+      if (!map.has(chapterId)) map.set(chapterId, []);
+      map.get(chapterId)!.push(task);
+    }
+    return map;
+  }, [filteredApiTasks]);
+
+  const lightkeeperTasks = useMemo(
+    () => filteredApiTasks.filter((task) => isLightkeeperStoryTask(task)),
+    [filteredApiTasks],
+  );
 
   const hasStoryNodes = useMemo(() => {
     return nodes.some((node) => {
@@ -64,6 +83,16 @@ export function StoryView({
       return true;
     });
   }, [nodes, chapterFilter, q]);
+
+  const apiChapterOrder = useMemo(() => {
+    if (chapterFilter !== 'all') {
+      return apiTasksByChapter.has(chapterFilter) ? [chapterFilter] : [];
+    }
+    return [...apiTasksByChapter.keys()].sort((a, b) => a - b);
+  }, [chapterFilter, apiTasksByChapter]);
+
+  const chapterTitle = (id: number) =>
+    storylineData.chapters.find((c) => c.id === id)?.title ?? `Chapter ${id}`;
 
   if (!hasStoryNodes && filteredApiTasks.length === 0) {
     return <p className="empty-list">{t.noTasksFilter}</p>;
@@ -82,11 +111,22 @@ export function StoryView({
           onSelect={onSelect}
         />
       )}
-      {filteredApiTasks.length > 0 && (
+      {apiChapterOrder.map((chapterId) => (
+        <StoryApiTreeView
+          key={`api-${chapterId}`}
+          tasks={apiTasksByChapter.get(chapterId) ?? []}
+          taskStates={taskStates}
+          selectedId={selectedId}
+          title={chapterFilter === 'all' ? `${chapterTitle(chapterId)} (API)` : undefined}
+          t={t}
+          onSelect={onSelect}
+        />
+      ))}
+      {lightkeeperTasks.length > 0 && (
         <section className="story-api-tasks">
-          <h3 className="story-api-tasks-title">{t.storyApiTasksTitle}</h3>
+          <h3 className="story-api-tasks-title">{t.storyLightkeeperTitle}</h3>
           <div className="story-api-tasks-grid">
-            {filteredApiTasks.map((task) => {
+            {lightkeeperTasks.map((task) => {
               const state = taskStates[task.id] ?? 'locked';
               return (
                 <TaskCard

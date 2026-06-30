@@ -4,6 +4,8 @@ export type TaskCategory = 'story' | 'side';
 
 /** Capítulo Story (TarkovBuddy) al que enlazan misiones de API del Laberinto. */
 export const LABYRINTH_STORY_CHAPTER_ID = 9;
+/** Capítulo Story para la campaña Boreas / mapa Icebreaker (API tarkov.dev). */
+export const ICEBREAKER_STORY_CHAPTER_ID = 10;
 
 function taskSearchText(task: Task): string {
   const objectiveText = task.objectives.map((o) => o.description).join(' ');
@@ -21,7 +23,9 @@ export function isLabyrinthStoryTask(task: Task): boolean {
 
 export function isIcebreakerStoryTask(task: Task): boolean {
   if (task.map?.normalizedName === 'icebreaker') return true;
-  return /icebreaker|boreas/i.test(taskSearchText(task));
+  return task.objectives.some((o) =>
+    o.maps.some((m) => m.normalizedName === 'icebreaker'),
+  ) || /icebreaker|boreas/i.test(taskSearchText(task));
 }
 
 /** Misiones de comerciantes que pertenecen a la campaña Story (API tarkov.dev). */
@@ -39,6 +43,7 @@ export function isSideTask(task: Task): boolean {
 
 export function getStoryApiChapterId(task: Task): number | null {
   if (isLabyrinthStoryTask(task)) return LABYRINTH_STORY_CHAPTER_ID;
+  if (isIcebreakerStoryTask(task)) return ICEBREAKER_STORY_CHAPTER_ID;
   return null;
 }
 

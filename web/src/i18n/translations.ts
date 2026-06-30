@@ -55,6 +55,7 @@ export interface Translations {
   storyItems: string;
   storyNodeType: Record<'default' | 'optional' | 'choice', string>;
   storyApiTasksTitle: string;
+  storyLightkeeperTitle: string;
   language: string;
   viewMode: string;
   viewModeNormal: string;
@@ -157,6 +158,7 @@ export const translations: Record<Lang, Translations> = {
       choice: 'Elección',
     },
     storyApiTasksTitle: 'Misiones de tarkov.dev (Lightkeeper / Labyrinth)',
+    storyLightkeeperTitle: 'Lightkeeper (tarkov.dev)',
     language: 'Idioma',
     viewMode: 'Vista',
     viewModeNormal: 'Normal',
@@ -264,6 +266,7 @@ export const translations: Record<Lang, Translations> = {
       choice: 'Choice',
     },
     storyApiTasksTitle: 'tarkov.dev quests (Lightkeeper / Labyrinth)',
+    storyLightkeeperTitle: 'Lightkeeper (tarkov.dev)',
     language: 'Language',
     viewMode: 'View',
     viewModeNormal: 'Normal',

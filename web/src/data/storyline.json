@@ -53,6 +53,12 @@
       "title": "The Labyrinth",
       "desc": "Jaeger's friend is trying to learn what happened to the BEAR squad that stormed The Labyrinth during the evacuation.",
       "image": "https://i.ibb.co/MF1LsW5/5-Uc8p-WZ-d.webp"
+    },
+    {
+      "id": 10,
+      "title": "Boreas",
+      "desc": "The Icebreaker vessel and the Boreas facility — story quests from tarkov.dev tied to the Icebreaker map.",
+      "image": ""
     }
   ],
   "trees": {
@@ -3224,6 +3230,11 @@
           ]
         }
       ]
+    },
+    "10": {
+      "id": 10,
+      "title": "BOREAS",
+      "nodes": []
     }
   }
 }
