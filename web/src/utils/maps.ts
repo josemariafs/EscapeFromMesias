@@ -2,6 +2,33 @@ import type { GameMap, Task } from '../types';
 
 export const ANY_MAP_ID = '__any__';
 
+const MAP_SVG_BASE =
+  'https://raw.githubusercontent.com/the-hideout/tarkov-dev-svg-maps/main';
+
+/** normalizedName del mapa base → archivo SVG en tarkov-dev-svg-maps */
+const MAP_SVG_FILES: Record<string, string> = {
+  factory: 'Factory.svg',
+  customs: 'Customs.svg',
+  woods: 'Woods.svg',
+  lighthouse: 'Lighthouse.svg',
+  shoreline: 'Shoreline.svg',
+  reserve: 'Reserve.svg',
+  interchange: 'Interchange.svg',
+  'streets-of-tarkov': 'StreetsOfTarkov.svg',
+  'the-lab': 'Labs.svg',
+  'ground-zero': 'GroundZero.svg',
+  terminal: 'Terminal.svg',
+};
+
+export function getMapSvgUrl(normalizedName: string): string | null {
+  const file = MAP_SVG_FILES[normalizedName];
+  return file ? `${MAP_SVG_BASE}/${file}` : null;
+}
+
+export function getTarkovDevMapUrl(normalizedName: string): string {
+  return `https://tarkov.dev/map/${normalizedName}`;
+}
+
 /** Variantes de mapa que deben agruparse bajo el mapa base en la vista Activas. */
 const MAP_GROUP_ALIASES: Record<string, string> = {
   'ground-zero-21': 'ground-zero',

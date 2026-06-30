@@ -85,6 +85,9 @@ export interface Translations {
   anyMap: string;
   anyItem: string;
   activeByMap: (n: number) => string;
+  viewMap: string;
+  viewMapOnTarkovDev: string;
+  close: string;
   state: Record<TaskProgressState, string>;
 }
 
@@ -175,6 +178,9 @@ export const translations: Record<Lang, Translations> = {
     anyMap: 'Cualquier mapa',
     anyItem: 'Cualquier ítem',
     activeByMap: (n) => `${n} en curso`,
+    viewMap: 'Map',
+    viewMapOnTarkovDev: 'Ver en tarkov.dev →',
+    close: 'Cerrar',
     state: {
       locked: 'Bloqueada',
       available: 'Disponible',
@@ -269,6 +275,9 @@ export const translations: Record<Lang, Translations> = {
     anyMap: 'Any map',
     anyItem: 'Any item',
     activeByMap: (n) => `${n} in progress`,
+    viewMap: 'Map',
+    viewMapOnTarkovDev: 'View on tarkov.dev →',
+    close: 'Close',
     state: {
       locked: 'Locked',
       available: 'Available',

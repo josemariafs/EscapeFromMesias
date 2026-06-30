@@ -1,6 +1,13 @@
+import { useState } from 'react';
 import type { Task, TaskProgressState } from '../types';
 import type { Translations } from '../i18n/translations';
 import { groupActiveTasksByMap } from '../utils/objectives';
+import {
+  ANY_MAP_ID,
+  getMapSvgUrl,
+  getTarkovDevMapUrl,
+} from '../utils/maps';
+import { MapViewerModal } from './MapViewerModal';
 import { TaskCard } from './TaskCard';
 
 interface ActiveTasksViewProps {
@@ -26,8 +33,22 @@ export function ActiveTasksView({
   onComplete,
   onReset,
 }: ActiveTasksViewProps) {
+  const [openMap, setOpenMap] = useState<{
+    normalizedName: string;
+    name: string;
+  } | null>(null);
+
   const activeTasks = tasks.filter((task) => taskStates[task.id] === 'started');
   const groups = groupActiveTasksByMap(activeTasks, completedObjectives, t.anyMap);
+
+  const openMapViewer = (normalizedName: string, name: string) => {
+    const svgUrl = getMapSvgUrl(normalizedName);
+    if (svgUrl) {
+      setOpenMap({ normalizedName, name });
+      return;
+    }
+    window.open(getTarkovDevMapUrl(normalizedName), '_blank', 'noopener,noreferrer');
+  };
 
   if (activeTasks.length === 0) {
     return <p className="empty-list">{t.noActiveTasks}</p>;
@@ -37,13 +58,33 @@ export function ActiveTasksView({
     return <p className="empty-list">{t.noActiveTasks}</p>;
   }
 
+  const openMapSvgUrl = openMap ? getMapSvgUrl(openMap.normalizedName) : null;
+
   return (
     <div className="active-tasks-view">
+      {openMap && openMapSvgUrl && (
+        <MapViewerModal
+          mapName={openMap.name}
+          mapUrl={openMapSvgUrl}
+          tarkovDevUrl={getTarkovDevMapUrl(openMap.normalizedName)}
+          t={t}
+          onClose={() => setOpenMap(null)}
+        />
+      )}
       {groups.map(({ map, tasks: mapTasks }) => (
         <section key={map.normalizedName} className="map-section">
           <header className="map-section-header">
             <h2>{map.name}</h2>
             <span className="map-count">{t.activeByMap(mapTasks.length)}</span>
+            {map.normalizedName !== ANY_MAP_ID && (
+              <button
+                type="button"
+                className="btn btn-ghost btn-map"
+                onClick={() => openMapViewer(map.normalizedName, map.name)}
+              >
+                {t.viewMap}
+              </button>
+            )}
           </header>
           <div className="map-section-grid">
             {mapTasks.map((task) => {
