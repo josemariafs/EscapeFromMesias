@@ -102,3 +102,5 @@ export interface PlayerProgress {
 
 export const STORAGE_KEY = 'eft-quest-tracker-progress';
 export const TASKS_CACHE_KEY = 'eft-quest-tracker-tasks-cache';
+/** Incrementar al cambiar el esquema de datos cacheados (p. ej. zonas con posición). */
+export const TASKS_CACHE_SCHEMA = 2;

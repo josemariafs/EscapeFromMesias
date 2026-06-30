@@ -33,12 +33,13 @@ export function getMapQuestMarkers(
     for (const objective of task.objectives) {
       if (objective.optional || completed.has(objective.id)) continue;
 
-      const mapKeys = getObjectiveMapGroupKeys(objective);
-      if (mapKeys.length > 0 && !mapKeys.includes(mapKey)) continue;
+      const zonesOnMap = (objective.zones ?? []).filter(
+        (zone) => zone.position && getMapGroupKey(zone.map) === mapKey,
+      );
+      if (zonesOnMap.length === 0) continue;
 
-      for (const zone of objective.zones ?? []) {
+      for (const zone of zonesOnMap) {
         if (!zone.position) continue;
-        if (getMapGroupKey(zone.map) !== mapKey) continue;
 
         const dedupeKey = `${task.id}:${objective.id}:${zone.id}`;
         if (seen.has(dedupeKey)) continue;

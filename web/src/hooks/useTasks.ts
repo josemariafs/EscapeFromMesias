@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { fetchTasks } from '../api/tarkov';
 import type { Lang } from '../i18n/translations';
 import type { Task } from '../types';
+import { TASKS_CACHE_SCHEMA } from '../types';
 import { englishNamesFromTasks, loadEnglishTaskNames } from '../utils/englishTaskNames';
 import {
   isCacheValid,
@@ -37,6 +38,7 @@ export function useTasks(lang: Lang) {
 
       try {
         await writeTaskCache(lang, {
+          schema: TASKS_CACHE_SCHEMA,
           lang,
           fetchedAt: new Date().toISOString(),
           tasks: data,

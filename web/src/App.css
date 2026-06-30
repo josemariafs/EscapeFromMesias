@@ -716,6 +716,7 @@ body {
 .map-modal-canvas {
   position: relative;
   line-height: 0;
+  overflow: visible;
 }
 
 .map-modal-image {
