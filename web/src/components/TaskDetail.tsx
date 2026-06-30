@@ -1,17 +1,21 @@
 import type { Task, TaskProgressState } from '../types';
 import type { Translations } from '../i18n/translations';
 import { getRequiredKeys } from '../utils/unlock';
+import { getCompletedObjectiveSet } from '../utils/objectives';
 import { TaskPrereqTooltip } from './TaskPrereqTooltip';
+
 interface TaskDetailProps {
   task: Task | null;
   state: TaskProgressState;
   tasksById: Map<string, Task>;
   taskStates: Record<string, TaskProgressState>;
+  completedObjectives: Record<string, string[]>;
   t: Translations;
   locale: string;
   onStart: () => void;
   onComplete: () => void;
   onReset: () => void;
+  onToggleObjective: (objectiveId: string) => void;
 }
 
 export function TaskDetail({
@@ -19,11 +23,13 @@ export function TaskDetail({
   state,
   tasksById,
   taskStates,
+  completedObjectives,
   t,
   locale,
   onStart,
   onComplete,
   onReset,
+  onToggleObjective,
 }: TaskDetailProps) {
   if (!task) {
     return (
@@ -34,6 +40,8 @@ export function TaskDetail({
   }
 
   const keys = getRequiredKeys(task);
+  const doneObjectives = getCompletedObjectiveSet(completedObjectives, task.id);
+  const canTrackObjectives = state === 'started' || state === 'completed';
 
   return (
     <aside className="task-detail">
@@ -76,7 +84,8 @@ export function TaskDetail({
                 />
               </li>
             ))}
-          </ul>        </section>
+          </ul>
+        </section>
       )}
 
       {task.traderRequirements.length > 0 && (
@@ -110,19 +119,50 @@ export function TaskDetail({
       <section>
         <h3>{t.objectives}</h3>
         <ol className="objectives-list">
-          {task.objectives.map((obj) => (
-            <li key={obj.id} className={obj.optional ? 'optional' : ''}>
-              <span className="obj-type">{obj.type}</span>
-              {obj.description}
-              {obj.maps.length > 0 && (
-                <span className="obj-maps">
-                  {' '}({obj.maps.map((m) => m.name).join(', ')})
-                </span>
-              )}
-              {obj.foundInRaid && <span className="fir-tag"> FiR</span>}
-              {obj.optional && <span className="optional-tag"> {t.optional}</span>}
-            </li>
-          ))}
+          {task.objectives.map((obj) => {
+            const isDone = doneObjectives.has(obj.id);
+            const showCheck = canTrackObjectives && !obj.optional;
+
+            return (
+              <li
+                key={obj.id}
+                className={`objective-item${obj.optional ? ' optional' : ''}${isDone ? ' done' : ''}`}
+              >
+                {showCheck ? (
+                  <label className="objective-check">
+                    <input
+                      type="checkbox"
+                      checked={isDone}
+                      onChange={() => onToggleObjective(obj.id)}
+                      aria-label={isDone ? t.objectiveDone : t.objectivePending}
+                    />
+                    <span className="objective-body">
+                      <span className="obj-type">{obj.type}</span>
+                      {obj.description}
+                      {obj.maps.length > 0 && (
+                        <span className="obj-maps">
+                          {' '}({obj.maps.map((m) => m.name).join(', ')})
+                        </span>
+                      )}
+                      {obj.foundInRaid && <span className="fir-tag"> FiR</span>}
+                    </span>
+                  </label>
+                ) : (
+                  <span className="objective-body">
+                    <span className="obj-type">{obj.type}</span>
+                    {obj.description}
+                    {obj.maps.length > 0 && (
+                      <span className="obj-maps">
+                        {' '}({obj.maps.map((m) => m.name).join(', ')})
+                      </span>
+                    )}
+                    {obj.foundInRaid && <span className="fir-tag"> FiR</span>}
+                    {obj.optional && <span className="optional-tag"> {t.optional}</span>}
+                  </span>
+                )}
+              </li>
+            );
+          })}
         </ol>
       </section>
 

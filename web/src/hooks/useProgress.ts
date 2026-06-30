@@ -9,14 +9,22 @@ const defaultProgress = (): PlayerProgress => ({
   traderLevels: {},
   traderReputation: {},
   taskStates: {},
+  completedObjectives: {},
   updatedAt: new Date().toISOString(),
 });
+
+function normalizeProgress(raw: PlayerProgress): PlayerProgress {
+  return {
+    ...raw,
+    completedObjectives: raw.completedObjectives ?? {},
+  };
+}
 
 export function useProgress(tasks: Task[]) {
   const [progress, setProgress] = useState<PlayerProgress>(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) return JSON.parse(raw) as PlayerProgress;
+      if (raw) return normalizeProgress(JSON.parse(raw) as PlayerProgress);
     } catch {
       /* ignore */
     }
@@ -61,10 +69,37 @@ export function useProgress(tasks: Task[]) {
     setProgress((prev) => {
       const taskStates = { ...prev.taskStates };
       delete taskStates[taskId];
-      const next = { ...prev, taskStates, updatedAt: new Date().toISOString() };
+      const completedObjectives = { ...prev.completedObjectives };
+      delete completedObjectives[taskId];
+      const next = {
+        ...prev,
+        taskStates,
+        completedObjectives,
+        updatedAt: new Date().toISOString(),
+      };
       return { ...next, taskStates: recalculateStates(tasks, next) };
     });
   }, [tasks]);
+
+  const toggleObjective = useCallback((taskId: string, objectiveId: string) => {
+    setProgress((prev) => {
+      const current = new Set(prev.completedObjectives[taskId] ?? []);
+      if (current.has(objectiveId)) {
+        current.delete(objectiveId);
+      } else {
+        current.add(objectiveId);
+      }
+
+      return {
+        ...prev,
+        completedObjectives: {
+          ...prev.completedObjectives,
+          [taskId]: [...current],
+        },
+        updatedAt: new Date().toISOString(),
+      };
+    });
+  }, []);
 
   const importActiveTasks = useCallback((activeTaskIds: string[]) => {
     if (activeTaskIds.length === 0) return;
@@ -101,5 +136,6 @@ export function useProgress(tasks: Task[]) {
     completeTask,
     resetTask,
     importActiveTasks,
+    toggleObjective,
   };
 }

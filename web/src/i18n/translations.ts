@@ -76,6 +76,8 @@ export interface Translations {
   traderReqs: string;
   requiredKeys: string;
   objectives: string;
+  objectiveDone: string;
+  objectivePending: string;
   rewards: string;
   reputation: string;
   level: string;
@@ -164,6 +166,8 @@ export const translations: Record<Lang, Translations> = {
     traderReqs: 'Requisitos de comerciante',
     requiredKeys: 'Llaves necesarias',
     objectives: 'Objetivos',
+    objectiveDone: 'Objetivo completado',
+    objectivePending: 'Marcar objetivo como completado',
     rewards: 'Recompensas',
     reputation: 'reputación',
     level: 'nivel',
@@ -256,6 +260,8 @@ export const translations: Record<Lang, Translations> = {
     traderReqs: 'Trader requirements',
     requiredKeys: 'Required keys',
     objectives: 'Objectives',
+    objectiveDone: 'Objective completed',
+    objectivePending: 'Mark objective as completed',
     rewards: 'Rewards',
     reputation: 'reputation',
     level: 'level',

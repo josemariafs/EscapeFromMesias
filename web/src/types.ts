@@ -83,6 +83,8 @@ export interface PlayerProgress {
   traderLevels: Record<string, number>;
   traderReputation: Record<string, number>;
   taskStates: Record<string, TaskProgressState>;
+  /** taskId → objectiveIds marcados como hechos */
+  completedObjectives: Record<string, string[]>;
   updatedAt: string;
 }
 

@@ -32,6 +32,7 @@ export default function App() {
     completeTask,
     resetTask,
     importActiveTasks,
+    toggleObjective,
   } = useProgress(tasks);
   const {
     nodes: storyNodes,
@@ -307,6 +308,7 @@ export default function App() {
             <ActiveTasksView
               tasks={tasks}
               taskStates={progress.taskStates}
+              completedObjectives={progress.completedObjectives}
               selectedId={selectedId}
               t={t}
               onSelect={setSelectedId}
@@ -363,11 +365,15 @@ export default function App() {
               state={selectedTaskState}
               tasksById={tasksById}
               taskStates={progress.taskStates}
+              completedObjectives={progress.completedObjectives}
               t={t}
               locale={locale}
               onStart={() => selectedId && startTask(selectedId)}
               onComplete={() => selectedId && completeTask(selectedId)}
               onReset={() => selectedId && resetTask(selectedId)}
+              onToggleObjective={(objectiveId) => {
+                if (selectedId) toggleObjective(selectedId, objectiveId);
+              }}
             />
           ) : (
             <StoryDetail
@@ -387,11 +393,15 @@ export default function App() {
             state={selectedTaskState}
             tasksById={tasksById}
             taskStates={progress.taskStates}
+            completedObjectives={progress.completedObjectives}
             t={t}
             locale={locale}
             onStart={() => selectedId && startTask(selectedId)}
             onComplete={() => selectedId && completeTask(selectedId)}
             onReset={() => selectedId && resetTask(selectedId)}
+            onToggleObjective={(objectiveId) => {
+              if (selectedId) toggleObjective(selectedId, objectiveId);
+            }}
           />
         )}
       </main>

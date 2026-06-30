@@ -1,11 +1,12 @@
 import type { Task, TaskProgressState } from '../types';
 import type { Translations } from '../i18n/translations';
-import { groupTasksByMap } from '../utils/maps';
+import { groupActiveTasksByMap } from '../utils/objectives';
 import { TaskCard } from './TaskCard';
 
 interface ActiveTasksViewProps {
   tasks: Task[];
   taskStates: Record<string, TaskProgressState>;
+  completedObjectives: Record<string, string[]>;
   selectedId: string | null;
   t: Translations;
   onSelect: (id: string) => void;
@@ -17,6 +18,7 @@ interface ActiveTasksViewProps {
 export function ActiveTasksView({
   tasks,
   taskStates,
+  completedObjectives,
   selectedId,
   t,
   onSelect,
@@ -25,9 +27,13 @@ export function ActiveTasksView({
   onReset,
 }: ActiveTasksViewProps) {
   const activeTasks = tasks.filter((task) => taskStates[task.id] === 'started');
-  const groups = groupTasksByMap(activeTasks, t.anyMap);
+  const groups = groupActiveTasksByMap(activeTasks, completedObjectives, t.anyMap);
 
   if (activeTasks.length === 0) {
+    return <p className="empty-list">{t.noActiveTasks}</p>;
+  }
+
+  if (groups.length === 0) {
     return <p className="empty-list">{t.noActiveTasks}</p>;
   }
 

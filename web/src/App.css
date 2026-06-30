@@ -1015,8 +1015,45 @@ body {
 .task-detail ul,
 .objectives-list {
   margin: 0;
-  padding-left: 1.25rem;
+  padding-left: 0;
+  list-style: none;
   font-size: 0.9rem;
+}
+
+.objective-item {
+  margin-bottom: 0.55rem;
+}
+
+.objective-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  cursor: pointer;
+}
+
+.objective-check input[type='checkbox'] {
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  margin: 0.15rem 0 0;
+  accent-color: var(--completed);
+  cursor: pointer;
+}
+
+.objective-body {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.45;
+}
+
+.objective-item.done .objective-body {
+  color: var(--text-muted);
+  text-decoration: line-through;
+  text-decoration-color: rgba(139, 149, 168, 0.65);
+}
+
+.objectives-list li {
+  margin-bottom: 0.5rem;
 }
 
 .req-status {
@@ -1041,10 +1078,6 @@ body {
   width: 32px;
   height: 32px;
   object-fit: contain;
-}
-
-.objectives-list li {
-  margin-bottom: 0.5rem;
 }
 
 .obj-type {

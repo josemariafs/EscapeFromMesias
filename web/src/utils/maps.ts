@@ -1,6 +1,6 @@
 import type { GameMap, Task } from '../types';
 
-const ANY_MAP_ID = '__any__';
+export const ANY_MAP_ID = '__any__';
 
 /** Variantes de mapa que deben agruparse bajo el mapa base en la vista Activas. */
 const MAP_GROUP_ALIASES: Record<string, string> = {
@@ -12,7 +12,7 @@ export function getMapGroupKey(map: GameMap): string {
   return MAP_GROUP_ALIASES[map.normalizedName] ?? map.normalizedName;
 }
 
-function getMapGroupLabel(map: GameMap): string {
+export function getMapGroupLabel(map: GameMap): string {
   const key = getMapGroupKey(map);
   if (key === map.normalizedName) return map.name;
   return map.name.replace(/\s+(21\+|Tutorial)$/i, '').trim();
