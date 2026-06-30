@@ -1697,6 +1697,141 @@ body {
   line-height: 1.5;
 }
 
+/* Story tree view */
+.task-list.story-tree-tab {
+  display: block;
+  overflow: auto;
+  padding: 0.75rem 1rem 1rem;
+}
+
+.story-view-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: min-content;
+}
+
+.story-tree-view {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.story-tree-chapter-header {
+  margin-bottom: 0.75rem;
+}
+
+.story-tree-chapter-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+}
+
+.story-tree-canvas-wrap {
+  overflow-x: auto;
+  overflow-y: visible;
+  padding-bottom: 0.5rem;
+}
+
+.story-tree-canvas {
+  display: block;
+  min-width: 100%;
+}
+
+.story-tree-edges path {
+  transition: stroke 0.2s, opacity 0.2s;
+}
+
+.story-tree-node-fo {
+  overflow: visible;
+}
+
+.story-tree-node-fo.dimmed {
+  opacity: 0.35;
+}
+
+.story-tree-node {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  width: 100%;
+  height: 100%;
+  padding: 0.45rem 0.55rem;
+  text-align: left;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+}
+
+.story-tree-node:hover {
+  border-color: var(--accent-dim);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.story-tree-node.selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent), 0 4px 14px rgba(201, 162, 39, 0.2);
+}
+
+.story-tree-node.state-completed {
+  border-color: rgba(76, 175, 80, 0.45);
+}
+
+.story-tree-node.state-started {
+  border-color: rgba(201, 162, 39, 0.55);
+}
+
+.story-tree-node.state-locked {
+  opacity: 0.72;
+}
+
+.story-tree-node .state-badge {
+  font-size: 0.6rem;
+  padding: 0.1rem 0.35rem;
+}
+
+.story-tree-node .story-type-badge {
+  font-size: 0.58rem;
+  padding: 0.08rem 0.35rem;
+}
+
+.story-tree-node-name {
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.story-api-tasks {
+  border-top: 1px solid var(--border);
+  padding-top: 1rem;
+}
+
+.story-api-tasks-title {
+  margin: 0 0 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.story-api-tasks-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--card-width), 1fr));
+  gap: 0.75rem;
+}
+
 .story-items-list {
   list-style: none;
   padding: 0;

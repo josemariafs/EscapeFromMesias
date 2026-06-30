@@ -48,7 +48,7 @@ export default function App() {
   const [viewTab, setViewTab] = useState<ViewTab>('all');
   const [allQuestTab, setAllQuestTab] = useState<AllQuestTab>('side');
   const [search, setSearch] = useState('');
-  const [chapterFilter, setChapterFilter] = useState<number | 'all'>('all');
+  const [chapterFilter, setChapterFilter] = useState<number | 'all'>(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const locale = lang === 'en' ? 'en-US' : 'es-ES';
@@ -305,7 +305,7 @@ export default function App() {
       </header>
 
       <main className="main-layout">
-        <div className={`task-list${viewTab === 'active' ? ' active-tab' : ''}`}>
+        <div className={`task-list${viewTab === 'active' ? ' active-tab' : ''}${isStoryTab ? ' story-tree-tab' : ''}`}>
           {viewTab === 'active' ? (
             <ActiveTasksView
               tasks={tasks}

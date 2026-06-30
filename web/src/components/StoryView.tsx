@@ -3,9 +3,8 @@ import type { Task, TaskProgressState } from '../types';
 import type { Translations } from '../i18n/translations';
 import type { StoryNodeFlat } from '../types/storyline';
 import { storyApiTaskMatchesChapter } from '../utils/taskCategory';
-import { sortStoryNodesForDisplay } from '../utils/storylineUnlock';
 import { sortTasksForDisplay } from '../utils/unlock';
-import { StoryNodeCard } from './StoryNodeCard';
+import { StoryTreeView } from './StoryTreeView';
 import { TaskCard } from './TaskCard';
 
 interface StoryViewProps {
@@ -38,27 +37,12 @@ export function StoryView({
   selectedId,
   locale,
   t,
-  getRequirementNames,
   onSelect,
-  onStartNode,
-  onCompleteNode,
-  onResetNode,
   onStartTask,
   onCompleteTask,
   onResetTask,
 }: StoryViewProps) {
   const q = search.trim().toLowerCase();
-
-  const filteredNodes = useMemo(() => {
-    const filtered = nodes.filter((node) => {
-      if (chapterFilter !== 'all' && node.chapterId !== chapterFilter) return false;
-      if (q && !node.name.toLowerCase().includes(q) && !node.chapterTitle.toLowerCase().includes(q)) {
-        return false;
-      }
-      return true;
-    });
-    return sortStoryNodesForDisplay(filtered, nodeStates, locale);
-  }, [nodes, nodeStates, q, chapterFilter, locale]);
 
   const filteredApiTasks = useMemo(() => {
     const filtered = storyApiTasks.filter((task) => {
@@ -71,45 +55,56 @@ export function StoryView({
     return sortTasksForDisplay(filtered, taskStates, locale);
   }, [storyApiTasks, taskStates, q, chapterFilter, locale]);
 
-  if (filteredNodes.length === 0 && filteredApiTasks.length === 0) {
+  const hasStoryNodes = useMemo(() => {
+    return nodes.some((node) => {
+      if (chapterFilter !== 'all' && node.chapterId !== chapterFilter) return false;
+      if (q && !node.name.toLowerCase().includes(q) && !node.chapterTitle.toLowerCase().includes(q)) {
+        return false;
+      }
+      return true;
+    });
+  }, [nodes, chapterFilter, q]);
+
+  if (!hasStoryNodes && filteredApiTasks.length === 0) {
     return <p className="empty-list">{t.noTasksFilter}</p>;
   }
 
   return (
-    <>
-      {filteredNodes.map((node) => {
-        const state = nodeStates[node.id] ?? 'locked';
-        return (
-          <StoryNodeCard
-            key={node.id}
-            node={node}
-            state={state}
-            selected={selectedId === node.id}
-            requirementNames={getRequirementNames(node)}
-            t={t}
-            onSelect={() => onSelect(node.id)}
-            onStart={() => onStartNode(node.id)}
-            onComplete={() => onCompleteNode(node.id)}
-            onReset={() => onResetNode(node.id)}
-          />
-        );
-      })}
-      {filteredApiTasks.map((task) => {
-        const state = taskStates[task.id] ?? 'locked';
-        return (
-          <TaskCard
-            key={task.id}
-            task={task}
-            state={state}
-            selected={selectedId === task.id}
-            t={t}
-            onSelect={() => onSelect(task.id)}
-            onStart={() => onStartTask(task.id)}
-            onComplete={() => onCompleteTask(task.id)}
-            onReset={() => onResetTask(task.id)}
-          />
-        );
-      })}
-    </>
+    <div className="story-view-tree">
+      {hasStoryNodes && (
+        <StoryTreeView
+          nodes={nodes}
+          nodeStates={nodeStates}
+          chapterFilter={chapterFilter}
+          selectedId={selectedId}
+          search={search}
+          t={t}
+          onSelect={onSelect}
+        />
+      )}
+      {filteredApiTasks.length > 0 && (
+        <section className="story-api-tasks">
+          <h3 className="story-api-tasks-title">{t.storyApiTasksTitle}</h3>
+          <div className="story-api-tasks-grid">
+            {filteredApiTasks.map((task) => {
+              const state = taskStates[task.id] ?? 'locked';
+              return (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  state={state}
+                  selected={selectedId === task.id}
+                  t={t}
+                  onSelect={() => onSelect(task.id)}
+                  onStart={() => onStartTask(task.id)}
+                  onComplete={() => onCompleteTask(task.id)}
+                  onReset={() => onResetTask(task.id)}
+                />
+              );
+            })}
+          </div>
+        </section>
+      )}
+    </div>
   );
 }
