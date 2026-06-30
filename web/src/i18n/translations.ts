@@ -89,6 +89,12 @@ export interface Translations {
   viewMapOnTarkovDev: string;
   mapMarkersTitle: (n: number) => string;
   mapMarkersNoLocation: (n: number) => string;
+  mapPlaceSelectHint: string;
+  mapPlaceClickHint: string;
+  mapPlaceBanner: (taskName: string) => string;
+  mapPlaceCancel: string;
+  mapMarkerManual: string;
+  mapClearCustomMarker: string;
   close: string;
   state: Record<TaskProgressState, string>;
 }
@@ -185,6 +191,12 @@ export const translations: Record<Lang, Translations> = {
     mapMarkersTitle: (n) => `${n} ubicación${n === 1 ? '' : 'es'} en el mapa`,
     mapMarkersNoLocation: (n) =>
       `${n} misión${n === 1 ? '' : 'es'} sin ubicación exacta en el mapa`,
+    mapPlaceSelectHint: 'Selecciona una misión y haz clic en el mapa para colocarla.',
+    mapPlaceClickHint: 'Clic en el mapa para colocar',
+    mapPlaceBanner: (name) => `Coloca «${name}» en el mapa`,
+    mapPlaceCancel: 'Cancelar',
+    mapMarkerManual: 'Ubicación manual',
+    mapClearCustomMarker: 'Quitar ubicación manual',
     close: 'Cerrar',
     state: {
       locked: 'Bloqueada',
@@ -285,6 +297,12 @@ export const translations: Record<Lang, Translations> = {
     mapMarkersTitle: (n) => `${n} map location${n === 1 ? '' : 's'}`,
     mapMarkersNoLocation: (n) =>
       `${n} quest${n === 1 ? '' : 's'} without an exact map location`,
+    mapPlaceSelectHint: 'Select a quest, then click the map to place it.',
+    mapPlaceClickHint: 'Click the map to place',
+    mapPlaceBanner: (name) => `Place «${name}» on the map`,
+    mapPlaceCancel: 'Cancel',
+    mapMarkerManual: 'Manual location',
+    mapClearCustomMarker: 'Remove manual location',
     close: 'Close',
     state: {
       locked: 'Locked',

@@ -664,6 +664,7 @@ body {
   display: flex;
   flex-direction: column;
   width: min(96vw, 1400px);
+  height: min(92vh, 100%);
   max-height: 92vh;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
@@ -704,8 +705,27 @@ body {
   font-size: 0.8rem;
 }
 
+.map-modal-place-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  background: rgba(229, 226, 0, 0.12);
+  border-bottom: 1px solid rgba(229, 226, 0, 0.35);
+  font-size: 0.85rem;
+  color: var(--accent);
+}
+
+.map-modal-place-cancel {
+  font-size: 0.75rem;
+  flex-shrink: 0;
+}
+
 .map-modal-body {
-  overflow: auto;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
   padding: 0.5rem;
   background: #0a0a0a;
   display: flex;
@@ -713,15 +733,42 @@ body {
   gap: 0.75rem;
 }
 
+.map-modal-map-area {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  container-type: size;
+}
+
+.map-modal-map-area--placing .map-modal-image-wrap {
+  cursor: crosshair;
+  outline: 2px dashed rgba(229, 226, 0, 0.55);
+  outline-offset: 2px;
+}
+
 .map-modal-canvas {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.map-modal-image-wrap {
   position: relative;
   line-height: 0;
-  overflow: visible;
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .map-modal-image {
   display: block;
-  width: 100%;
+  max-width: 100cqw;
+  max-height: 100cqh;
+  width: auto;
   height: auto;
 }
 
@@ -754,6 +801,16 @@ body {
   flex-shrink: 0;
 }
 
+.map-quest-marker--custom .map-quest-marker-pin {
+  background: #5eb8ff;
+  border-color: #0a1a2a;
+  box-shadow: 0 0 0 2px rgba(94, 184, 255, 0.35), 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+
+.map-quest-marker--custom .map-quest-marker-label {
+  border-color: rgba(94, 184, 255, 0.55);
+}
+
 .map-quest-marker-label {
   padding: 0.1rem 0.35rem;
   font-size: 0.65rem;
@@ -771,6 +828,9 @@ body {
 }
 
 .map-modal-legend {
+  flex-shrink: 0;
+  max-height: 28vh;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -805,6 +865,56 @@ body {
   flex-direction: column;
   gap: 0.1rem;
   font-size: 0.8rem;
+}
+
+.map-modal-legend-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.map-marker-clear {
+  padding: 0 0.4rem;
+  min-width: 1.5rem;
+  font-size: 1rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.map-modal-place-hint {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.map-modal-place-btn {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  width: 100%;
+  padding: 0.35rem 0.5rem;
+  text-align: left;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: inherit;
+  cursor: pointer;
+}
+
+.map-modal-place-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent-dim);
+}
+
+.map-modal-place-btn.is-active {
+  border-color: var(--accent);
+  background: rgba(229, 226, 0, 0.08);
+}
+
+.map-modal-place-btn span {
+  font-size: 0.7rem;
+  color: var(--accent);
 }
 
 .map-modal-legend-list strong {

@@ -33,6 +33,8 @@ export default function App() {
     resetTask,
     importActiveTasks,
     toggleObjective,
+    setCustomMapMarker,
+    clearCustomMapMarker,
   } = useProgress(tasks);
   const {
     nodes: storyNodes,
@@ -309,12 +311,15 @@ export default function App() {
               tasks={tasks}
               taskStates={progress.taskStates}
               completedObjectives={progress.completedObjectives}
+              customMapMarkers={progress.customMapMarkers ?? {}}
               selectedId={selectedId}
               t={t}
               onSelect={setSelectedId}
               onStart={startTask}
               onComplete={completeTask}
               onReset={resetTask}
+              onSetCustomMapMarker={setCustomMapMarker}
+              onClearCustomMapMarker={clearCustomMapMarker}
             />
           ) : isStoryTab ? (
             <StoryView

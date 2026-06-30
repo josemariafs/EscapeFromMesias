@@ -90,6 +90,14 @@ export interface Task {
   finishRewards: TaskRewards | null;
 }
 
+export interface CustomMapMarkerPin {
+  left: number;
+  top: number;
+}
+
+/** mapKey → taskId → posición en % sobre la imagen del mapa */
+export type CustomMapMarkers = Record<string, Record<string, CustomMapMarkerPin>>;
+
 export interface PlayerProgress {
   playerLevel: number;
   traderLevels: Record<string, number>;
@@ -97,6 +105,8 @@ export interface PlayerProgress {
   taskStates: Record<string, TaskProgressState>;
   /** taskId → objectiveIds marcados como hechos */
   completedObjectives: Record<string, string[]>;
+  /** Posiciones de misión colocadas manualmente por el usuario */
+  customMapMarkers?: CustomMapMarkers;
   updatedAt: string;
 }
 

@@ -1,8 +1,8 @@
-import { useEffect, useMemo } from 'react';
-import type { Task } from '../types';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { CustomMapMarkerPin, CustomMapMarkers, Task } from '../types';
 import type { Translations } from '../i18n/translations';
 import {
-  getMapQuestMarkers,
+  getAllMapMarkers,
   getTasksWithoutMapMarkers,
 } from '../utils/mapMarkers';
 
@@ -12,9 +12,12 @@ interface MapViewerModalProps {
   mapUrl: string;
   mapTasks: Task[];
   completedObjectives: Record<string, string[]>;
+  customMapMarkers: CustomMapMarkers;
   tarkovDevUrl: string;
   t: Translations;
   onClose: () => void;
+  onSetCustomMapMarker: (mapKey: string, taskId: string, pin: CustomMapMarkerPin) => void;
+  onClearCustomMapMarker: (mapKey: string, taskId: string) => void;
 }
 
 export function MapViewerModal({
@@ -23,13 +26,19 @@ export function MapViewerModal({
   mapUrl,
   mapTasks,
   completedObjectives,
+  customMapMarkers,
   tarkovDevUrl,
   t,
   onClose,
+  onSetCustomMapMarker,
+  onClearCustomMapMarker,
 }: MapViewerModalProps) {
+  const [placingTaskId, setPlacingTaskId] = useState<string | null>(null);
+  const imageWrapRef = useRef<HTMLDivElement>(null);
+
   const markers = useMemo(
-    () => getMapQuestMarkers(mapKey, mapTasks, completedObjectives),
-    [mapKey, mapTasks, completedObjectives],
+    () => getAllMapMarkers(mapKey, mapTasks, completedObjectives, customMapMarkers),
+    [mapKey, mapTasks, completedObjectives, customMapMarkers],
   );
 
   const markerTaskIds = useMemo(
@@ -42,9 +51,18 @@ export function MapViewerModal({
     [mapKey, mapTasks, completedObjectives, markerTaskIds],
   );
 
+  const placingTask = placingTaskId
+    ? mapTasks.find((task) => task.id === placingTaskId) ?? null
+    : null;
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key !== 'Escape') return;
+      if (placingTaskId) {
+        setPlacingTaskId(null);
+        return;
+      }
+      onClose();
     };
     document.addEventListener('keydown', onKeyDown);
     document.body.style.overflow = 'hidden';
@@ -52,7 +70,23 @@ export function MapViewerModal({
       document.removeEventListener('keydown', onKeyDown);
       document.body.style.overflow = '';
     };
-  }, [onClose]);
+  }, [onClose, placingTaskId]);
+
+  const handleMapClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!placingTaskId || !imageWrapRef.current) return;
+
+    const rect = imageWrapRef.current.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+
+    const left = ((e.clientX - rect.left) / rect.width) * 100;
+    const top = ((e.clientY - rect.top) / rect.height) * 100;
+
+    onSetCustomMapMarker(mapKey, placingTaskId, {
+      left: Math.max(0, Math.min(100, left)),
+      top: Math.max(0, Math.min(100, top)),
+    });
+    setPlacingTaskId(null);
+  };
 
   return (
     <div
@@ -79,24 +113,51 @@ export function MapViewerModal({
             </button>
           </div>
         </header>
+        {placingTask && (
+          <div className="map-modal-place-banner">
+            <span>{t.mapPlaceBanner(placingTask.name)}</span>
+            <button
+              type="button"
+              className="btn btn-ghost map-modal-place-cancel"
+              onClick={() => setPlacingTaskId(null)}
+            >
+              {t.mapPlaceCancel}
+            </button>
+          </div>
+        )}
         <div className="map-modal-body">
-          <div className="map-modal-canvas">
-            <img src={mapUrl} alt={mapName} className="map-modal-image" />
-            {markers.length > 0 && (
-              <div className="map-modal-markers" aria-hidden="true">
-                {markers.map((marker) => (
-                  <div
-                    key={marker.id}
-                    className="map-quest-marker"
-                    style={{ left: `${marker.left}%`, top: `${marker.top}%` }}
-                    title={`${marker.taskName}\n${marker.objectiveDescription}`}
-                  >
-                    <span className="map-quest-marker-pin" />
-                    <span className="map-quest-marker-label">{marker.taskName}</span>
+          <div
+            className={`map-modal-map-area${placingTaskId ? ' map-modal-map-area--placing' : ''}`}
+          >
+            <div className="map-modal-canvas">
+              <div
+                ref={imageWrapRef}
+                className="map-modal-image-wrap"
+                onClick={placingTaskId ? handleMapClick : undefined}
+                onKeyDown={undefined}
+                role={placingTaskId ? 'button' : undefined}
+                tabIndex={placingTaskId ? 0 : undefined}
+                aria-label={placingTaskId ? t.mapPlaceBanner(placingTask?.name ?? '') : undefined}
+              >
+                <img src={mapUrl} alt={mapName} className="map-modal-image" />
+                {markers.length > 0 && (
+                  <div className="map-modal-markers" aria-hidden="true">
+                    {markers.map((marker) => (
+                      <div
+                        key={marker.id}
+                        className={`map-quest-marker${marker.custom ? ' map-quest-marker--custom' : ''}`}
+                        style={{ left: `${marker.left}%`, top: `${marker.top}%` }}
+                        title={`${marker.taskName}\n${marker.custom ? t.mapMarkerManual : marker.objectiveDescription}`}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <span className="map-quest-marker-pin" />
+                        <span className="map-quest-marker-label">{marker.taskName}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
-            )}
+            </div>
           </div>
           {(markers.length > 0 || tasksWithoutMarkers.length > 0) && (
             <aside className="map-modal-legend">
@@ -106,8 +167,24 @@ export function MapViewerModal({
                   <ul className="map-modal-legend-list">
                     {markers.map((marker) => (
                       <li key={marker.id}>
-                        <strong>{marker.taskName}</strong>
-                        <span>{marker.objectiveDescription}</span>
+                        <div className="map-modal-legend-row">
+                          <div>
+                            <strong>{marker.taskName}</strong>
+                            <span>
+                              {marker.custom ? t.mapMarkerManual : marker.objectiveDescription}
+                            </span>
+                          </div>
+                          {marker.custom && (
+                            <button
+                              type="button"
+                              className="btn btn-ghost map-marker-clear"
+                              onClick={() => onClearCustomMapMarker(mapKey, marker.taskId)}
+                              title={t.mapClearCustomMarker}
+                            >
+                              ×
+                            </button>
+                          )}
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -116,10 +193,24 @@ export function MapViewerModal({
               {tasksWithoutMarkers.length > 0 && (
                 <div className="map-modal-legend-section map-modal-legend-muted">
                   <h4>{t.mapMarkersNoLocation(tasksWithoutMarkers.length)}</h4>
+                  <p className="map-modal-place-hint">{t.mapPlaceSelectHint}</p>
                   <ul className="map-modal-legend-list">
                     {tasksWithoutMarkers.map((task) => (
                       <li key={task.id}>
-                        <strong>{task.name}</strong>
+                        <button
+                          type="button"
+                          className={`map-modal-place-btn${placingTaskId === task.id ? ' is-active' : ''}`}
+                          onClick={() => {
+                            setPlacingTaskId((current) =>
+                              current === task.id ? null : task.id,
+                            );
+                          }}
+                        >
+                          <strong>{task.name}</strong>
+                          {placingTaskId === task.id && (
+                            <span>{t.mapPlaceClickHint}</span>
+                          )}
+                        </button>
                       </li>
                     ))}
                   </ul>

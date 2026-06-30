@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Task, TaskProgressState } from '../types';
+import type { CustomMapMarkers, CustomMapMarkerPin, Task, TaskProgressState } from '../types';
 import type { Translations } from '../i18n/translations';
 import { groupActiveTasksByMap } from '../utils/objectives';
 import {
@@ -14,24 +14,30 @@ interface ActiveTasksViewProps {
   tasks: Task[];
   taskStates: Record<string, TaskProgressState>;
   completedObjectives: Record<string, string[]>;
+  customMapMarkers: CustomMapMarkers;
   selectedId: string | null;
   t: Translations;
   onSelect: (id: string) => void;
   onStart: (id: string) => void;
   onComplete: (id: string) => void;
   onReset: (id: string) => void;
+  onSetCustomMapMarker: (mapKey: string, taskId: string, pin: CustomMapMarkerPin) => void;
+  onClearCustomMapMarker: (mapKey: string, taskId: string) => void;
 }
 
 export function ActiveTasksView({
   tasks,
   taskStates,
   completedObjectives,
+  customMapMarkers,
   selectedId,
   t,
   onSelect,
   onStart,
   onComplete,
   onReset,
+  onSetCustomMapMarker,
+  onClearCustomMapMarker,
 }: ActiveTasksViewProps) {
   const [openMap, setOpenMap] = useState<{
     normalizedName: string;
@@ -70,9 +76,12 @@ export function ActiveTasksView({
           mapUrl={openMapSvgUrl}
           mapTasks={openMap.tasks}
           completedObjectives={completedObjectives}
+          customMapMarkers={customMapMarkers}
           tarkovDevUrl={getTarkovDevMapUrl(openMap.normalizedName)}
           t={t}
           onClose={() => setOpenMap(null)}
+          onSetCustomMapMarker={onSetCustomMapMarker}
+          onClearCustomMapMarker={onClearCustomMapMarker}
         />
       )}
       {groups.map(({ map, tasks: mapTasks }) => (

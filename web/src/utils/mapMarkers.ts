@@ -1,4 +1,4 @@
-import type { Task } from '../types';
+import type { CustomMapMarkers, Task } from '../types';
 import { getMapGroupKey } from './maps';
 import {
   getCompletedObjectiveSet,
@@ -14,6 +14,7 @@ export interface MapQuestMarker {
   objectiveDescription: string;
   left: number;
   top: number;
+  custom?: boolean;
 }
 
 export function getMapQuestMarkers(
@@ -62,6 +63,66 @@ export function getMapQuestMarkers(
   }
 
   return markers;
+}
+
+export function getCustomMapMarkers(
+  mapKey: string,
+  tasks: Task[],
+  customMapMarkers: CustomMapMarkers,
+  completedObjectives: Record<string, string[]>,
+  excludeTaskIds: Set<string>,
+): MapQuestMarker[] {
+  const mapPins = customMapMarkers[mapKey];
+  if (!mapPins) return [];
+
+  const tasksById = new Map(tasks.map((task) => [task.id, task]));
+  const markers: MapQuestMarker[] = [];
+
+  for (const [taskId, pin] of Object.entries(mapPins)) {
+    if (excludeTaskIds.has(taskId)) continue;
+
+    const task = tasksById.get(taskId);
+    if (!task) continue;
+
+    const completed = getCompletedObjectiveSet(completedObjectives, taskId);
+    const hasPendingOnMap = task.objectives.some((obj) => {
+      if (obj.optional || completed.has(obj.id)) return false;
+      const keys = getObjectiveMapGroupKeys(obj);
+      return keys.length === 0 || keys.includes(mapKey);
+    });
+    if (!hasPendingOnMap) continue;
+
+    markers.push({
+      id: `custom:${taskId}`,
+      taskId,
+      taskName: task.name,
+      objectiveId: 'custom',
+      objectiveDescription: '',
+      left: pin.left,
+      top: pin.top,
+      custom: true,
+    });
+  }
+
+  return markers;
+}
+
+export function getAllMapMarkers(
+  mapKey: string,
+  tasks: Task[],
+  completedObjectives: Record<string, string[]>,
+  customMapMarkers: CustomMapMarkers = {},
+): MapQuestMarker[] {
+  const apiMarkers = getMapQuestMarkers(mapKey, tasks, completedObjectives);
+  const apiTaskIds = new Set(apiMarkers.map((marker) => marker.taskId));
+  const customMarkers = getCustomMapMarkers(
+    mapKey,
+    tasks,
+    customMapMarkers,
+    completedObjectives,
+    apiTaskIds,
+  );
+  return [...apiMarkers, ...customMarkers];
 }
 
 /** Misiones activas en el mapa sin ubicación conocida para objetivos pendientes. */
