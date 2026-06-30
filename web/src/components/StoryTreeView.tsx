@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { TaskProgressState } from '../types';
+import type { Task, TaskProgressState } from '../types';
 import type { StoryNodeFlat } from '../types/storyline';
 import type { Translations } from '../i18n/translations';
 import {
@@ -11,6 +11,8 @@ import {
 interface StoryTreeViewProps {
   nodes: StoryNodeFlat[];
   nodeStates: Record<string, TaskProgressState>;
+  taskStates?: Record<string, TaskProgressState>;
+  apiTaskMeta?: Map<string, Pick<Task, 'trader'>>;
   chapterFilter: number | 'all';
   selectedId: string | null;
   search: string;
@@ -21,6 +23,8 @@ interface StoryTreeViewProps {
 export function StoryTreeView({
   nodes,
   nodeStates,
+  taskStates = {},
+  apiTaskMeta,
   chapterFilter,
   selectedId,
   search,
@@ -28,6 +32,13 @@ export function StoryTreeView({
   onSelect,
 }: StoryTreeViewProps) {
   const q = search.trim().toLowerCase();
+
+  const resolveState = (id: string): TaskProgressState => {
+    if (apiTaskMeta?.has(id)) {
+      return taskStates[id] ?? 'locked';
+    }
+    return nodeStates[id] ?? 'locked';
+  };
 
   const nodesByChapter = useMemo(() => {
     const map = new Map<number, { title: string; nodes: StoryNodeFlat[] }>();
@@ -97,7 +108,7 @@ export function StoryTreeView({
               </defs>
               <g className="story-tree-edges">
                 {layout.edges.map((edge) => {
-                  const fromState = nodeStates[edge.from] ?? 'locked';
+                  const fromState = resolveState(edge.from);
                   const style = edgeStroke(fromState);
                   const path = pointsToPath(edge.points);
                   if (!path) return null;
@@ -120,7 +131,8 @@ export function StoryTreeView({
                 {layout.nodes.map((ln) => {
                   const node = nodeById.get(ln.id);
                   if (!node) return null;
-                  const state = nodeStates[node.id] ?? 'locked';
+                  const state = resolveState(node.id);
+                  const trader = apiTaskMeta?.get(node.id)?.trader.name;
                   const dimmed = q.length > 0
                     && !node.name.toLowerCase().includes(q)
                     && !node.chapterTitle.toLowerCase().includes(q);
@@ -145,6 +157,9 @@ export function StoryTreeView({
                           <span className={`story-type-badge type-${node.type}`}>
                             {t.storyNodeType[node.type]}
                           </span>
+                        )}
+                        {trader && (
+                          <span className="story-tree-node-trader">{trader}</span>
                         )}
                         <span className="story-tree-node-name">{node.name}</span>
                       </button>

@@ -5,6 +5,7 @@ import type { StoryNodeFlat } from '../types/storyline';
 import { storylineData } from '../utils/storylineData';
 import {
   getStoryApiChapterId,
+  ICEBREAKER_STORY_CHAPTER_ID,
   isLightkeeperStoryTask,
   storyApiTaskMatchesChapter,
 } from '../utils/taskCategory';
@@ -69,6 +70,22 @@ export function StoryView({
     return map;
   }, [filteredApiTasks]);
 
+  const apiTaskMeta = useMemo(() => {
+    const map = new Map<string, Pick<Task, 'trader'>>();
+    for (const task of storyApiTasks) {
+      map.set(task.id, { trader: task.trader });
+    }
+    return map;
+  }, [storyApiTasks]);
+
+  const storylineChaptersWithNodes = useMemo(() => {
+    const set = new Set<number>();
+    for (const tree of Object.values(storylineData.trees)) {
+      if (tree.nodes.length > 0) set.add(tree.id);
+    }
+    return set;
+  }, []);
+
   const lightkeeperTasks = useMemo(
     () => filteredApiTasks.filter((task) => isLightkeeperStoryTask(task)),
     [filteredApiTasks],
@@ -85,11 +102,19 @@ export function StoryView({
   }, [nodes, chapterFilter, q]);
 
   const apiChapterOrder = useMemo(() => {
+    const boreasInStoryline =
+      storylineChaptersWithNodes.has(ICEBREAKER_STORY_CHAPTER_ID);
+
     if (chapterFilter !== 'all') {
+      if (chapterFilter === ICEBREAKER_STORY_CHAPTER_ID && boreasInStoryline) {
+        return [];
+      }
       return apiTasksByChapter.has(chapterFilter) ? [chapterFilter] : [];
     }
-    return [...apiTasksByChapter.keys()].sort((a, b) => a - b);
-  }, [chapterFilter, apiTasksByChapter]);
+    return [...apiTasksByChapter.keys()]
+      .filter((id) => !(id === ICEBREAKER_STORY_CHAPTER_ID && boreasInStoryline))
+      .sort((a, b) => a - b);
+  }, [chapterFilter, apiTasksByChapter, storylineChaptersWithNodes]);
 
   const chapterTitle = (id: number) =>
     storylineData.chapters.find((c) => c.id === id)?.title ?? `Chapter ${id}`;
@@ -104,6 +129,8 @@ export function StoryView({
         <StoryTreeView
           nodes={nodes}
           nodeStates={nodeStates}
+          taskStates={taskStates}
+          apiTaskMeta={apiTaskMeta}
           chapterFilter={chapterFilter}
           selectedId={selectedId}
           search={search}

@@ -57,7 +57,7 @@
     {
       "id": 10,
       "title": "Boreas",
-      "desc": "The Icebreaker vessel and the Boreas facility — story quests from tarkov.dev tied to the Icebreaker map.",
+      "desc": "A distress signal from the icebreaker Boreas leads through Woods and Lighthouse, then splits into infill (BTR Driver) and exfill (Prapor) branches before boarding the hovercraft at Shoreline.",
       "image": ""
     }
   ],
@@ -3234,7 +3234,159 @@
     "10": {
       "id": 10,
       "title": "BOREAS",
-      "nodes": []
+      "nodes": [
+        {
+          "id": "b_start",
+          "name": "Start Boreas (Intel Center L3 or Paradigm poster)",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": []
+        },
+        {
+          "id": "b_mech_talk",
+          "name": "Talk to Mechanic about the distress signal",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [{ "task": { "id": "b_start" } }]
+        },
+        {
+          "id": "b_woods_locate",
+          "name": "Locate equipment under the cellular tower on Woods",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [{ "task": { "id": "b_mech_talk" } }]
+        },
+        {
+          "id": "b_woods_repair",
+          "name": "Repair the equipment under the cellular tower on Woods",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [{ "task": { "id": "b_woods_locate" } }],
+          "items": [{ "name": "Toolkit", "count": 1, "fir": true }]
+        },
+        {
+          "id": "b_mech_report",
+          "name": "Report back to Mechanic",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [{ "task": { "id": "b_woods_repair" } }]
+        },
+        {
+          "id": "b_lighthouse_docs",
+          "name": "Locate and obtain Paradigm Shipping documentation",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [{ "task": { "id": "b_mech_report" } }]
+        },
+        {
+          "id": "b_mech_boreas",
+          "name": "Tell Mechanic about Boreas",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [{ "task": { "id": "b_lighthouse_docs" } }]
+        },
+        {
+          "id": "69c26c07683c9831020018c7",
+          "name": "Stick to It",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [{ "task": { "id": "b_mech_boreas" } }]
+        },
+        {
+          "id": "69c27158e350f01390049e77",
+          "name": "Saving Private Roman",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [{ "task": { "id": "69c26c07683c9831020018c7" } }]
+        },
+        {
+          "id": "69c277f3ea6da9c23e07f8d2",
+          "name": "A Bitter Victory",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [{ "task": { "id": "69c27158e350f01390049e77" } }]
+        },
+        {
+          "id": "69c2a2d004de49c8f0055a3d",
+          "name": "Hangover",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [{ "task": { "id": "69c277f3ea6da9c23e07f8d2" } }]
+        },
+        {
+          "id": "b_exfill_prapor",
+          "name": "Talk to Prapor (exfill branch)",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [{ "task": { "id": "b_mech_boreas" } }]
+        },
+        {
+          "id": "b_exfill_oil",
+          "name": "Obtain helicopter hydraulic fluid on Reserve",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [{ "task": { "id": "b_exfill_prapor" } }]
+        },
+        {
+          "id": "b_hovercraft",
+          "name": "Board hovercraft at Shoreline pier (400,000 ₽)",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [
+            { "task": { "id": "69c2a2d004de49c8f0055a3d" } },
+            { "task": { "id": "b_exfill_oil" } }
+          ]
+        },
+        {
+          "id": "69ce1de03e15cd80bd06f6c9",
+          "name": "Oil Change",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [{ "task": { "id": "b_hovercraft" } }]
+        },
+        {
+          "id": "69ce1f84ebbdbf36a200627c",
+          "name": "Peaceful Atom",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [{ "task": { "id": "69ce1de03e15cd80bd06f6c9" } }]
+        },
+        {
+          "id": "69e5583240c3e6c8ba0edbd5",
+          "name": "Wiring the Vessel",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [{ "task": { "id": "69ce1f84ebbdbf36a200627c" } }]
+        },
+        {
+          "id": "69ce204c8702b378f9091e4b",
+          "name": "War Never Changes",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [{ "task": { "id": "b_hovercraft" } }]
+        },
+        {
+          "id": "69ce213a298a6529b30d7134",
+          "name": "Biochemistry",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [{ "task": { "id": "69ce204c8702b378f9091e4b" } }]
+        },
+        {
+          "id": "69ce21e990144e437802b1e0",
+          "name": "Fresh Stock",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [{ "task": { "id": "b_hovercraft" } }]
+        },
+        {
+          "id": "69ce1cfb298a6529b30d712b",
+          "name": "A Wedge Between Us",
+          "type": "default",
+          "minPlayerLevel": 1,
+          "taskRequirements": [{ "task": { "id": "b_hovercraft" } }]
+        }
+      ]
     }
   }
 }

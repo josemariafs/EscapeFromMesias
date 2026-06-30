@@ -1,4 +1,5 @@
 import type { Task } from '../types';
+import { BOREAS_API_TASK_IDS } from './boreasTasks';
 
 export type TaskCategory = 'story' | 'side';
 
@@ -22,10 +23,7 @@ export function isLabyrinthStoryTask(task: Task): boolean {
 }
 
 export function isIcebreakerStoryTask(task: Task): boolean {
-  if (task.map?.normalizedName === 'icebreaker') return true;
-  return task.objectives.some((o) =>
-    o.maps.some((m) => m.normalizedName === 'icebreaker'),
-  ) || /icebreaker|boreas/i.test(taskSearchText(task));
+  return BOREAS_API_TASK_IDS.has(task.id);
 }
 
 /** Misiones de comerciantes que pertenecen a la campaña Story (API tarkov.dev). */
