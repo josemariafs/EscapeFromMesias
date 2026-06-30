@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CustomMapMarkerPin, CustomMapMarkers, Task } from '../types';
 import type { Translations } from '../i18n/translations';
 import {
@@ -20,6 +20,22 @@ interface MapViewerModalProps {
   onClearCustomMapMarker: (mapKey: string, taskId: string) => void;
 }
 
+function fitImageSize(
+  naturalWidth: number,
+  naturalHeight: number,
+  maxWidth: number,
+  maxHeight: number,
+): { width: number; height: number } {
+  if (naturalWidth <= 0 || naturalHeight <= 0 || maxWidth <= 0 || maxHeight <= 0) {
+    return { width: 0, height: 0 };
+  }
+  const scale = Math.min(maxWidth / naturalWidth, maxHeight / naturalHeight);
+  return {
+    width: naturalWidth * scale,
+    height: naturalHeight * scale,
+  };
+}
+
 export function MapViewerModal({
   mapName,
   mapKey,
@@ -34,7 +50,10 @@ export function MapViewerModal({
   onClearCustomMapMarker,
 }: MapViewerModalProps) {
   const [placingTaskId, setPlacingTaskId] = useState<string | null>(null);
+  const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
+  const mapAreaRef = useRef<HTMLDivElement>(null);
   const imageWrapRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
 
   const markers = useMemo(
     () => getAllMapMarkers(mapKey, mapTasks, completedObjectives, customMapMarkers),
@@ -51,9 +70,34 @@ export function MapViewerModal({
     [mapKey, mapTasks, completedObjectives, markerTaskIds],
   );
 
+  const hasLegend = markers.length > 0 || tasksWithoutMarkers.length > 0;
+
   const placingTask = placingTaskId
     ? mapTasks.find((task) => task.id === placingTaskId) ?? null
     : null;
+
+  const updateImageSize = useCallback(() => {
+    const area = mapAreaRef.current;
+    const img = imageRef.current;
+    if (!area || !img?.naturalWidth) return;
+
+    setImageSize(fitImageSize(
+      img.naturalWidth,
+      img.naturalHeight,
+      area.clientWidth,
+      area.clientHeight,
+    ));
+  }, []);
+
+  useEffect(() => {
+    updateImageSize();
+    const area = mapAreaRef.current;
+    if (!area) return undefined;
+
+    const observer = new ResizeObserver(() => updateImageSize());
+    observer.observe(area);
+    return () => observer.disconnect();
+  }, [updateImageSize, mapUrl]);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -96,7 +140,7 @@ export function MapViewerModal({
       aria-label={mapName}
       onClick={onClose}
     >
-      <div className="map-modal" onClick={(e) => e.stopPropagation()}>
+      <div className={`map-modal${hasLegend ? ' map-modal--with-legend' : ''}`} onClick={(e) => e.stopPropagation()}>
         <header className="map-modal-header">
           <h3>{mapName}</h3>
           <div className="map-modal-actions">
@@ -127,39 +171,47 @@ export function MapViewerModal({
         )}
         <div className="map-modal-body">
           <div
+            ref={mapAreaRef}
             className={`map-modal-map-area${placingTaskId ? ' map-modal-map-area--placing' : ''}`}
           >
-            <div className="map-modal-canvas">
-              <div
-                ref={imageWrapRef}
-                className="map-modal-image-wrap"
-                onClick={placingTaskId ? handleMapClick : undefined}
-                onKeyDown={undefined}
-                role={placingTaskId ? 'button' : undefined}
-                tabIndex={placingTaskId ? 0 : undefined}
-                aria-label={placingTaskId ? t.mapPlaceBanner(placingTask?.name ?? '') : undefined}
-              >
-                <img src={mapUrl} alt={mapName} className="map-modal-image" />
-                {markers.length > 0 && (
-                  <div className="map-modal-markers" aria-hidden="true">
-                    {markers.map((marker) => (
-                      <div
-                        key={marker.id}
-                        className={`map-quest-marker${marker.custom ? ' map-quest-marker--custom' : ''}`}
-                        style={{ left: `${marker.left}%`, top: `${marker.top}%` }}
-                        title={`${marker.taskName}\n${marker.custom ? t.mapMarkerManual : marker.objectiveDescription}`}
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <span className="map-quest-marker-pin" />
-                        <span className="map-quest-marker-label">{marker.taskName}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+            <div
+              ref={imageWrapRef}
+              className="map-modal-image-wrap"
+              style={{
+                width: imageSize.width > 0 ? `${imageSize.width}px` : undefined,
+                height: imageSize.height > 0 ? `${imageSize.height}px` : undefined,
+              }}
+              onClick={placingTaskId ? handleMapClick : undefined}
+              role={placingTaskId ? 'button' : undefined}
+              tabIndex={placingTaskId ? 0 : undefined}
+              aria-label={placingTaskId ? t.mapPlaceBanner(placingTask?.name ?? '') : undefined}
+            >
+              <img
+                ref={imageRef}
+                src={mapUrl}
+                alt={mapName}
+                className="map-modal-image"
+                onLoad={updateImageSize}
+              />
+              {markers.length > 0 && imageSize.width > 0 && (
+                <div className="map-modal-markers" aria-hidden="true">
+                  {markers.map((marker) => (
+                    <div
+                      key={marker.id}
+                      className={`map-quest-marker${marker.custom ? ' map-quest-marker--custom' : ''}`}
+                      style={{ left: `${marker.left}%`, top: `${marker.top}%` }}
+                      title={`${marker.taskName}\n${marker.custom ? t.mapMarkerManual : marker.objectiveDescription}`}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <span className="map-quest-marker-pin" />
+                      <span className="map-quest-marker-label">{marker.taskName}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-          {(markers.length > 0 || tasksWithoutMarkers.length > 0) && (
+          {hasLegend && (
             <aside className="map-modal-legend">
               {markers.length > 0 && (
                 <div className="map-modal-legend-section">
