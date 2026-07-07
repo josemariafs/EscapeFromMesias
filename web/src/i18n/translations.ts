@@ -60,6 +60,17 @@ export interface Translations {
   viewMode: string;
   viewModeNormal: string;
   viewModeCompact: string;
+  viewModeTable: string;
+  tableColName: string;
+  tableColTrader: string;
+  tableColMap: string;
+  tableColItems: string;
+  tableColActions: string;
+  tableSectionActive: string;
+  tableSectionAvailable: string;
+  tableSectionCompleted: string;
+  tableSectionLocked: (n: number) => string;
+  tableNoTasks: string;
   kappa: string;
   requires: string;
   levelShort: (n: number) => string;
@@ -98,6 +109,31 @@ export interface Translations {
   mapMarkerManual: string;
   mapClearCustomMarker: string;
   close: string;
+  dataSource: string;
+  dataSourceLocal: string;
+  dataSourceLogs: string;
+  dataSourceLogsUnsupportedTitle: string;
+  logsConnect: string;
+  logsReconnect: string;
+  logsChangeFolder: string;
+  logsDisconnect: string;
+  logsConnecting: string;
+  logsNeedsPermission: string;
+  logsSyncedAt: (time: string) => string;
+  logsErrorPrefix: string;
+  logsRetry: string;
+  logsReadOnlyNotice: string;
+  logsPathHint: string;
+  logsStats: (sessions: number, totalSessions: number, tasks: number, version: string | null) => string;
+  logsNoEventsHint: string;
+  logStateDetected: (state: string) => string;
+  logStateNotDetected: string;
+  logsUnmatchedIds: (n: number) => string;
+  logsWipeStartTitle: string;
+  logsWipeStartAuto: string;
+  logsWipeStartAll: string;
+  logsWipeStartOption: (date: string, version: string) => string;
+  logsWipeStartAutoTag: string;
   state: Record<TaskProgressState, string>;
 }
 
@@ -163,6 +199,17 @@ export const translations: Record<Lang, Translations> = {
     viewMode: 'Vista',
     viewModeNormal: 'Normal',
     viewModeCompact: 'Compacto',
+    viewModeTable: 'Tabla',
+    tableColName: 'Misión',
+    tableColTrader: 'Comerciante',
+    tableColMap: 'Mapa',
+    tableColItems: 'Ítems clave',
+    tableColActions: 'Acciones',
+    tableSectionActive: 'Activas',
+    tableSectionAvailable: 'Disponibles',
+    tableSectionCompleted: 'Completadas',
+    tableSectionLocked: (n) => `Bloqueadas / fallidas (${n})`,
+    tableNoTasks: 'Sin misiones en esta sección.',
     kappa: 'Kappa',
     requires: 'Requiere:',
     levelShort: (n) => `Niv. ${n}`,
@@ -202,6 +249,47 @@ export const translations: Record<Lang, Translations> = {
     mapMarkerManual: 'Ubicación manual',
     mapClearCustomMarker: 'Quitar ubicación manual',
     close: 'Cerrar',
+    dataSource: 'Fuente de datos',
+    dataSourceLocal: 'Local',
+    dataSourceLogs: 'Logs',
+    dataSourceLogsUnsupportedTitle: 'Requiere Chrome o Edge de escritorio',
+    logsConnect: 'Conectar carpeta de Logs',
+    logsReconnect: 'Reconectar',
+    logsChangeFolder: 'Cambiar carpeta',
+    logsDisconnect: 'Desconectar',
+    logsConnecting: 'Conectando…',
+    logsNeedsPermission: 'Se requiere permiso de acceso a la carpeta',
+    logsSyncedAt: (time) => `Sincronizado · ${time}`,
+    logsErrorPrefix: 'Error de sincronización',
+    logsRetry: 'Reintentar',
+    logsReadOnlyNotice: 'Modo Logs activo: el estado de las misiones se sincroniza automáticamente y no se puede editar manualmente.',
+    logsPathHint:
+      'Ruta habitual de los Logs de Tarkov:\n\n'
+      + '• Steam: ...\\steamapps\\common\\Escape From Tarkov\\Logs\n'
+      + '  (en versiones antiguas: ...\\Escape From Tarkov\\build\\Logs)\n'
+      + '• Launcher BSG: ...\\Battlestate Games\\EFT\\Logs\n\n'
+      + 'La forma más fiable de encontrarla: ábrela desde el launcher del juego → menú del perfil → Logs.\n'
+      + 'Selecciona la carpeta "Logs" en sí (la que contiene subcarpetas "log_AAAA.MM.DD_H-mm-ss…"), no una subcarpeta de sesión concreta.',
+    logsStats: (sessions, totalSessions, tasks, version) => {
+      const sessionsPart = totalSessions > sessions
+        ? `${sessions}/${totalSessions} sesiones de la temporada actual`
+        : `${sessions} sesión(es)`;
+      const versionPart = version ? ` (v${version})` : '';
+      return `${sessionsPart}${versionPart} · ${tasks} misión(es) detectada(s)`;
+    },
+    logsNoEventsHint:
+      'No se ha encontrado ningún evento de misión en los logs. Comprueba que has seleccionado la carpeta '
+      + '"Logs" correcta (la que contiene subcarpetas "log_AAAA.MM.DD_H-mm-ss…") y que dentro de cada una '
+      + 'existe un archivo "notifications.log". Ten en cuenta que el juego solo conserva un número limitado '
+      + 'de sesiones recientes: el progreso de partidas ya purgadas no se puede recuperar de los logs.',
+    logStateDetected: (state) => `Detectado en logs: ${state}`,
+    logStateNotDetected: 'No detectado en los logs: el estado mostrado se calcula por prerrequisitos y nivel, no por un evento real del juego.',
+    logsUnmatchedIds: (n) => `${n} ID(s) de misión sin coincidencia`,
+    logsWipeStartTitle: 'Inicio de temporada',
+    logsWipeStartAuto: 'Automático (última versión detectada)',
+    logsWipeStartAll: 'Usar todo el historial (sin filtrar)',
+    logsWipeStartOption: (date, version) => `Desde ${date} · v${version}`,
+    logsWipeStartAutoTag: ' (auto)',
     state: {
       locked: 'Bloqueada',
       available: 'Disponible',
@@ -271,6 +359,17 @@ export const translations: Record<Lang, Translations> = {
     viewMode: 'View',
     viewModeNormal: 'Normal',
     viewModeCompact: 'Compact',
+    viewModeTable: 'Table',
+    tableColName: 'Quest',
+    tableColTrader: 'Trader',
+    tableColMap: 'Map',
+    tableColItems: 'Key items',
+    tableColActions: 'Actions',
+    tableSectionActive: 'Active',
+    tableSectionAvailable: 'Available',
+    tableSectionCompleted: 'Completed',
+    tableSectionLocked: (n) => `Locked / failed (${n})`,
+    tableNoTasks: 'No quests in this section.',
     kappa: 'Kappa',
     requires: 'Requires:',
     levelShort: (n) => `Lvl ${n}`,
@@ -310,6 +409,47 @@ export const translations: Record<Lang, Translations> = {
     mapMarkerManual: 'Manual location',
     mapClearCustomMarker: 'Remove manual location',
     close: 'Close',
+    dataSource: 'Data source',
+    dataSourceLocal: 'Local',
+    dataSourceLogs: 'Logs',
+    dataSourceLogsUnsupportedTitle: 'Requires desktop Chrome or Edge',
+    logsConnect: 'Connect Logs folder',
+    logsReconnect: 'Reconnect',
+    logsChangeFolder: 'Change folder',
+    logsDisconnect: 'Disconnect',
+    logsConnecting: 'Connecting…',
+    logsNeedsPermission: 'Folder access permission required',
+    logsSyncedAt: (time) => `Synced · ${time}`,
+    logsErrorPrefix: 'Sync error',
+    logsRetry: 'Retry',
+    logsReadOnlyNotice: 'Logs mode active: quest state syncs automatically and cannot be edited manually.',
+    logsPathHint:
+      'Typical Tarkov Logs folder path:\n\n'
+      + '• Steam: ...\\steamapps\\common\\Escape From Tarkov\\Logs\n'
+      + '  (older versions: ...\\Escape From Tarkov\\build\\Logs)\n'
+      + '• BSG launcher: ...\\Battlestate Games\\EFT\\Logs\n\n'
+      + 'Most reliable way to find it: open it from the game launcher → profile menu → Logs.\n'
+      + 'Select the "Logs" folder itself (the one containing "log_YYYY.MM.DD_H-mm-ss…" subfolders), not a specific session subfolder.',
+    logsStats: (sessions, totalSessions, tasks, version) => {
+      const sessionsPart = totalSessions > sessions
+        ? `${sessions}/${totalSessions} sessions from the current wipe`
+        : `${sessions} session(s)`;
+      const versionPart = version ? ` (v${version})` : '';
+      return `${sessionsPart}${versionPart} · ${tasks} quest(s) detected`;
+    },
+    logsNoEventsHint:
+      'No quest events were found in the logs. Check that you selected the correct "Logs" folder '
+      + '(the one containing "log_YYYY.MM.DD_H-mm-ss…" subfolders) and that each one contains a '
+      + '"notifications.log" file. Note that the game only keeps a limited number of recent sessions: '
+      + 'progress from already-purged sessions cannot be recovered from the logs.',
+    logStateDetected: (state) => `Detected in logs: ${state}`,
+    logStateNotDetected: 'Not detected in logs: the shown state is computed from prerequisites and level, not from an actual game event.',
+    logsUnmatchedIds: (n) => `${n} unmatched quest ID(s)`,
+    logsWipeStartTitle: 'Wipe start point',
+    logsWipeStartAuto: 'Automatic (latest detected version)',
+    logsWipeStartAll: 'Use full history (no filtering)',
+    logsWipeStartOption: (date, version) => `From ${date} · v${version}`,
+    logsWipeStartAutoTag: ' (auto)',
     state: {
       locked: 'Locked',
       available: 'Available',

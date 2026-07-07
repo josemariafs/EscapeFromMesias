@@ -16,6 +16,9 @@ interface TaskDetailProps {
   onComplete: () => void;
   onReset: () => void;
   onToggleObjective: (objectiveId: string) => void;
+  /** En modo Logs: estado detectado literalmente en los logs para esta misión (null = no detectado). */
+  isLogsMode?: boolean;
+  logRawState?: TaskProgressState | null;
 }
 
 export function TaskDetail({
@@ -30,6 +33,8 @@ export function TaskDetail({
   onComplete,
   onReset,
   onToggleObjective,
+  isLogsMode = false,
+  logRawState = null,
 }: TaskDetailProps) {
   if (!task) {
     return (
@@ -49,6 +54,11 @@ export function TaskDetail({
         <span className={`state-badge state-${state}`}>{t.state[state]}</span>
         <h2>{task.name}</h2>
         <p className="detail-trader">{task.trader.name}</p>
+        {isLogsMode && (
+          <p className={`log-detection-hint${logRawState ? '' : ' log-detection-hint--warn'}`}>
+            {logRawState ? t.logStateDetected(t.state[logRawState]) : t.logStateNotDetected}
+          </p>
+        )}
       </header>
 
       <div className="detail-stats">

@@ -1,20 +1,24 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ActiveTasksView } from './components/ActiveTasksView';
 import { AppFooter } from './components/AppFooter';
+import { DataSourceControl } from './components/DataSourceControl';
 import { ScreenshotImportButton } from './components/ScreenshotImportButton';
 import { StoryView } from './components/StoryView';
 import { getChapterDesc } from './utils/storylineData';
 import { StoryDetail } from './components/StoryDetail';
 import { TaskCard } from './components/TaskCard';
+import { TaskTableView } from './components/TaskTableView';
 import { TaskDetail } from './components/TaskDetail';
 import { useLanguage } from './i18n/useLanguage';
+import { useDataSource } from './hooks/useDataSource';
 import { useViewMode } from './hooks/useViewMode';
 import { useProgress } from './hooks/useProgress';
 import { useStoryProgress } from './hooks/useStoryProgress';
+import { useTarkovLogSync } from './hooks/useTarkovLogSync';
 import { useTasks } from './hooks/useTasks';
 import { storylineData } from './utils/storylineData';
 import { countStoryByState } from './utils/storylineUnlock';
-import { countByState, sortTasksForDisplay } from './utils/unlock';
+import { countByState, recalculateStates, sortTasksForDisplay } from './utils/unlock';
 import { isSideTask, isStoryApiTask } from './utils/taskCategory';
 import './App.css';
 
@@ -24,6 +28,7 @@ type AllQuestTab = 'story' | 'side';
 export default function App() {
   const { lang, setLang, t } = useLanguage();
   const { viewMode, setViewMode } = useViewMode();
+  const { dataSource, setDataSource, isLogsMode } = useDataSource();
   const { tasks, englishNamesById, loading, error, reload } = useTasks(lang);
   const {
     progress,
@@ -36,6 +41,10 @@ export default function App() {
     setCustomMapMarker,
     clearCustomMapMarker,
   } = useProgress(tasks);
+  const logSync = useTarkovLogSync(isLogsMode);
+  // El estado solo se bloquea a edición manual una vez la sincronización con los
+  // logs está realmente activa; mientras se conecta o falla, se permite edición manual.
+  const isLogsLocked = isLogsMode && logSync.status === 'syncing';
   const {
     nodes: storyNodes,
     progress: storyProgress,
@@ -45,6 +54,28 @@ export default function App() {
     getRequirementNames,
   } = useStoryProgress();
 
+  // En modo Logs, el estado de las misiones se deriva ÚNICAMENTE de los eventos leídos
+  // de los logs de Tarkov; no debe heredar ni mezclarse con el progreso manual guardado
+  // en localStorage (modo Local). Las misiones sin evento en los logs se recalculan
+  // desde cero como disponibles/bloqueadas según los requisitos.
+  const effectiveTaskStates = useMemo(() => {
+    if (!isLogsMode) return progress.taskStates;
+    return recalculateStates(tasks, { ...progress, taskStates: logSync.taskStatusMap });
+  }, [isLogsMode, progress, logSync.taskStatusMap, tasks]);
+
+  const guardedStartTask = useCallback(
+    (id: string) => { if (!isLogsLocked) startTask(id); },
+    [isLogsLocked, startTask],
+  );
+  const guardedCompleteTask = useCallback(
+    (id: string) => { if (!isLogsLocked) completeTask(id); },
+    [isLogsLocked, completeTask],
+  );
+  const guardedResetTask = useCallback(
+    (id: string) => { if (!isLogsLocked) resetTask(id); },
+    [isLogsLocked, resetTask],
+  );
+
   const [viewTab, setViewTab] = useState<ViewTab>('all');
   const [allQuestTab, setAllQuestTab] = useState<AllQuestTab>('side');
   const [search, setSearch] = useState('');
@@ -53,23 +84,26 @@ export default function App() {
 
   const locale = lang === 'en' ? 'en-US' : 'es-ES';
   const isStoryTab = viewTab === 'all' && allQuestTab === 'story';
+  const isTableView = viewMode === 'table';
+  const isSideTableView = isTableView && viewTab === 'all' && allQuestTab === 'side';
+  const isActiveTableView = isTableView && viewTab === 'active';
 
   const sideTasks = useMemo(() => tasks.filter(isSideTask), [tasks]);
   const storyApiTasks = useMemo(() => tasks.filter(isStoryApiTask), [tasks]);
 
   const taskCounts = useMemo(
-    () => countByState(sideTasks, progress.taskStates),
-    [sideTasks, progress.taskStates],
+    () => countByState(sideTasks, effectiveTaskStates),
+    [sideTasks, effectiveTaskStates],
   );
 
   const storyCounts = useMemo(() => {
     const counts = countStoryByState(storyNodes, storyProgress.nodeStates);
     for (const task of storyApiTasks) {
-      const state = progress.taskStates[task.id] ?? 'locked';
+      const state = effectiveTaskStates[task.id] ?? 'locked';
       counts[state] += 1;
     }
     return counts;
-  }, [storyNodes, storyProgress.nodeStates, storyApiTasks, progress.taskStates]);
+  }, [storyNodes, storyProgress.nodeStates, storyApiTasks, effectiveTaskStates]);
 
   const counts = isStoryTab ? storyCounts : taskCounts;
 
@@ -77,6 +111,13 @@ export default function App() {
     () => new Map(tasks.map((task) => [task.id, task])),
     [tasks],
   );
+
+  // Diagnóstico: IDs presentes en los logs que no corresponden a ninguna misión conocida
+  // (p.ej. porque tarkov.dev aún no ha añadido esa misión a su base de datos).
+  const unmatchedLogTaskIds = useMemo(() => {
+    if (!isLogsMode) return [];
+    return Object.keys(logSync.taskStatusMap).filter((id) => !tasksById.has(id));
+  }, [isLogsMode, logSync.taskStatusMap, tasksById]);
 
   const filteredTasks = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -86,15 +127,15 @@ export default function App() {
       }
       return true;
     });
-    return sortTasksForDisplay(filtered, progress.taskStates, locale);
-  }, [sideTasks, progress.taskStates, search, locale]);
+    return sortTasksForDisplay(filtered, effectiveTaskStates, locale);
+  }, [sideTasks, effectiveTaskStates, search, locale]);
 
   const selectedStoryApiTask = storyApiTasks.find((task) => task.id === selectedId) ?? null;
 
   const selectedTask = tasks.find((task) => task.id === selectedId) ?? null;
   const selectedStoryNode = storyNodes.find((node) => node.id === selectedId) ?? null;
   const selectedTaskState = selectedId
-    ? (progress.taskStates[selectedId] ?? 'locked')
+    ? (effectiveTaskStates[selectedId] ?? 'locked')
     : 'locked';
   const selectedStoryState = selectedId
     ? (storyProgress.nodeStates[selectedId] ?? 'locked')
@@ -135,7 +176,7 @@ export default function App() {
   }
 
   return (
-    <div className={`app${viewMode === 'compact' ? ' compact' : ''}`}>
+    <div className={`app${viewMode === 'compact' ? ' compact' : ''}${isLogsLocked ? ' logs-locked' : ''}`}>
       <header className={`app-header${viewTab === 'all' ? ' app-header--with-search' : ''}`}>
         <div className="header-grid">
           <div className="header-logo">
@@ -203,6 +244,28 @@ export default function App() {
                   onChange={(e) => setPlayerLevel(Number(e.target.value))}
                 />
               </label>
+              <DataSourceControl
+                dataSource={dataSource}
+                onChangeDataSource={setDataSource}
+                status={logSync.status}
+                folderName={logSync.folderName}
+                lastSyncedAt={logSync.lastSyncedAt}
+                errorMessage={logSync.errorMessage}
+                sessionCount={logSync.sessionCount}
+                totalSessionCount={logSync.totalSessionCount}
+                taskCount={Object.keys(logSync.taskStatusMap).length}
+                wipeVersion={logSync.wipeVersion}
+                unmatchedTaskIds={unmatchedLogTaskIds}
+                breakpoints={logSync.breakpoints}
+                wipeStartSelection={logSync.wipeStartSelection}
+                resolvedWipeStartSession={logSync.resolvedWipeStartSession}
+                onChangeWipeStart={logSync.setWipeStart}
+                locale={locale}
+                t={t}
+                onConnect={logSync.connect}
+                onReconnect={logSync.reconnect}
+                onDisconnect={logSync.disconnect}
+              />
               <div className="view-mode-toggle" role="group" aria-label={t.viewMode}>
                 <button
                   type="button"
@@ -231,6 +294,21 @@ export default function App() {
                   </svg>
                   <span className="sr-only">{t.viewModeCompact}</span>
                 </button>
+                <button
+                  type="button"
+                  className={`view-mode-btn${viewMode === 'table' ? ' active' : ''}`}
+                  onClick={() => setViewMode('table')}
+                  aria-pressed={viewMode === 'table'}
+                  title={t.viewModeTable}
+                >
+                  <svg viewBox="0 0 20 14" width="18" height="13" aria-hidden="true">
+                    <rect x="1" y="1" width="18" height="12" rx="1.2" fill="none" stroke="currentColor" strokeWidth="1.4" />
+                    <line x1="1" y1="5.5" x2="19" y2="5.5" stroke="currentColor" strokeWidth="1.2" />
+                    <line x1="1" y1="9.5" x2="19" y2="9.5" stroke="currentColor" strokeWidth="1.2" />
+                    <line x1="10" y1="1" x2="10" y2="13" stroke="currentColor" strokeWidth="1.2" />
+                  </svg>
+                  <span className="sr-only">{t.viewModeTable}</span>
+                </button>
               </div>
               <div className="lang-flags" role="group" aria-label={t.language}>
                 <button
@@ -253,12 +331,14 @@ export default function App() {
                 </button>
               </div>
               <div className="header-actions">
-                <ScreenshotImportButton
-                  tasks={tasks}
-                  englishNamesById={englishNamesById}
-                  t={t}
-                  onImport={importActiveTasks}
-                />
+                {!isLogsLocked && (
+                  <ScreenshotImportButton
+                    tasks={tasks}
+                    englishNamesById={englishNamesById}
+                    t={t}
+                    onImport={importActiveTasks}
+                  />
+                )}
                 <button type="button" className="btn btn-wipe" onClick={handleWipeAll}>
                   {t.wipeAll}
                 </button>
@@ -272,6 +352,12 @@ export default function App() {
                 <span className="stat completed">{t.statCompleted(counts.completed)}</span>
                 <span className="stat locked">{t.statLocked(counts.locked)}</span>
               </div>
+              {isLogsLocked && (
+                <p className="logs-readonly-notice">{t.logsReadOnlyNotice}</p>
+              )}
+              {isLogsLocked && Object.keys(logSync.taskStatusMap).length === 0 && (
+                <p className="logs-readonly-notice logs-warning-notice">{t.logsNoEventsHint}</p>
+              )}
             </div>
           </div>
 
@@ -305,19 +391,22 @@ export default function App() {
       </header>
 
       <main className="main-layout">
-        <div className={`task-list${viewTab === 'active' ? ' active-tab' : ''}${isStoryTab ? ' story-tree-tab' : ''}`}>
+        <div
+          className={`task-list${viewTab === 'active' ? ' active-tab' : ''}${isStoryTab ? ' story-tree-tab' : ''}${isSideTableView || isActiveTableView ? ' table-view-tab' : ''}`}
+        >
           {viewTab === 'active' ? (
             <ActiveTasksView
               tasks={tasks}
-              taskStates={progress.taskStates}
+              taskStates={effectiveTaskStates}
               completedObjectives={progress.completedObjectives}
               customMapMarkers={progress.customMapMarkers ?? {}}
               selectedId={selectedId}
               t={t}
+              isTable={isActiveTableView}
               onSelect={setSelectedId}
-              onStart={startTask}
-              onComplete={completeTask}
-              onReset={resetTask}
+              onStart={guardedStartTask}
+              onComplete={guardedCompleteTask}
+              onReset={guardedResetTask}
               onSetCustomMapMarker={setCustomMapMarker}
               onClearCustomMapMarker={clearCustomMapMarker}
             />
@@ -326,7 +415,7 @@ export default function App() {
               nodes={storyNodes}
               storyApiTasks={storyApiTasks}
               nodeStates={storyProgress.nodeStates}
-              taskStates={progress.taskStates}
+              taskStates={effectiveTaskStates}
               search={search}
               chapterFilter={chapterFilter}
               selectedId={selectedId}
@@ -337,15 +426,26 @@ export default function App() {
               onStartNode={startNode}
               onCompleteNode={completeNode}
               onResetNode={resetNode}
-              onStartTask={startTask}
-              onCompleteTask={completeTask}
-              onResetTask={resetTask}
+              onStartTask={guardedStartTask}
+              onCompleteTask={guardedCompleteTask}
+              onResetTask={guardedResetTask}
+            />
+          ) : isSideTableView ? (
+            <TaskTableView
+              tasks={filteredTasks}
+              taskStates={effectiveTaskStates}
+              selectedId={selectedId}
+              t={t}
+              onSelect={setSelectedId}
+              onStart={guardedStartTask}
+              onComplete={guardedCompleteTask}
+              onReset={guardedResetTask}
             />
           ) : filteredTasks.length === 0 ? (
             <p className="empty-list">{t.noTasksFilter}</p>
           ) : (
             filteredTasks.map((task) => {
-              const state = progress.taskStates[task.id] ?? 'locked';
+              const state = effectiveTaskStates[task.id] ?? 'locked';
               return (
                 <TaskCard
                   key={task.id}
@@ -354,9 +454,9 @@ export default function App() {
                   selected={selectedId === task.id}
                   t={t}
                   onSelect={() => setSelectedId(task.id)}
-                  onStart={() => startTask(task.id)}
-                  onComplete={() => completeTask(task.id)}
-                  onReset={() => resetTask(task.id)}
+                  onStart={() => guardedStartTask(task.id)}
+                  onComplete={() => guardedCompleteTask(task.id)}
+                  onReset={() => guardedResetTask(task.id)}
                 />
               );
             })
@@ -369,16 +469,18 @@ export default function App() {
               task={selectedStoryApiTask}
               state={selectedTaskState}
               tasksById={tasksById}
-              taskStates={progress.taskStates}
+              taskStates={effectiveTaskStates}
               completedObjectives={progress.completedObjectives}
               t={t}
               locale={locale}
-              onStart={() => selectedId && startTask(selectedId)}
-              onComplete={() => selectedId && completeTask(selectedId)}
-              onReset={() => selectedId && resetTask(selectedId)}
+              onStart={() => selectedId && guardedStartTask(selectedId)}
+              onComplete={() => selectedId && guardedCompleteTask(selectedId)}
+              onReset={() => selectedId && guardedResetTask(selectedId)}
               onToggleObjective={(objectiveId) => {
                 if (selectedId) toggleObjective(selectedId, objectiveId);
               }}
+              isLogsMode={isLogsMode}
+              logRawState={selectedId ? logSync.taskStatusMap[selectedId] ?? null : null}
             />
           ) : (
             <StoryDetail
@@ -397,16 +499,18 @@ export default function App() {
             task={selectedTask}
             state={selectedTaskState}
             tasksById={tasksById}
-            taskStates={progress.taskStates}
+            taskStates={effectiveTaskStates}
             completedObjectives={progress.completedObjectives}
             t={t}
             locale={locale}
-            onStart={() => selectedId && startTask(selectedId)}
-            onComplete={() => selectedId && completeTask(selectedId)}
-            onReset={() => selectedId && resetTask(selectedId)}
+            onStart={() => selectedId && guardedStartTask(selectedId)}
+            onComplete={() => selectedId && guardedCompleteTask(selectedId)}
+            onReset={() => selectedId && guardedResetTask(selectedId)}
             onToggleObjective={(objectiveId) => {
               if (selectedId) toggleObjective(selectedId, objectiveId);
             }}
+            isLogsMode={isLogsMode}
+            logRawState={selectedId ? logSync.taskStatusMap[selectedId] ?? null : null}
           />
         )}
       </main>

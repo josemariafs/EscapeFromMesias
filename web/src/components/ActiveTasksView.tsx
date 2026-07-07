@@ -9,6 +9,7 @@ import {
 } from '../utils/maps';
 import { MapViewerModal } from './MapViewerModal';
 import { TaskCard } from './TaskCard';
+import { TaskTableSection } from './TaskTableView';
 
 interface ActiveTasksViewProps {
   tasks: Task[];
@@ -17,6 +18,7 @@ interface ActiveTasksViewProps {
   customMapMarkers: CustomMapMarkers;
   selectedId: string | null;
   t: Translations;
+  isTable?: boolean;
   onSelect: (id: string) => void;
   onStart: (id: string) => void;
   onComplete: (id: string) => void;
@@ -32,6 +34,7 @@ export function ActiveTasksView({
   customMapMarkers,
   selectedId,
   t,
+  isTable = false,
   onSelect,
   onStart,
   onComplete,
@@ -68,7 +71,7 @@ export function ActiveTasksView({
   const openMapSvgUrl = openMap ? getMapSvgUrl(openMap.normalizedName) : null;
 
   return (
-    <div className="active-tasks-view">
+    <div className={`active-tasks-view${isTable ? ' active-tasks-view-table' : ''}`}>
       {openMap && openMapSvgUrl && (
         <MapViewerModal
           mapName={openMap.name}
@@ -99,24 +102,38 @@ export function ActiveTasksView({
               </button>
             )}
           </header>
-          <div className="map-section-grid">
-            {mapTasks.map((task) => {
-              const state = taskStates[task.id] ?? 'locked';
-              return (
-                <TaskCard
-                  key={`${map.normalizedName}-${task.id}`}
-                  task={task}
-                  state={state}
-                  selected={selectedId === task.id}
-                  t={t}
-                  onSelect={() => onSelect(task.id)}
-                  onStart={() => onStart(task.id)}
-                  onComplete={() => onComplete(task.id)}
-                  onReset={() => onReset(task.id)}
-                />
-              );
-            })}
-          </div>
+          {isTable ? (
+            <TaskTableSection
+              tasks={mapTasks}
+              taskStates={taskStates}
+              selectedId={selectedId}
+              showMapColumn={false}
+              t={t}
+              onSelect={onSelect}
+              onStart={onStart}
+              onComplete={onComplete}
+              onReset={onReset}
+            />
+          ) : (
+            <div className="map-section-grid">
+              {mapTasks.map((task) => {
+                const state = taskStates[task.id] ?? 'locked';
+                return (
+                  <TaskCard
+                    key={`${map.normalizedName}-${task.id}`}
+                    task={task}
+                    state={state}
+                    selected={selectedId === task.id}
+                    t={t}
+                    onSelect={() => onSelect(task.id)}
+                    onStart={() => onStart(task.id)}
+                    onComplete={() => onComplete(task.id)}
+                    onReset={() => onReset(task.id)}
+                  />
+                );
+              })}
+            </div>
+          )}
         </section>
       ))}
     </div>

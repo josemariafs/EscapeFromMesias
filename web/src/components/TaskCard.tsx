@@ -105,8 +105,23 @@ export function TaskCard({
             </button>
           )}
           {(state === 'started' || state === 'completed' || state === 'failed') && (
-            <button type="button" className="btn btn-reset" onClick={onReset}>
-              {t.reset}
+            <button
+              type="button"
+              className="btn btn-reset btn-icon"
+              title={t.reset}
+              aria-label={t.reset}
+              onClick={onReset}
+            >
+              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                <path
+                  d="M13.5 8a5.5 5.5 0 1 1-1.86-4.12M13.5 1.5v3.5H10"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
             </button>
           )}
         </div>
