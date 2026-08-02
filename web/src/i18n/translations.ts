@@ -10,6 +10,8 @@ export interface Translations {
   loading: string;
   loadError: string;
   retry: string;
+  incompleteTasksTitle: string;
+  incompleteTasksBody: (count: number) => string;
   statAvailable: (n: number) => string;
   statStarted: (n: number) => string;
   statCompleted: (n: number) => string;
@@ -121,13 +123,15 @@ export interface Translations {
   logsNeedsPermission: string;
   logsSyncedAt: (time: string) => string;
   logsErrorPrefix: string;
+  logsNoSessionsFoundError: string;
   logsRetry: string;
   logsReadOnlyNotice: string;
   logsPathHint: string;
   logsStats: (sessions: number, totalSessions: number, tasks: number, version: string | null) => string;
   logsNoEventsHint: string;
   logStateDetected: (state: string) => string;
-  logStateNotDetected: string;
+  logStateNotDetectedEditable: string;
+  logLockedHint: string;
   logsUnmatchedIds: (n: number) => string;
   logsWipeStartTitle: string;
   logsWipeStartAuto: string;
@@ -144,6 +148,12 @@ export const translations: Record<Lang, Translations> = {
     loading: 'Cargando misiones desde tarkov.dev…',
     loadError: 'Error al cargar',
     retry: 'Reintentar',
+    incompleteTasksTitle: 'Lista de misiones incompleta',
+    incompleteTasksBody: (count) =>
+      `La API de tarkov.dev ha devuelto solo ${count} misión(es) en vez de las varias centenas habituales. `
+      + 'Esto es un problema temporal del servicio de tarkov.dev (o de tu conexión con él), no del lector de logs '
+      + 'ni de tus misiones: con una lista tan incompleta, ninguna misión detectada en los logs (ni en modo Local) '
+      + 'puede emparejarse correctamente, así que no se muestra nada. Reintenta en un momento.',
     statAvailable: (n) => `${n} disponibles`,
     statStarted: (n) => `${n} en curso`,
     statCompleted: (n) => `${n} completadas`,
@@ -261,8 +271,12 @@ export const translations: Record<Lang, Translations> = {
     logsNeedsPermission: 'Se requiere permiso de acceso a la carpeta',
     logsSyncedAt: (time) => `Sincronizado · ${time}`,
     logsErrorPrefix: 'Error de sincronización',
+    logsNoSessionsFoundError:
+      'La carpeta seleccionada no contiene ninguna subcarpeta de sesión "log_AAAA.MM.DD_H-mm-ss…". '
+      + 'Probablemente no es la carpeta "Logs" correcta: revisa que hayas entrado dentro de ella '
+      + '(no en una carpeta padre ni en una subcarpeta de sesión concreta) y vuelve a intentarlo.',
     logsRetry: 'Reintentar',
-    logsReadOnlyNotice: 'Modo Logs activo: el estado de las misiones se sincroniza automáticamente y no se puede editar manualmente.',
+    logsReadOnlyNotice: 'Modo Logs activo: el estado de las misiones detectadas en los logs se sincroniza automáticamente y no se puede editar. Las misiones sin eventos en los logs (anteriores a las sesiones guardadas) se pueden marcar manualmente como respaldo.',
     logsPathHint:
       'Ruta habitual de los Logs de Tarkov:\n\n'
       + '• Steam: ...\\steamapps\\common\\Escape From Tarkov\\Logs\n'
@@ -283,7 +297,8 @@ export const translations: Record<Lang, Translations> = {
       + 'existe un archivo "notifications.log". Ten en cuenta que el juego solo conserva un número limitado '
       + 'de sesiones recientes: el progreso de partidas ya purgadas no se puede recuperar de los logs.',
     logStateDetected: (state) => `Detectado en logs: ${state}`,
-    logStateNotDetected: 'No detectado en los logs: el estado mostrado se calcula por prerrequisitos y nivel, no por un evento real del juego.',
+    logStateNotDetectedEditable: 'No detectado en los logs (misión anterior a las sesiones guardadas). Puedes marcarla manualmente; si el juego registra un evento real, tendrá prioridad.',
+    logLockedHint: 'Detectado en los logs: el estado lo controla el juego, no editable.',
     logsUnmatchedIds: (n) => `${n} ID(s) de misión sin coincidencia`,
     logsWipeStartTitle: 'Inicio de temporada',
     logsWipeStartAuto: 'Automático (última versión detectada)',
@@ -304,6 +319,12 @@ export const translations: Record<Lang, Translations> = {
     loading: 'Loading quests from tarkov.dev…',
     loadError: 'Failed to load',
     retry: 'Retry',
+    incompleteTasksTitle: 'Incomplete quest list',
+    incompleteTasksBody: (count) =>
+      `The tarkov.dev API returned only ${count} quest(s) instead of the usual several hundred. `
+      + 'This is a temporary issue with the tarkov.dev service (or your connection to it), not with the log '
+      + 'reader or your quests: with such an incomplete list, no quest detected in the logs (or in Local mode) '
+      + 'can be matched correctly, so nothing shows up. Please retry in a moment.',
     statAvailable: (n) => `${n} available`,
     statStarted: (n) => `${n} in progress`,
     statCompleted: (n) => `${n} completed`,
@@ -421,8 +442,12 @@ export const translations: Record<Lang, Translations> = {
     logsNeedsPermission: 'Folder access permission required',
     logsSyncedAt: (time) => `Synced · ${time}`,
     logsErrorPrefix: 'Sync error',
+    logsNoSessionsFoundError:
+      'The selected folder has no "log_YYYY.MM.DD_H-mm-ss…" session subfolders. '
+      + 'This usually means it is not the right "Logs" folder: make sure you opened it directly '
+      + '(not a parent folder or a specific session subfolder) and try again.',
     logsRetry: 'Retry',
-    logsReadOnlyNotice: 'Logs mode active: quest state syncs automatically and cannot be edited manually.',
+    logsReadOnlyNotice: 'Logs mode active: quests detected in the logs sync automatically and cannot be edited. Quests with no log events (predating the saved sessions) can be marked manually as a fallback.',
     logsPathHint:
       'Typical Tarkov Logs folder path:\n\n'
       + '• Steam: ...\\steamapps\\common\\Escape From Tarkov\\Logs\n'
@@ -443,7 +468,8 @@ export const translations: Record<Lang, Translations> = {
       + '"notifications.log" file. Note that the game only keeps a limited number of recent sessions: '
       + 'progress from already-purged sessions cannot be recovered from the logs.',
     logStateDetected: (state) => `Detected in logs: ${state}`,
-    logStateNotDetected: 'Not detected in logs: the shown state is computed from prerequisites and level, not from an actual game event.',
+    logStateNotDetectedEditable: 'Not detected in logs (task predates the saved sessions). You can mark it manually; a real in-game event will always take priority.',
+    logLockedHint: 'Detected in logs: state is controlled by the game, not editable.',
     logsUnmatchedIds: (n) => `${n} unmatched quest ID(s)`,
     logsWipeStartTitle: 'Wipe start point',
     logsWipeStartAuto: 'Automatic (latest detected version)',

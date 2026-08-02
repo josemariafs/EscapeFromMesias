@@ -13,6 +13,8 @@ interface TaskTableViewProps {
   onStart: (id: string) => void;
   onComplete: (id: string) => void;
   onReset: (id: string) => void;
+  /** IDs de misiones cuyo estado viene de un evento real en logs (modo Logs): no editables. */
+  lockedIds?: Set<string>;
 }
 
 export function TaskTableView({
@@ -24,6 +26,7 @@ export function TaskTableView({
   onStart,
   onComplete,
   onReset,
+  lockedIds,
 }: TaskTableViewProps) {
   const [lockedExpanded, setLockedExpanded] = useState(false);
 
@@ -59,7 +62,7 @@ export function TaskTableView({
     return { started, available, completed, lockedFailed };
   }, [tasks, taskStates]);
 
-  const rowProps = { taskStates, selectedId, t, onSelect, onStart, onComplete, onReset };
+  const rowProps = { taskStates, selectedId, t, onSelect, onStart, onComplete, onReset, lockedIds };
 
   return (
     <div className="task-table-view">
@@ -106,6 +109,7 @@ export interface TaskTableSectionProps {
   onStart: (id: string) => void;
   onComplete: (id: string) => void;
   onReset: (id: string) => void;
+  lockedIds?: Set<string>;
 }
 
 type SortColumn = 'name' | 'map' | 'trader';
@@ -134,6 +138,7 @@ export function TaskTableSection({
   onStart,
   onComplete,
   onReset,
+  lockedIds,
 }: TaskTableSectionProps) {
   const [sort, setSort] = useState<{ column: SortColumn; direction: SortDirection }>({
     column: 'name',
@@ -224,6 +229,7 @@ export function TaskTableSection({
                   onStart={() => onStart(task.id)}
                   onComplete={() => onComplete(task.id)}
                   onReset={() => onReset(task.id)}
+                  locked={lockedIds?.has(task.id) ?? false}
                 />
               ))}
             </tbody>
@@ -244,6 +250,7 @@ interface TaskTableRowProps {
   onStart: () => void;
   onComplete: () => void;
   onReset: () => void;
+  locked?: boolean;
 }
 
 function TaskTableRow({
@@ -256,6 +263,7 @@ function TaskTableRow({
   onStart,
   onComplete,
   onReset,
+  locked = false,
 }: TaskTableRowProps) {
   const requiredItems = getQuestItemRequirements(task);
   const traderImage = getTraderImagePath(task.trader);
@@ -312,11 +320,13 @@ function TaskTableRow({
         )}
       </td>
       <td className="task-table-cell-actions">
-        <div className="task-table-actions-inner">
+        <div className={`task-table-actions-inner${locked ? ' log-locked' : ''}`}>
           {state === 'available' && (
             <button
               type="button"
               className="btn btn-start"
+              disabled={locked}
+              title={locked ? t.logLockedHint : undefined}
               onClick={(e) => {
                 e.stopPropagation();
                 onStart();
@@ -329,6 +339,8 @@ function TaskTableRow({
             <button
               type="button"
               className="btn btn-complete"
+              disabled={locked}
+              title={locked ? t.logLockedHint : undefined}
               onClick={(e) => {
                 e.stopPropagation();
                 onComplete();
@@ -341,8 +353,9 @@ function TaskTableRow({
             <button
               type="button"
               className="btn btn-reset btn-icon"
-              title={t.reset}
+              title={locked ? t.logLockedHint : t.reset}
               aria-label={t.reset}
+              disabled={locked}
               onClick={(e) => {
                 e.stopPropagation();
                 onReset();

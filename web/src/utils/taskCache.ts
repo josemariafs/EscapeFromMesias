@@ -1,6 +1,6 @@
 import type { Lang } from '../i18n/translations';
 import type { Task } from '../types';
-import { TASKS_CACHE_KEY, TASKS_CACHE_SCHEMA } from '../types';
+import { MIN_VALID_TASK_COUNT, TASKS_CACHE_KEY, TASKS_CACHE_SCHEMA } from '../types';
 
 const DB_NAME = 'eft-quest-tracker';
 const STORE_NAME = 'tasks-cache';
@@ -94,7 +94,7 @@ export async function writeTaskCache(lang: Lang, payload: CachedTasks): Promise<
 
 export function isCacheValid(cached: CachedTasks, lang: Lang): boolean {
   if (cached.schema !== TASKS_CACHE_SCHEMA) return false;
-  if (cached.lang !== lang || cached.tasks.length === 0) return false;
+  if (cached.lang !== lang || cached.tasks.length < MIN_VALID_TASK_COUNT) return false;
   if (!cacheHasZonePositions(cached.tasks)) return false;
   return Date.now() - new Date(cached.fetchedAt).getTime() < CACHE_TTL_MS;
 }

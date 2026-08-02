@@ -31,6 +31,7 @@ interface StoryViewProps {
   onStartTask: (id: string) => void;
   onCompleteTask: (id: string) => void;
   onResetTask: (id: string) => void;
+  lockedIds?: Set<string>;
 }
 
 export function StoryView({
@@ -46,6 +47,7 @@ export function StoryView({
   onStartTask,
   onCompleteTask,
   onResetTask,
+  lockedIds,
 }: StoryViewProps) {
   const q = search.trim().toLowerCase();
 
@@ -166,6 +168,7 @@ export function StoryView({
                   onStart={() => onStartTask(task.id)}
                   onComplete={() => onCompleteTask(task.id)}
                   onReset={() => onResetTask(task.id)}
+                  locked={lockedIds?.has(task.id) ?? false}
                 />
               );
             })}

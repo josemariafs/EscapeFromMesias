@@ -613,8 +613,18 @@ body {
   cursor: help;
 }
 
+.log-sync-hint {
+  white-space: normal;
+  max-width: 24rem;
+  cursor: default;
+}
+
 .log-sync-status--error .log-sync-error {
   color: #f0a0a0;
+  white-space: normal;
+  max-width: 28rem;
+  overflow: visible;
+  text-overflow: unset;
 }
 
 .btn-connect-logs {
@@ -743,13 +753,14 @@ body {
   margin-left: auto;
 }
 
-/* Modo Logs: el estado de las misiones se deriva automáticamente, se bloquea la edición manual. */
-.app.logs-locked .task-actions button,
-.app.logs-locked .detail-actions button,
-.app.logs-locked .task-table-actions-inner button {
+/* Modo Logs: las misiones con un evento real detectado en los logs bloquean su edición manual.
+   Las que no tienen ningún evento (fuera de la ventana de sesiones que conserva el juego) se
+   pueden seguir editando a mano como respaldo. */
+.task-actions.log-locked button,
+.detail-actions.log-locked button,
+.task-table-actions-inner.log-locked button {
   opacity: 0.4;
   cursor: not-allowed;
-  pointer-events: none;
 }
 
 .sr-only {

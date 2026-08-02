@@ -13,6 +13,8 @@ interface TaskCardProps {
   onStart: () => void;
   onComplete: () => void;
   onReset: () => void;
+  /** true si el estado viene de un evento real detectado en los logs (modo Logs): no editable. */
+  locked?: boolean;
 }
 
 export function TaskCard({
@@ -24,6 +26,7 @@ export function TaskCard({
   onStart,
   onComplete,
   onReset,
+  locked = false,
 }: TaskCardProps) {
   const requiredItems = getQuestItemRequirements(task);
   const traderImage = getTraderImagePath(task.trader);
@@ -93,14 +96,26 @@ export function TaskCard({
       )}
 
       {(state === 'available' || state === 'started' || state === 'completed' || state === 'failed') && (
-        <div className="task-actions">
+        <div className={`task-actions${locked ? ' log-locked' : ''}`}>
           {state === 'available' && (
-            <button type="button" className="btn btn-start" onClick={onStart}>
+            <button
+              type="button"
+              className="btn btn-start"
+              disabled={locked}
+              title={locked ? t.logLockedHint : undefined}
+              onClick={onStart}
+            >
               {t.start}
             </button>
           )}
           {state === 'started' && (
-            <button type="button" className="btn btn-complete" onClick={onComplete}>
+            <button
+              type="button"
+              className="btn btn-complete"
+              disabled={locked}
+              title={locked ? t.logLockedHint : undefined}
+              onClick={onComplete}
+            >
               {t.complete}
             </button>
           )}
@@ -108,8 +123,9 @@ export function TaskCard({
             <button
               type="button"
               className="btn btn-reset btn-icon"
-              title={t.reset}
+              title={locked ? t.logLockedHint : t.reset}
               aria-label={t.reset}
+              disabled={locked}
               onClick={onReset}
             >
               <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">

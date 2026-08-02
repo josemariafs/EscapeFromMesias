@@ -1,6 +1,11 @@
 import { useState } from 'react';
 import type { DataSourceMode } from '../hooks/useDataSource';
-import { WIPE_START_ALL, type TarkovLogSyncStatus, type WipeBreakpoint } from '../hooks/useTarkovLogSync';
+import {
+  NO_SESSION_FOLDERS_ERROR,
+  WIPE_START_ALL,
+  type TarkovLogSyncStatus,
+  type WipeBreakpoint,
+} from '../hooks/useTarkovLogSync';
 import { isLogSyncSupported } from '../utils/tarkovLogsFs';
 import type { Translations } from '../i18n/translations';
 
@@ -114,12 +119,14 @@ export function DataSourceControl({
               <span className="log-sync-text" title={folderName ?? undefined}>
                 {lastSyncedAt ? t.logsSyncedAt(lastSyncedAt.toLocaleTimeString(locale)) : folderName}
               </span>
-              <span
-                className={`log-sync-stats${taskCount === 0 ? ' log-sync-stats--warn' : ''}`}
-                title={taskCount === 0 ? t.logsNoEventsHint : undefined}
-              >
+              <span className={`log-sync-stats${taskCount === 0 ? ' log-sync-stats--warn' : ''}`}>
                 {t.logsStats(sessionCount, totalSessionCount, taskCount, wipeVersion)}
               </span>
+              {taskCount === 0 && (
+                <span className="log-sync-stats log-sync-stats--warn log-sync-hint">
+                  {t.logsNoEventsHint}
+                </span>
+              )}
               {unmatchedTaskIds.length > 0 && (
                 <span
                   className="log-sync-stats log-sync-stats--warn"
@@ -216,8 +223,10 @@ export function DataSourceControl({
           )}
           {status === 'error' && (
             <>
-              <span className="log-sync-text log-sync-error" title={errorMessage ?? undefined}>
+              <span className="log-sync-text log-sync-error">
                 {t.logsErrorPrefix}
+                {': '}
+                {errorMessage === NO_SESSION_FOLDERS_ERROR ? t.logsNoSessionsFoundError : errorMessage}
               </span>
               <button type="button" className="btn btn-connect-logs" onClick={onReconnect}>
                 {t.logsRetry}

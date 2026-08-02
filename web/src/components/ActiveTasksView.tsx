@@ -25,6 +25,7 @@ interface ActiveTasksViewProps {
   onReset: (id: string) => void;
   onSetCustomMapMarker: (mapKey: string, taskId: string, pin: CustomMapMarkerPin) => void;
   onClearCustomMapMarker: (mapKey: string, taskId: string) => void;
+  lockedIds?: Set<string>;
 }
 
 export function ActiveTasksView({
@@ -41,6 +42,7 @@ export function ActiveTasksView({
   onReset,
   onSetCustomMapMarker,
   onClearCustomMapMarker,
+  lockedIds,
 }: ActiveTasksViewProps) {
   const [openMap, setOpenMap] = useState<{
     normalizedName: string;
@@ -113,6 +115,7 @@ export function ActiveTasksView({
               onStart={onStart}
               onComplete={onComplete}
               onReset={onReset}
+              lockedIds={lockedIds}
             />
           ) : (
             <div className="map-section-grid">
@@ -129,6 +132,7 @@ export function ActiveTasksView({
                     onStart={() => onStart(task.id)}
                     onComplete={() => onComplete(task.id)}
                     onReset={() => onReset(task.id)}
+                    locked={lockedIds?.has(task.id) ?? false}
                   />
                 );
               })}

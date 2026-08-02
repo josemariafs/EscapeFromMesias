@@ -47,6 +47,7 @@ export function TaskDetail({
   const keys = getRequiredKeys(task);
   const doneObjectives = getCompletedObjectiveSet(completedObjectives, task.id);
   const canTrackObjectives = state === 'started' || state === 'completed';
+  const locked = isLogsMode && logRawState != null;
 
   return (
     <aside className="task-detail">
@@ -56,7 +57,7 @@ export function TaskDetail({
         <p className="detail-trader">{task.trader.name}</p>
         {isLogsMode && (
           <p className={`log-detection-hint${logRawState ? '' : ' log-detection-hint--warn'}`}>
-            {logRawState ? t.logStateDetected(t.state[logRawState]) : t.logStateNotDetected}
+            {logRawState ? t.logStateDetected(t.state[logRawState]) : t.logStateNotDetectedEditable}
           </p>
         )}
       </header>
@@ -201,19 +202,37 @@ export function TaskDetail({
         </section>
       ) : null}
 
-      <div className="detail-actions">
+      <div className={`detail-actions${locked ? ' log-locked' : ''}`}>
         {state === 'available' && (
-          <button type="button" className="btn btn-start" onClick={onStart}>
+          <button
+            type="button"
+            className="btn btn-start"
+            disabled={locked}
+            title={locked ? t.logLockedHint : undefined}
+            onClick={onStart}
+          >
             {t.markStarted}
           </button>
         )}
         {state === 'started' && (
-          <button type="button" className="btn btn-complete" onClick={onComplete}>
+          <button
+            type="button"
+            className="btn btn-complete"
+            disabled={locked}
+            title={locked ? t.logLockedHint : undefined}
+            onClick={onComplete}
+          >
             {t.markCompleted}
           </button>
         )}
         {(state === 'started' || state === 'completed' || state === 'failed') && (
-          <button type="button" className="btn btn-reset" onClick={onReset}>
+          <button
+            type="button"
+            className="btn btn-reset"
+            disabled={locked}
+            title={locked ? t.logLockedHint : undefined}
+            onClick={onReset}
+          >
             {t.resetProgress}
           </button>
         )}

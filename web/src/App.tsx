@@ -13,6 +13,7 @@ import { useLanguage } from './i18n/useLanguage';
 import { useDataSource } from './hooks/useDataSource';
 import { useViewMode } from './hooks/useViewMode';
 import { useProgress } from './hooks/useProgress';
+import { useLogsOverrides } from './hooks/useLogsOverrides';
 import { useStoryProgress } from './hooks/useStoryProgress';
 import { useTarkovLogSync } from './hooks/useTarkovLogSync';
 import { useTasks } from './hooks/useTasks';
@@ -20,6 +21,7 @@ import { storylineData } from './utils/storylineData';
 import { countStoryByState } from './utils/storylineUnlock';
 import { countByState, recalculateStates, sortTasksForDisplay } from './utils/unlock';
 import { isSideTask, isStoryApiTask } from './utils/taskCategory';
+import { MIN_VALID_TASK_COUNT } from './types';
 import './App.css';
 
 type ViewTab = 'all' | 'active';
@@ -42,6 +44,7 @@ export default function App() {
     clearCustomMapMarker,
   } = useProgress(tasks);
   const logSync = useTarkovLogSync(isLogsMode);
+  const logsOverrides = useLogsOverrides();
   // El estado solo se bloquea a edición manual una vez la sincronización con los
   // logs está realmente activa; mientras se conecta o falla, se permite edición manual.
   const isLogsLocked = isLogsMode && logSync.status === 'syncing';
@@ -54,26 +57,49 @@ export default function App() {
     getRequirementNames,
   } = useStoryProgress();
 
-  // En modo Logs, el estado de las misiones se deriva ÚNICAMENTE de los eventos leídos
-  // de los logs de Tarkov; no debe heredar ni mezclarse con el progreso manual guardado
-  // en localStorage (modo Local). Las misiones sin evento en los logs se recalculan
-  // desde cero como disponibles/bloqueadas según los requisitos.
+  // En modo Logs, el estado de las misiones se deriva de los eventos leídos de los logs de
+  // Tarkov; no debe heredar ni mezclarse con el progreso manual guardado en localStorage
+  // (modo Local). El juego solo conserva un número limitado de sesiones recientes, así que
+  // las misiones iniciadas/completadas antes de esa ventana no dejan rastro en los logs
+  // disponibles: para esos casos concretos (sin ningún evento detectado) se admite un
+  // "override" manual como respaldo, que los eventos de logs siempre pueden sobrescribir.
   const effectiveTaskStates = useMemo(() => {
     if (!isLogsMode) return progress.taskStates;
-    return recalculateStates(tasks, { ...progress, taskStates: logSync.taskStatusMap });
-  }, [isLogsMode, progress, logSync.taskStatusMap, tasks]);
+    const merged = { ...logsOverrides.overrides, ...logSync.taskStatusMap };
+    return recalculateStates(tasks, { ...progress, taskStates: merged });
+  }, [isLogsMode, progress, logSync.taskStatusMap, logsOverrides.overrides, tasks]);
+
+  // Conjunto de misiones cuyo estado viene directamente de un evento real en los logs:
+  // esas se bloquean a edición manual (los logs mandan). El resto se puede editar a mano
+  // como respaldo mientras el modo Logs esté activo.
+  const logLockedIds = useMemo(() => {
+    if (!isLogsLocked) return undefined;
+    return new Set(Object.keys(logSync.taskStatusMap));
+  }, [isLogsLocked, logSync.taskStatusMap]);
 
   const guardedStartTask = useCallback(
-    (id: string) => { if (!isLogsLocked) startTask(id); },
-    [isLogsLocked, startTask],
+    (id: string) => {
+      if (!isLogsMode) { startTask(id); return; }
+      if (logLockedIds?.has(id)) return;
+      logsOverrides.startOverride(id);
+    },
+    [isLogsMode, logLockedIds, startTask, logsOverrides],
   );
   const guardedCompleteTask = useCallback(
-    (id: string) => { if (!isLogsLocked) completeTask(id); },
-    [isLogsLocked, completeTask],
+    (id: string) => {
+      if (!isLogsMode) { completeTask(id); return; }
+      if (logLockedIds?.has(id)) return;
+      logsOverrides.completeOverride(id);
+    },
+    [isLogsMode, logLockedIds, completeTask, logsOverrides],
   );
   const guardedResetTask = useCallback(
-    (id: string) => { if (!isLogsLocked) resetTask(id); },
-    [isLogsLocked, resetTask],
+    (id: string) => {
+      if (!isLogsMode) { resetTask(id); return; }
+      if (logLockedIds?.has(id)) return;
+      logsOverrides.resetOverride(id);
+    },
+    [isLogsMode, logLockedIds, resetTask, logsOverrides],
   );
 
   const [viewTab, setViewTab] = useState<ViewTab>('all');
@@ -168,6 +194,22 @@ export default function App() {
       <div className="app error-screen">
         <h1>{t.loadError}</h1>
         <p>{error}</p>
+        <button type="button" className="btn btn-start" onClick={() => reload()}>
+          {t.retry}
+        </button>
+      </div>
+    );
+  }
+
+  // Defensa extra: si por lo que sea (versión antigua en caché, respuesta rara de la API, etc.)
+  // llega aquí una lista de misiones sospechosamente incompleta, no seguimos mostrando la app
+  // con todo a cero sin explicación: se avisa explícitamente de la causa real, en vez de dejar
+  // que parezca un problema del lector de logs.
+  if (tasks.length < MIN_VALID_TASK_COUNT) {
+    return (
+      <div className="app error-screen">
+        <h1>{t.incompleteTasksTitle}</h1>
+        <p>{t.incompleteTasksBody(tasks.length)}</p>
         <button type="button" className="btn btn-start" onClick={() => reload()}>
           {t.retry}
         </button>
@@ -409,6 +451,7 @@ export default function App() {
               onReset={guardedResetTask}
               onSetCustomMapMarker={setCustomMapMarker}
               onClearCustomMapMarker={clearCustomMapMarker}
+              lockedIds={logLockedIds}
             />
           ) : isStoryTab ? (
             <StoryView
@@ -429,6 +472,7 @@ export default function App() {
               onStartTask={guardedStartTask}
               onCompleteTask={guardedCompleteTask}
               onResetTask={guardedResetTask}
+              lockedIds={logLockedIds}
             />
           ) : isSideTableView ? (
             <TaskTableView
@@ -440,6 +484,7 @@ export default function App() {
               onStart={guardedStartTask}
               onComplete={guardedCompleteTask}
               onReset={guardedResetTask}
+              lockedIds={logLockedIds}
             />
           ) : filteredTasks.length === 0 ? (
             <p className="empty-list">{t.noTasksFilter}</p>
@@ -457,6 +502,7 @@ export default function App() {
                   onStart={() => guardedStartTask(task.id)}
                   onComplete={() => guardedCompleteTask(task.id)}
                   onReset={() => guardedResetTask(task.id)}
+                  locked={logLockedIds?.has(task.id) ?? false}
                 />
               );
             })

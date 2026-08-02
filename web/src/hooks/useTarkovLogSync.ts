@@ -34,6 +34,14 @@ const WIPE_START_STORAGE_KEY = 'efg-log-wipe-start';
 /** Selección especial: no filtrar por temporada, usar todo el historial disponible en los logs. */
 export const WIPE_START_ALL = 'ALL';
 
+/**
+ * Marcador de error interno: la carpeta elegida no contiene ninguna subcarpeta de sesión
+ * "log_AAAA.MM.DD_H-mm-ss…". Normalmente significa que se seleccionó la carpeta equivocada
+ * (una carpeta padre, o una subcarpeta de sesión concreta en vez de la carpeta "Logs" en sí).
+ * Se traduce a un mensaje localizado en la capa de UI (DataSourceControl).
+ */
+export const NO_SESSION_FOLDERS_ERROR = 'NO_SESSION_FOLDERS';
+
 export interface WipeBreakpoint {
   /** Carpeta de sesión donde arranca este tramo (cambia la versión del cliente detectada). */
   session: string;
@@ -195,6 +203,9 @@ export function useTarkovLogSync(enabled: boolean) {
     void (async () => {
       try {
         const folders = await listSessionFolders(root);
+        if (folders.length === 0) {
+          throw new Error(NO_SESSION_FOLDERS_ERROR);
+        }
         const { breakpoints: bps, resolvedProfiles } = await scanWipeBreakpoints(folders);
 
         // Índice sugerido por defecto: el tramo de versión más reciente (heurística "auto").

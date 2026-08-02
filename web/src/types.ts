@@ -112,5 +112,12 @@ export interface PlayerProgress {
 
 export const STORAGE_KEY = 'eft-quest-tracker-progress';
 export const TASKS_CACHE_KEY = 'eft-quest-tracker-tasks-cache';
-/** Incrementar al cambiar el esquema de datos cacheados (p. ej. zonas con posición). */
-export const TASKS_CACHE_SCHEMA = 2;
+/** Incrementar al cambiar el esquema de datos cacheados (p. ej. zonas con posición), o para
+ * invalidar de golpe cachés corruptos guardados por versiones anteriores (p. ej. una respuesta
+ * parcial de la API de tarkov.dev con muy pocas misiones). */
+export const TASKS_CACHE_SCHEMA = 3;
+/** Por debajo de este número de misiones, se asume que la respuesta de la API está incompleta
+ * (caída parcial del servicio) y no se usa ni se guarda en caché. EFT tiene siempre varios
+ * cientos de misiones, así que este umbral deja margen de sobra sin arriesgarse a aceptar datos
+ * truncados. */
+export const MIN_VALID_TASK_COUNT = 100;

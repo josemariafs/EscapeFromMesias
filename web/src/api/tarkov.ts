@@ -1,4 +1,4 @@
-import type { Task } from '../types';
+import { MIN_VALID_TASK_COUNT, type Task } from '../types';
 
 const API_URL = 'https://api.tarkov.dev/graphql';
 
@@ -99,6 +99,17 @@ export async function fetchTasks(lang: 'es' | 'en' = 'es'): Promise<Task[]> {
 
   if (!json.data?.tasks) {
     throw new Error(lang === 'en' ? 'Could not load quests' : 'No se pudieron cargar las misiones');
+  }
+
+  // La API de tarkov.dev a veces sufre caídas parciales y devuelve una respuesta válida
+  // (HTTP 200, sin "errors") pero con un listado de misiones truncado/incompleto. Si eso
+  // se guardase en caché tal cual, la app quedaría "atascada" con datos rotos durante horas.
+  if (json.data.tasks.length < MIN_VALID_TASK_COUNT) {
+    throw new Error(
+      lang === 'en'
+        ? `tarkov.dev API returned an incomplete quest list (${json.data.tasks.length} quests). The service might be degraded; please retry in a moment.`
+        : `La API de tarkov.dev devolvió una lista de misiones incompleta (${json.data.tasks.length} misiones). El servicio podría estar degradado; reinténtalo en un momento.`,
+    );
   }
 
   return json.data.tasks;
