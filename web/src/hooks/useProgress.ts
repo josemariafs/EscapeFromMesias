@@ -1,8 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { CustomMapMarkerPin, CustomMapMarkers, PlayerProgress, Task, TaskProgressState } from '../types';
-import { STORAGE_KEY } from '../types';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type {
+  CustomMapMarkerPin,
+  CustomMapMarkers,
+  GameMode,
+  PlayerProgress,
+  Task,
+  TaskProgressState,
+} from '../types';
+import { progressStorageKey } from '../types';
 import { buildImportStateUpdate } from '../utils/taskImport';
-import { recalculateStates } from '../utils/unlock';
+import { DEFAULT_TRADER_LOYALTY, recalculateStates } from '../utils/unlock';
 
 const defaultProgress = (): PlayerProgress => ({
   playerLevel: 1,
@@ -17,21 +24,32 @@ const defaultProgress = (): PlayerProgress => ({
 function normalizeProgress(raw: PlayerProgress): PlayerProgress {
   return {
     ...raw,
+    traderLevels: raw.traderLevels ?? {},
+    traderReputation: raw.traderReputation ?? {},
     completedObjectives: raw.completedObjectives ?? {},
     customMapMarkers: raw.customMapMarkers ?? {},
   };
 }
 
-export function useProgress(tasks: Task[]) {
-  const [progress, setProgress] = useState<PlayerProgress>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) return normalizeProgress(JSON.parse(raw) as PlayerProgress);
-    } catch {
-      /* ignore */
-    }
-    return defaultProgress();
-  });
+function readProgress(mode: GameMode): PlayerProgress {
+  try {
+    const raw = localStorage.getItem(progressStorageKey(mode));
+    if (raw) return normalizeProgress(JSON.parse(raw) as PlayerProgress);
+  } catch {
+    /* ignore */
+  }
+  return defaultProgress();
+}
+
+export function useProgress(tasks: Task[], gameMode: GameMode) {
+  const [progress, setProgress] = useState<PlayerProgress>(() => readProgress(gameMode));
+  const suppressPersistRef = useRef(false);
+
+  // Al cambiar de modo (PvP / PvE / Seasonal), cargar su progreso aislado.
+  useEffect(() => {
+    suppressPersistRef.current = true;
+    setProgress(readProgress(gameMode));
+  }, [gameMode]);
 
   useEffect(() => {
     if (tasks.length === 0) return;
@@ -43,8 +61,14 @@ export function useProgress(tasks: Task[]) {
   }, [tasks]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
-  }, [progress]);
+    // Tras un cambio de modo, el primer pass aún tiene el progreso anterior en memoria:
+    // se omite ese write para no contaminar la clave del modo nuevo.
+    if (suppressPersistRef.current) {
+      suppressPersistRef.current = false;
+      return;
+    }
+    localStorage.setItem(progressStorageKey(gameMode), JSON.stringify(progress));
+  }, [progress, gameMode]);
 
   const setPlayerLevel = useCallback((level: number) => {
     setProgress((prev) => {
@@ -53,6 +77,17 @@ export function useProgress(tasks: Task[]) {
         playerLevel: Math.max(0, Math.min(79, level)),
         updatedAt: new Date().toISOString(),
       };
+      return { ...next, taskStates: recalculateStates(tasks, next) };
+    });
+  }, [tasks]);
+
+  const setTraderLevel = useCallback((traderId: string, level: number) => {
+    setProgress((prev) => {
+      const traderLevels = {
+        ...prev.traderLevels,
+        [traderId]: Math.max(1, Math.min(4, Math.round(level) || DEFAULT_TRADER_LOYALTY)),
+      };
+      const next = { ...prev, traderLevels, updatedAt: new Date().toISOString() };
       return { ...next, taskStates: recalculateStates(tasks, next) };
     });
   }, [tasks]);
@@ -187,6 +222,7 @@ export function useProgress(tasks: Task[]) {
     progress,
     traders,
     setPlayerLevel,
+    setTraderLevel,
     startTask,
     completeTask,
     resetTask,

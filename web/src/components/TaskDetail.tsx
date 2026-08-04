@@ -1,6 +1,6 @@
 import type { Task, TaskProgressState } from '../types';
 import type { Translations } from '../i18n/translations';
-import { getRequiredKeys } from '../utils/unlock';
+import { getRequiredKeys, getRequiredLoyaltyLevel } from '../utils/unlock';
 import { getCompletedObjectiveSet } from '../utils/objectives';
 import { TaskPrereqTooltip } from './TaskPrereqTooltip';
 
@@ -48,13 +48,17 @@ export function TaskDetail({
   const doneObjectives = getCompletedObjectiveSet(completedObjectives, task.id);
   const canTrackObjectives = state === 'started' || state === 'completed';
   const locked = isLogsMode && logRawState != null;
+  const loyaltyLevel = getRequiredLoyaltyLevel(task);
 
   return (
     <aside className="task-detail">
       <header className="detail-header">
         <span className={`state-badge state-${state}`}>{t.state[state]}</span>
         <h2>{task.name}</h2>
-        <p className="detail-trader">{task.trader.name}</p>
+        <p className="detail-trader">
+          {task.trader.name}
+          {loyaltyLevel > 0 ? ` · ${t.loyaltyShort(loyaltyLevel)}` : ''}
+        </p>
         {isLogsMode && (
           <p className={`log-detection-hint${logRawState ? '' : ' log-detection-hint--warn'}`}>
             {logRawState ? t.logStateDetected(t.state[logRawState]) : t.logStateNotDetectedEditable}

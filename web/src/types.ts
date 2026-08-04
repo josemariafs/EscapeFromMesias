@@ -110,12 +110,38 @@ export interface PlayerProgress {
   updatedAt: string;
 }
 
+/**
+ * Modos de personaje de EFT 1.1+.
+ * - regular: PvP permanente (zona PvP)
+ * - pve: PvE permanente
+ * - seasonal: personaje de temporada (Kord Breach, etc.); progreso independiente
+ */
+export type GameMode = 'regular' | 'pve' | 'seasonal';
+
+export const GAME_MODES: GameMode[] = ['regular', 'pve', 'seasonal'];
+
+export const GAME_MODE_STORAGE_KEY = 'efg-game-mode';
+export const DEFAULT_GAME_MODE: GameMode = 'regular';
+
+/** Valor aceptado por la API de tarkov.dev (aún no expone `seasonal` como GameMode). */
+export type ApiGameMode = 'regular' | 'pve';
+
+/** Mapea el modo de la app al `gameMode` de tarkov.dev. */
+export function toApiGameMode(mode: GameMode): ApiGameMode {
+  return mode === 'pve' ? 'pve' : 'regular';
+}
+
 export const STORAGE_KEY = 'eft-quest-tracker-progress';
 export const TASKS_CACHE_KEY = 'eft-quest-tracker-tasks-cache';
 /** Incrementar al cambiar el esquema de datos cacheados (p. ej. zonas con posición), o para
  * invalidar de golpe cachés corruptos guardados por versiones anteriores (p. ej. una respuesta
  * parcial de la API de tarkov.dev con muy pocas misiones). */
-export const TASKS_CACHE_SCHEMA = 3;
+export const TASKS_CACHE_SCHEMA = 4;
+
+/** Clave de progreso local por modo (regular reutiliza la clave histórica sin sufijo). */
+export function progressStorageKey(mode: GameMode): string {
+  return mode === 'regular' ? STORAGE_KEY : `${STORAGE_KEY}:${mode}`;
+}
 /** Por debajo de este número de misiones, se asume que la respuesta de la API está incompleta
  * (caída parcial del servicio) y no se usa ni se guarda en caché. EFT tiene siempre varios
  * cientos de misiones, así que este umbral deja margen de sobra sin arriesgarse a aceptar datos

@@ -1,4 +1,4 @@
-import type { TaskProgressState } from '../types';
+import type { GameMode, TaskProgressState } from '../types';
 
 export type Lang = 'es' | 'en';
 
@@ -12,6 +12,7 @@ export interface Translations {
   retry: string;
   incompleteTasksTitle: string;
   incompleteTasksBody: (count: number) => string;
+  staleCacheNotice: string;
   statAvailable: (n: number) => string;
   statStarted: (n: number) => string;
   statCompleted: (n: number) => string;
@@ -24,8 +25,13 @@ export interface Translations {
   statusCompleted: string;
   statusLocked: string;
   playerLevel: string;
+  gameMode: string;
+  gameModeLabel: Record<GameMode, string>;
+  gameModeHint: Record<GameMode, string>;
   settings: string;
   traderLevels: string;
+  traderLevelsHint: string;
+  loyaltyShort: (n: number) => string;
   exportProgress: string;
   importProgress: string;
   refreshTasks: string;
@@ -154,6 +160,8 @@ export const translations: Record<Lang, Translations> = {
       + 'Esto es un problema temporal del servicio de tarkov.dev (o de tu conexión con él), no del lector de logs '
       + 'ni de tus misiones: con una lista tan incompleta, ninguna misión detectada en los logs (ni en modo Local) '
       + 'puede emparejarse correctamente, así que no se muestra nada. Reintenta en un momento.',
+    staleCacheNotice:
+      'tarkov.dev no responde: mostrando misiones en caché (pueden no estar al día con EFT 1.1). Reintenta más tarde.',
     statAvailable: (n) => `${n} disponibles`,
     statStarted: (n) => `${n} en curso`,
     statCompleted: (n) => `${n} completadas`,
@@ -166,8 +174,22 @@ export const translations: Record<Lang, Translations> = {
     statusCompleted: 'Completadas',
     statusLocked: 'Bloqueadas',
     playerLevel: 'Nivel PJ',
+    gameMode: 'Modo de juego',
+    gameModeLabel: {
+      regular: 'PvP',
+      pve: 'PvE',
+      seasonal: 'Seasonal',
+    },
+    gameModeHint: {
+      regular: 'Personaje permanente de la zona PvP',
+      pve: 'Personaje permanente de la zona PvE',
+      seasonal: 'Personaje de temporada (progreso independiente; se resetea con cada temporada)',
+    },
     settings: 'Ajustes',
-    traderLevels: 'Nivel de comerciantes',
+    traderLevels: 'Loyalty Level de comerciantes',
+    traderLevelsHint:
+      'En EFT 1.1 las side quests se desbloquean por Loyalty Level (LL). Ajusta el LL de cada comerciante para ver qué misiones tienes disponibles.',
+    loyaltyShort: (n) => `LL${n}`,
     exportProgress: 'Exportar progreso',
     importProgress: 'Importar progreso',
     refreshTasks: 'Actualizar misiones',
@@ -229,7 +251,7 @@ export const translations: Record<Lang, Translations> = {
     markStarted: 'Marcar como iniciada',
     markCompleted: 'Marcar como completada',
     resetProgress: 'Reiniciar progreso',
-    lockedHint: 'Completa los requisitos para desbloquear esta misión.',
+    lockedHint: 'Completa los requisitos (Loyalty Level del comerciante, nivel PJ y misiones previas) para desbloquear esta misión.',
     minLevel: 'Nivel mín.',
     faction: 'Facción',
     kappaRequired: 'Requerida para Kappa',
@@ -325,6 +347,8 @@ export const translations: Record<Lang, Translations> = {
       + 'This is a temporary issue with the tarkov.dev service (or your connection to it), not with the log '
       + 'reader or your quests: with such an incomplete list, no quest detected in the logs (or in Local mode) '
       + 'can be matched correctly, so nothing shows up. Please retry in a moment.',
+    staleCacheNotice:
+      'tarkov.dev is unreachable: showing cached quests (may not reflect EFT 1.1 yet). Retry later.',
     statAvailable: (n) => `${n} available`,
     statStarted: (n) => `${n} in progress`,
     statCompleted: (n) => `${n} completed`,
@@ -337,8 +361,22 @@ export const translations: Record<Lang, Translations> = {
     statusCompleted: 'Completed',
     statusLocked: 'Locked',
     playerLevel: 'Player level',
+    gameMode: 'Game mode',
+    gameModeLabel: {
+      regular: 'PvP',
+      pve: 'PvE',
+      seasonal: 'Seasonal',
+    },
+    gameModeHint: {
+      regular: 'Permanent PvP Zone character',
+      pve: 'Permanent PvE Zone character',
+      seasonal: 'Seasonal character (independent progress; resets each season)',
+    },
     settings: 'Settings',
-    traderLevels: 'Trader levels',
+    traderLevels: 'Trader loyalty levels',
+    traderLevelsHint:
+      'In EFT 1.1 side quests unlock by Loyalty Level (LL). Set each trader’s LL to see which quests are available.',
+    loyaltyShort: (n) => `LL${n}`,
     exportProgress: 'Export progress',
     importProgress: 'Import progress',
     refreshTasks: 'Refresh quests',
@@ -400,7 +438,7 @@ export const translations: Record<Lang, Translations> = {
     markStarted: 'Mark as started',
     markCompleted: 'Mark as completed',
     resetProgress: 'Reset progress',
-    lockedHint: 'Complete requirements to unlock this quest.',
+    lockedHint: 'Meet the requirements (trader Loyalty Level, player level, and previous quests) to unlock this quest.',
     minLevel: 'Min. level',
     faction: 'Faction',
     kappaRequired: 'Required for Kappa',

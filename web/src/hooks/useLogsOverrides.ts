@@ -1,20 +1,24 @@
-import { useCallback, useState } from 'react';
-import type { TaskProgressState } from '../types';
+import { useCallback, useEffect, useState } from 'react';
+import type { GameMode, TaskProgressState } from '../types';
 
-const STORAGE_KEY = 'efg-logs-manual-overrides';
+const BASE_STORAGE_KEY = 'efg-logs-manual-overrides';
 
-function readStoredOverrides(): Record<string, TaskProgressState> {
+function overridesStorageKey(mode: GameMode): string {
+  return mode === 'regular' ? BASE_STORAGE_KEY : `${BASE_STORAGE_KEY}:${mode}`;
+}
+
+function readStoredOverrides(mode: GameMode): Record<string, TaskProgressState> {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(overridesStorageKey(mode));
     return raw ? (JSON.parse(raw) as Record<string, TaskProgressState>) : {};
   } catch {
     return {};
   }
 }
 
-function persistOverrides(overrides: Record<string, TaskProgressState>) {
+function persistOverrides(mode: GameMode, overrides: Record<string, TaskProgressState>) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(overrides));
+    localStorage.setItem(overridesStorageKey(mode), JSON.stringify(overrides));
   } catch {
     // Ignore storage errors (e.g. quota, privacy mode).
   }
@@ -27,34 +31,40 @@ function persistOverrides(overrides: Record<string, TaskProgressState>) {
  * actualmente disponibles. Este hook guarda un pequeño conjunto de "overrides" manuales,
  * usados ÚNICAMENTE como respaldo para misiones que no tienen ningún evento en los logs.
  */
-export function useLogsOverrides() {
-  const [overrides, setOverrides] = useState<Record<string, TaskProgressState>>(readStoredOverrides);
+export function useLogsOverrides(gameMode: GameMode) {
+  const [overrides, setOverrides] = useState<Record<string, TaskProgressState>>(
+    () => readStoredOverrides(gameMode),
+  );
+
+  useEffect(() => {
+    setOverrides(readStoredOverrides(gameMode));
+  }, [gameMode]);
 
   const startOverride = useCallback((id: string) => {
     setOverrides((prev) => {
       const next = { ...prev, [id]: 'started' as TaskProgressState };
-      persistOverrides(next);
+      persistOverrides(gameMode, next);
       return next;
     });
-  }, []);
+  }, [gameMode]);
 
   const completeOverride = useCallback((id: string) => {
     setOverrides((prev) => {
       const next = { ...prev, [id]: 'completed' as TaskProgressState };
-      persistOverrides(next);
+      persistOverrides(gameMode, next);
       return next;
     });
-  }, []);
+  }, [gameMode]);
 
   const resetOverride = useCallback((id: string) => {
     setOverrides((prev) => {
       if (!(id in prev)) return prev;
       const next = { ...prev };
       delete next[id];
-      persistOverrides(next);
+      persistOverrides(gameMode, next);
       return next;
     });
-  }, []);
+  }, [gameMode]);
 
   return { overrides, startOverride, completeOverride, resetOverride };
 }

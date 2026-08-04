@@ -1,7 +1,8 @@
 import type { ItemRef, PlayerProgress, Task, TaskProgressState } from '../types';
 
-const MAX_TRADER_LEVEL = 4;
-const MAX_TRADER_REPUTATION = 4;
+/** Loyalty Level por defecto al crear un personaje (EFT 1.1: side quests ligadas a LL). */
+export const DEFAULT_TRADER_LOYALTY = 1;
+const DEFAULT_TRADER_REPUTATION = 0;
 
 function compareValue(actual: number, method: string, expected: number): boolean {
   switch (method) {
@@ -19,6 +20,28 @@ function compareValue(actual: number, method: string, expected: number): boolean
     default:
       return actual >= expected;
   }
+}
+
+function isReputationRequirement(requirementType: string): boolean {
+  return requirementType === 'reputation' || requirementType === 'standing';
+}
+
+/** Loyalty Level mínimo exigido por los requisitos de comerciante de la misión (0 = sin requisito LL). */
+export function getRequiredLoyaltyLevel(task: Task): number {
+  let max = 0;
+  for (const req of task.traderRequirements) {
+    if (isReputationRequirement(req.requirementType)) continue;
+    if (
+      req.compareMethod === '>='
+      || req.compareMethod === '>'
+      || req.compareMethod === '=='
+      || req.compareMethod === '='
+      || !req.compareMethod
+    ) {
+      max = Math.max(max, req.value);
+    }
+  }
+  return max;
 }
 
 function requirementStatusMet(
@@ -57,9 +80,9 @@ export function areTaskRequirementsMet(
   }
 
   for (const req of task.traderRequirements) {
-    const actual = req.requirementType === 'reputation'
-      ? MAX_TRADER_REPUTATION
-      : MAX_TRADER_LEVEL;
+    const actual = isReputationRequirement(req.requirementType)
+      ? (progress.traderReputation[req.trader.id] ?? DEFAULT_TRADER_REPUTATION)
+      : (progress.traderLevels[req.trader.id] ?? DEFAULT_TRADER_LOYALTY);
     if (!compareValue(actual, req.compareMethod, req.value)) return false;
   }
 
@@ -296,18 +319,26 @@ export function compareByDisplayState(
   return aName.localeCompare(bName, locale, { sensitivity: 'base' });
 }
 
+/**
+ * Orden EFT 1.1: estado → comerciante → Loyalty Level → nombre.
+ * Refleja el desbloqueo no lineal por grupos de side quests según LL.
+ */
 export function sortTasksForDisplay(
   tasks: Task[],
   states: Record<string, TaskProgressState>,
   locale = 'es',
 ): Task[] {
-  return [...tasks].sort((a, b) =>
-    compareByDisplayState(
-      states[a.id] ?? 'locked',
-      states[b.id] ?? 'locked',
-      a.name,
-      b.name,
-      locale,
-    ),
-  );
+  return [...tasks].sort((a, b) => {
+    const rankA = displayStateSortRank(states[a.id] ?? 'locked');
+    const rankB = displayStateSortRank(states[b.id] ?? 'locked');
+    if (rankA !== rankB) return rankA - rankB;
+
+    const traderCmp = a.trader.name.localeCompare(b.trader.name, locale, { sensitivity: 'base' });
+    if (traderCmp !== 0) return traderCmp;
+
+    const llCmp = getRequiredLoyaltyLevel(a) - getRequiredLoyaltyLevel(b);
+    if (llCmp !== 0) return llCmp;
+
+    return a.name.localeCompare(b.name, locale, { sensitivity: 'base' });
+  });
 }

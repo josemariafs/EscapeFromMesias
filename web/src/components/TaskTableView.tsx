@@ -2,7 +2,7 @@ import { useMemo, useState, type CSSProperties } from 'react';
 import type { Task, TaskProgressState } from '../types';
 import type { Translations } from '../i18n/translations';
 import { getTraderImagePath } from '../utils/traderImages';
-import { getQuestItemRequirements } from '../utils/unlock';
+import { getQuestItemRequirements, getRequiredLoyaltyLevel } from '../utils/unlock';
 
 interface TaskTableViewProps {
   tasks: Task[];
@@ -53,11 +53,18 @@ export function TaskTableView({
       }
     }
 
-    const byName = (a: Task, b: Task) => a.name.localeCompare(b.name);
-    started.sort(byName);
-    available.sort(byName);
-    completed.sort(byName);
-    lockedFailed.sort(byName);
+    // EFT 1.1: dentro de cada estado, agrupar por comerciante y Loyalty Level.
+    const byTraderLoyaltyName = (a: Task, b: Task) => {
+      const traderCmp = a.trader.name.localeCompare(b.trader.name);
+      if (traderCmp !== 0) return traderCmp;
+      const llCmp = getRequiredLoyaltyLevel(a) - getRequiredLoyaltyLevel(b);
+      if (llCmp !== 0) return llCmp;
+      return a.name.localeCompare(b.name);
+    };
+    started.sort(byTraderLoyaltyName);
+    available.sort(byTraderLoyaltyName);
+    completed.sort(byTraderLoyaltyName);
+    lockedFailed.sort(byTraderLoyaltyName);
 
     return { started, available, completed, lockedFailed };
   }, [tasks, taskStates]);
@@ -267,6 +274,7 @@ function TaskTableRow({
 }: TaskTableRowProps) {
   const requiredItems = getQuestItemRequirements(task);
   const traderImage = getTraderImagePath(task.trader);
+  const loyaltyLevel = getRequiredLoyaltyLevel(task);
 
   const traderCellStyle = traderImage
     ? ({ '--trader-image': `url("${traderImage}")` } as CSSProperties)
@@ -288,6 +296,11 @@ function TaskTableRow({
       <td className="task-table-cell-name">
         <span className="task-table-name">
           {task.name}
+          {loyaltyLevel > 0 && (
+            <span className="loyalty-badge" title={t.traderReqs}>
+              {t.loyaltyShort(loyaltyLevel)}
+            </span>
+          )}
           {task.kappaRequired && (
             <span className="task-table-kappa" title={t.kappaRequired}>
               {t.kappa}

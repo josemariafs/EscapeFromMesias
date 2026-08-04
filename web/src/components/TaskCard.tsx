@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react';
 import type { Task, TaskProgressState } from '../types';
 import type { Translations } from '../i18n/translations';
 import { getTraderImagePath } from '../utils/traderImages';
-import { getQuestItemRequirements } from '../utils/unlock';
+import { getQuestItemRequirements, getRequiredLoyaltyLevel } from '../utils/unlock';
 
 interface TaskCardProps {
   task: Task;
@@ -30,6 +30,7 @@ export function TaskCard({
 }: TaskCardProps) {
   const requiredItems = getQuestItemRequirements(task);
   const traderImage = getTraderImagePath(task.trader);
+  const loyaltyLevel = getRequiredLoyaltyLevel(task);
 
   const cardStyle = traderImage
     ? ({ '--trader-image': `url("${traderImage}")` } as CSSProperties)
@@ -58,15 +59,19 @@ export function TaskCard({
 
       <div className="task-card-header">
         <span className={`state-badge state-${state}`}>{t.state[state]}</span>
+        {loyaltyLevel > 0 && (
+          <span className="loyalty-badge" title={t.traderReqs}>
+            {t.loyaltyShort(loyaltyLevel)}
+          </span>
+        )}
       </div>
 
       <h3 className="task-name">{task.name}</h3>
 
-      {task.map && (
-        <div className="task-meta">
-          <span className="map-tag">{task.map.name}</span>
-        </div>
-      )}
+      <div className="task-meta">
+        <span className="trader-tag">{task.trader.name}</span>
+        {task.map && <span className="map-tag">{task.map.name}</span>}
+      </div>
 
       {requiredItems.length > 0 && (
         <div className="task-keys">

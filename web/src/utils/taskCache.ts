@@ -1,6 +1,6 @@
 import type { Lang } from '../i18n/translations';
-import type { Task } from '../types';
-import { MIN_VALID_TASK_COUNT, TASKS_CACHE_KEY, TASKS_CACHE_SCHEMA } from '../types';
+import type { GameMode, Task } from '../types';
+import { MIN_VALID_TASK_COUNT, TASKS_CACHE_KEY, TASKS_CACHE_SCHEMA, toApiGameMode } from '../types';
 
 const DB_NAME = 'eft-quest-tracker';
 const STORE_NAME = 'tasks-cache';
@@ -11,6 +11,8 @@ export const CACHE_TTL_MS = 1000 * 60 * 60 * 6;
 export interface CachedTasks {
   schema: number;
   lang: Lang;
+  /** Modo de API usado al fetch (regular | pve). Ausente en cachés anteriores a EFT 1.1. */
+  gameMode?: 'regular' | 'pve';
   fetchedAt: string;
   tasks: Task[];
 }
@@ -34,7 +36,13 @@ function cacheHasZonePositions(tasks: Task[]): boolean {
   return zonesWithPosition > 0;
 }
 
-function cacheId(lang: Lang) {
+function cacheId(lang: Lang, gameMode: GameMode) {
+  const apiMode = toApiGameMode(gameMode);
+  return `${TASKS_CACHE_KEY}-${lang}-${apiMode}`;
+}
+
+/** Clave previa a la separación por gameMode. */
+function legacyCacheId(lang: Lang) {
   return `${TASKS_CACHE_KEY}-${lang}`;
 }
 
@@ -72,31 +80,59 @@ function idbSet(db: IDBDatabase, key: string, value: unknown): Promise<void> {
   });
 }
 
-export async function readTaskCache(lang: Lang): Promise<CachedTasks | null> {
+export async function readTaskCache(lang: Lang, gameMode: GameMode): Promise<CachedTasks | null> {
   try {
     const db = await openDb();
-    const cached = await idbGet<CachedTasks>(db, cacheId(lang));
-    db.close();
-    return cached ?? null;
+    try {
+      const cached = await idbGet<CachedTasks>(db, cacheId(lang, gameMode));
+      if (cached) return cached;
+
+      // Respaldo: caché pre-1.1 (sin sufijo de modo), solo útil para regular/seasonal.
+      if (toApiGameMode(gameMode) === 'regular') {
+        return (await idbGet<CachedTasks>(db, legacyCacheId(lang))) ?? null;
+      }
+      return null;
+    } finally {
+      db.close();
+    }
   } catch {
     return null;
   }
 }
 
-export async function writeTaskCache(lang: Lang, payload: CachedTasks): Promise<void> {
+export async function writeTaskCache(
+  lang: Lang,
+  gameMode: GameMode,
+  payload: CachedTasks,
+): Promise<void> {
   const db = await openDb();
   try {
-    await idbSet(db, cacheId(lang), payload);
+    await idbSet(db, cacheId(lang, gameMode), payload);
   } finally {
     db.close();
   }
 }
 
-export function isCacheValid(cached: CachedTasks, lang: Lang): boolean {
+export function isCacheValid(cached: CachedTasks, lang: Lang, gameMode: GameMode): boolean {
   if (cached.schema !== TASKS_CACHE_SCHEMA) return false;
   if (cached.lang !== lang || cached.tasks.length < MIN_VALID_TASK_COUNT) return false;
+  if (cached.gameMode != null && cached.gameMode !== toApiGameMode(gameMode)) return false;
   if (!cacheHasZonePositions(cached.tasks)) return false;
   return Date.now() - new Date(cached.fetchedAt).getTime() < CACHE_TTL_MS;
+}
+
+/**
+ * Caché usable cuando la API falla: admite schema antiguo / TTL caducado,
+ * siempre que el listado sea completo y del idioma correcto.
+ */
+export function isCacheUsableFallback(
+  cached: CachedTasks,
+  lang: Lang,
+  gameMode: GameMode,
+): boolean {
+  if (cached.lang !== lang || cached.tasks.length < MIN_VALID_TASK_COUNT) return false;
+  if (cached.gameMode != null && cached.gameMode !== toApiGameMode(gameMode)) return false;
+  return true;
 }
 
 /** Elimina cachés antiguos en localStorage que superaban la cuota. */

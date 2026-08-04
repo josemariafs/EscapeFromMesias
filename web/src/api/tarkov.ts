@@ -1,10 +1,10 @@
-import { MIN_VALID_TASK_COUNT, type Task } from '../types';
+import { MIN_VALID_TASK_COUNT, toApiGameMode, type GameMode, type Task } from '../types';
 
 const API_URL = 'https://api.tarkov.dev/graphql';
 
 const TASKS_QUERY = `
-  query Tasks($lang: LanguageCode) {
-    tasks(lang: $lang) {
+  query Tasks($lang: LanguageCode, $gameMode: GameMode) {
+    tasks(lang: $lang, gameMode: $gameMode) {
       id
       name
       normalizedName
@@ -78,23 +78,67 @@ const TASKS_QUERY = `
   }
 `;
 
-export async function fetchTasks(lang: 'es' | 'en' = 'es'): Promise<Task[]> {
-  const response = await fetch(API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      query: TASKS_QUERY,
-      variables: { lang },
-    }),
+function formatGraphqlErrors(errors: unknown): string | null {
+  if (!Array.isArray(errors) || errors.length === 0) return null;
+  const parts = errors.map((err) => {
+    if (typeof err === 'string') return err;
+    if (err && typeof err === 'object' && 'message' in err) {
+      return String((err as { message: unknown }).message);
+    }
+    return String(err);
   });
+  return parts.filter(Boolean).join(', ') || null;
+}
 
-  const json = (await response.json()) as {
+export async function fetchTasks(
+  lang: 'es' | 'en' = 'es',
+  gameMode: GameMode = 'regular',
+): Promise<Task[]> {
+  const apiMode = toApiGameMode(gameMode);
+
+  let response: Response;
+  try {
+    response = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: TASKS_QUERY,
+        variables: { lang, gameMode: apiMode },
+      }),
+    });
+  } catch {
+    throw new Error(
+      lang === 'en'
+        ? 'Could not reach tarkov.dev (network error). The API may be down — try again in a moment.'
+        : 'No se pudo contactar con tarkov.dev (error de red). La API puede estar caída; reinténtalo en un momento.',
+    );
+  }
+
+  let json: {
     data?: { tasks: Task[] };
-    errors?: { message: string }[];
+    errors?: unknown;
   };
+  try {
+    json = (await response.json()) as typeof json;
+  } catch {
+    throw new Error(
+      lang === 'en'
+        ? `tarkov.dev returned an invalid response (HTTP ${response.status}).`
+        : `tarkov.dev devolvió una respuesta inválida (HTTP ${response.status}).`,
+    );
+  }
 
-  if (json.errors?.length) {
-    throw new Error(json.errors.map((e) => e.message).join(', '));
+  const graphqlError = formatGraphqlErrors(json.errors);
+  if (graphqlError) {
+    throw new Error(graphqlError);
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      lang === 'en'
+        ? `tarkov.dev API error (HTTP ${response.status}).`
+        : `Error de la API de tarkov.dev (HTTP ${response.status}).`,
+    );
   }
 
   if (!json.data?.tasks) {

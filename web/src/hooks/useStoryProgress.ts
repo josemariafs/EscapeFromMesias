@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { TaskProgressState } from '../types';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { GameMode, TaskProgressState } from '../types';
 import type { StoryNodeFlat, StoryProgress } from '../types/storyline';
-import { STORY_STORAGE_KEY } from '../types/storyline';
+import { storyProgressStorageKey } from '../types/storyline';
 import { flattenStoryNodes } from '../utils/storylineData';
 import { recalculateStoryStates } from '../utils/storylineUnlock';
 
@@ -10,18 +10,25 @@ const defaultProgress = (): StoryProgress => ({
   updatedAt: new Date().toISOString(),
 });
 
-export function useStoryProgress() {
-  const nodes = useMemo(() => flattenStoryNodes(), []);
+function readStoryProgress(mode: GameMode): StoryProgress {
+  try {
+    const raw = localStorage.getItem(storyProgressStorageKey(mode));
+    if (raw) return JSON.parse(raw) as StoryProgress;
+  } catch {
+    /* ignore */
+  }
+  return defaultProgress();
+}
 
-  const [progress, setProgress] = useState<StoryProgress>(() => {
-    try {
-      const raw = localStorage.getItem(STORY_STORAGE_KEY);
-      if (raw) return JSON.parse(raw) as StoryProgress;
-    } catch {
-      /* ignore */
-    }
-    return defaultProgress();
-  });
+export function useStoryProgress(gameMode: GameMode) {
+  const nodes = useMemo(() => flattenStoryNodes(), []);
+  const [progress, setProgress] = useState<StoryProgress>(() => readStoryProgress(gameMode));
+  const suppressPersistRef = useRef(false);
+
+  useEffect(() => {
+    suppressPersistRef.current = true;
+    setProgress(readStoryProgress(gameMode));
+  }, [gameMode]);
 
   useEffect(() => {
     setProgress((prev) => ({
@@ -32,8 +39,12 @@ export function useStoryProgress() {
   }, [nodes]);
 
   useEffect(() => {
-    localStorage.setItem(STORY_STORAGE_KEY, JSON.stringify(progress));
-  }, [progress]);
+    if (suppressPersistRef.current) {
+      suppressPersistRef.current = false;
+      return;
+    }
+    localStorage.setItem(storyProgressStorageKey(gameMode), JSON.stringify(progress));
+  }, [progress, gameMode]);
 
   const setNodeState = useCallback((nodeId: string, state: TaskProgressState) => {
     setProgress((prev) => {

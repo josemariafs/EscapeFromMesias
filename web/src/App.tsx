@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { ActiveTasksView } from './components/ActiveTasksView';
 import { AppFooter } from './components/AppFooter';
 import { DataSourceControl } from './components/DataSourceControl';
+import { GameModeControl } from './components/GameModeControl';
 import { ScreenshotImportButton } from './components/ScreenshotImportButton';
 import { StoryView } from './components/StoryView';
 import { getChapterDesc } from './utils/storylineData';
@@ -9,8 +10,10 @@ import { StoryDetail } from './components/StoryDetail';
 import { TaskCard } from './components/TaskCard';
 import { TaskTableView } from './components/TaskTableView';
 import { TaskDetail } from './components/TaskDetail';
+import { TraderLevelsPanel } from './components/TraderLevelsPanel';
 import { useLanguage } from './i18n/useLanguage';
 import { useDataSource } from './hooks/useDataSource';
+import { useGameMode } from './hooks/useGameMode';
 import { useViewMode } from './hooks/useViewMode';
 import { useProgress } from './hooks/useProgress';
 import { useLogsOverrides } from './hooks/useLogsOverrides';
@@ -30,11 +33,14 @@ type AllQuestTab = 'story' | 'side';
 export default function App() {
   const { lang, setLang, t } = useLanguage();
   const { viewMode, setViewMode } = useViewMode();
+  const { gameMode, setGameMode } = useGameMode();
   const { dataSource, setDataSource, isLogsMode } = useDataSource();
-  const { tasks, englishNamesById, loading, error, reload } = useTasks(lang);
+  const { tasks, englishNamesById, loading, error, usingStaleCache, reload } = useTasks(lang, gameMode);
   const {
     progress,
+    traders,
     setPlayerLevel,
+    setTraderLevel,
     startTask,
     completeTask,
     resetTask,
@@ -42,9 +48,9 @@ export default function App() {
     toggleObjective,
     setCustomMapMarker,
     clearCustomMapMarker,
-  } = useProgress(tasks);
+  } = useProgress(tasks, gameMode);
   const logSync = useTarkovLogSync(isLogsMode);
-  const logsOverrides = useLogsOverrides();
+  const logsOverrides = useLogsOverrides(gameMode);
   // El estado solo se bloquea a edición manual una vez la sincronización con los
   // logs está realmente activa; mientras se conecta o falla, se permite edición manual.
   const isLogsLocked = isLogsMode && logSync.status === 'syncing';
@@ -55,7 +61,7 @@ export default function App() {
     completeNode,
     resetNode,
     getRequirementNames,
-  } = useStoryProgress();
+  } = useStoryProgress(gameMode);
 
   // En modo Logs, el estado de las misiones se deriva de los eventos leídos de los logs de
   // Tarkov; no debe heredar ni mezclarse con el progreso manual guardado en localStorage
@@ -105,8 +111,10 @@ export default function App() {
   const [viewTab, setViewTab] = useState<ViewTab>('all');
   const [allQuestTab, setAllQuestTab] = useState<AllQuestTab>('side');
   const [search, setSearch] = useState('');
+  const [traderFilter, setTraderFilter] = useState('all');
   const [chapterFilter, setChapterFilter] = useState<number | 'all'>(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showTraderLevels, setShowTraderLevels] = useState(false);
 
   const locale = lang === 'en' ? 'en-US' : 'es-ES';
   const isStoryTab = viewTab === 'all' && allQuestTab === 'story';
@@ -116,6 +124,14 @@ export default function App() {
 
   const sideTasks = useMemo(() => tasks.filter(isSideTask), [tasks]);
   const storyApiTasks = useMemo(() => tasks.filter(isStoryApiTask), [tasks]);
+
+  const sideTraders = useMemo(() => {
+    const map = new Map<string, { id: string; name: string }>();
+    for (const task of sideTasks) {
+      map.set(task.trader.id, { id: task.trader.id, name: task.trader.name });
+    }
+    return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, locale));
+  }, [sideTasks, locale]);
 
   const taskCounts = useMemo(
     () => countByState(sideTasks, effectiveTaskStates),
@@ -148,13 +164,14 @@ export default function App() {
   const filteredTasks = useMemo(() => {
     const q = search.trim().toLowerCase();
     const filtered = sideTasks.filter((task) => {
+      if (traderFilter !== 'all' && task.trader.id !== traderFilter) return false;
       if (q && !task.name.toLowerCase().includes(q) && !task.trader.name.toLowerCase().includes(q)) {
         return false;
       }
       return true;
     });
     return sortTasksForDisplay(filtered, effectiveTaskStates, locale);
-  }, [sideTasks, effectiveTaskStates, search, locale]);
+  }, [sideTasks, effectiveTaskStates, search, traderFilter, locale]);
 
   const selectedStoryApiTask = storyApiTasks.find((task) => task.id === selectedId) ?? null;
 
@@ -171,6 +188,7 @@ export default function App() {
     setAllQuestTab(tab);
     setSelectedId(null);
     setSearch('');
+    setTraderFilter('all');
   };
 
   const handleWipeAll = () => {
@@ -276,6 +294,7 @@ export default function App() {
 
           <div className="header-right">
             <div className="header-controls-top">
+              <GameModeControl gameMode={gameMode} onChange={setGameMode} t={t} />
               <label className="header-level">
                 <span className="header-level-label">{t.playerLevel}</span>
                 <input
@@ -286,6 +305,15 @@ export default function App() {
                   onChange={(e) => setPlayerLevel(Number(e.target.value))}
                 />
               </label>
+              <button
+                type="button"
+                className={`btn-trader-levels${showTraderLevels ? ' active' : ''}`}
+                onClick={() => setShowTraderLevels((v) => !v)}
+                aria-pressed={showTraderLevels}
+                title={t.traderLevels}
+              >
+                {t.traderLevels}
+              </button>
               <DataSourceControl
                 dataSource={dataSource}
                 onChangeDataSource={setDataSource}
@@ -394,6 +422,14 @@ export default function App() {
                 <span className="stat completed">{t.statCompleted(counts.completed)}</span>
                 <span className="stat locked">{t.statLocked(counts.locked)}</span>
               </div>
+              {usingStaleCache && (
+                <p className="logs-readonly-notice logs-warning-notice">
+                  {t.staleCacheNotice}{' '}
+                  <button type="button" className="link-btn" onClick={() => reload()}>
+                    {t.retry}
+                  </button>
+                </p>
+              )}
               {isLogsLocked && (
                 <p className="logs-readonly-notice">{t.logsReadOnlyNotice}</p>
               )}
@@ -412,7 +448,7 @@ export default function App() {
                 onChange={(e) => setSearch(e.target.value)}
                 className="search-input"
               />
-              {isStoryTab && (
+              {isStoryTab ? (
                 <select
                   className="header-chapter-select"
                   value={chapterFilter === 'all' ? 'all' : String(chapterFilter)}
@@ -426,11 +462,32 @@ export default function App() {
                     <option key={ch.id} value={ch.id}>{ch.title}</option>
                   ))}
                 </select>
+              ) : (
+                <select
+                  className="header-chapter-select"
+                  value={traderFilter}
+                  onChange={(e) => setTraderFilter(e.target.value)}
+                >
+                  <option value="all">{t.allTraders}</option>
+                  {sideTraders.map((tr) => (
+                    <option key={tr.id} value={tr.id}>{tr.name}</option>
+                  ))}
+                </select>
               )}
             </div>
           )}
         </div>
       </header>
+
+      {showTraderLevels && (
+        <TraderLevelsPanel
+          traders={traders}
+          traderLevels={progress.traderLevels}
+          onChange={setTraderLevel}
+          t={t}
+          onClose={() => setShowTraderLevels(false)}
+        />
+      )}
 
       <main className="main-layout">
         <div

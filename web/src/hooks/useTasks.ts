@@ -1,57 +1,73 @@
 import { useCallback, useEffect, useState } from 'react';
 import { fetchTasks } from '../api/tarkov';
 import type { Lang } from '../i18n/translations';
-import type { Task } from '../types';
-import { TASKS_CACHE_SCHEMA } from '../types';
+import type { GameMode, Task } from '../types';
+import { TASKS_CACHE_SCHEMA, toApiGameMode } from '../types';
 import { englishNamesFromTasks, loadEnglishTaskNames } from '../utils/englishTaskNames';
 import {
+  isCacheUsableFallback,
   isCacheValid,
   purgeLegacyLocalStorageCache,
   readTaskCache,
   writeTaskCache,
 } from '../utils/taskCache';
 
-export function useTasks(lang: Lang) {
+export function useTasks(lang: Lang, gameMode: GameMode) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [englishNamesById, setEnglishNamesById] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  /** true si se está mostrando caché porque la API no respondió. */
+  const [usingStaleCache, setUsingStaleCache] = useState(false);
 
   const load = useCallback(async (force = false) => {
     setLoading(true);
     setError(null);
+    setUsingStaleCache(false);
 
     try {
       purgeLegacyLocalStorageCache();
 
-      if (!force) {
-        const cached = await readTaskCache(lang);
-        if (cached && isCacheValid(cached, lang)) {
-          setTasks(cached.tasks);
-          setLoading(false);
-          return;
-        }
+      const cached = await readTaskCache(lang, gameMode);
+
+      if (!force && cached && isCacheValid(cached, lang, gameMode)) {
+        setTasks(cached.tasks);
+        setLoading(false);
+        return;
       }
 
-      const data = await fetchTasks(lang);
-      setTasks(data);
-
       try {
-        await writeTaskCache(lang, {
-          schema: TASKS_CACHE_SCHEMA,
-          lang,
-          fetchedAt: new Date().toISOString(),
-          tasks: data,
-        });
-      } catch {
-        // La carga desde la API ya funcionó; ignorar fallos de caché.
+        const data = await fetchTasks(lang, gameMode);
+        setTasks(data);
+        setUsingStaleCache(false);
+
+        try {
+          await writeTaskCache(lang, gameMode, {
+            schema: TASKS_CACHE_SCHEMA,
+            lang,
+            gameMode: toApiGameMode(gameMode),
+            fetchedAt: new Date().toISOString(),
+            tasks: data,
+          });
+        } catch {
+          // La carga desde la API ya funcionó; ignorar fallos de caché.
+        }
+      } catch (apiErr) {
+        // Si tarkov.dev está caído, preferir cualquier caché usable a una pantalla de error.
+        if (cached && isCacheUsableFallback(cached, lang, gameMode)) {
+          setTasks(cached.tasks);
+          setUsingStaleCache(true);
+          setError(null);
+        } else {
+          throw apiErr;
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
       setLoading(false);
     }
-  }, [lang]);
+  }, [lang, gameMode]);
 
   useEffect(() => {
     void load();
@@ -64,7 +80,7 @@ export function useTasks(lang: Lang) {
     }
 
     let cancelled = false;
-    void loadEnglishTaskNames()
+    void loadEnglishTaskNames(gameMode)
       .then((names) => {
         if (!cancelled) setEnglishNamesById(names);
       })
@@ -75,7 +91,14 @@ export function useTasks(lang: Lang) {
     return () => {
       cancelled = true;
     };
-  }, [lang, tasks]);
+  }, [lang, tasks, gameMode]);
 
-  return { tasks, englishNamesById, loading, error, reload: () => load(true) };
+  return {
+    tasks,
+    englishNamesById,
+    loading,
+    error,
+    usingStaleCache,
+    reload: () => load(true),
+  };
 }

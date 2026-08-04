@@ -1,4 +1,4 @@
-import type { TaskProgressState } from '../types';
+import type { GameMode, TaskProgressState } from '../types';
 
 export type StoryNodeType = 'default' | 'optional' | 'choice';
 
@@ -51,3 +51,8 @@ export interface StoryProgress {
 }
 
 export const STORY_STORAGE_KEY = 'eft-quest-tracker-story-progress';
+
+/** Clave de progreso Story por modo (regular reutiliza la clave histórica sin sufijo). */
+export function storyProgressStorageKey(mode: GameMode): string {
+  return mode === 'regular' ? STORY_STORAGE_KEY : `${STORY_STORAGE_KEY}:${mode}`;
+}
