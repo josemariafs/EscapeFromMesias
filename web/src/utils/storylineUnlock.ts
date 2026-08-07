@@ -22,26 +22,6 @@ export function recalculateStoryStates(
   return next;
 }
 
-export function countStoryByState(
-  nodes: StoryNodeFlat[],
-  states: Record<string, TaskProgressState>,
-) {
-  const counts = {
-    available: 0,
-    started: 0,
-    completed: 0,
-    locked: 0,
-    failed: 0,
-  };
-
-  for (const node of nodes) {
-    const state = states[node.id] ?? 'locked';
-    counts[state]++;
-  }
-
-  return counts;
-}
-
 export function sortStoryNodesForDisplay(
   nodes: StoryNodeFlat[],
   states: Record<string, TaskProgressState>,

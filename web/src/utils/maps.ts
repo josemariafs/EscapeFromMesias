@@ -20,7 +20,32 @@ const MAP_SVG_FILES: Record<string, string> = {
   terminal: 'Terminal.svg',
 };
 
+/** Mapas disponibles para el dibujador de rutas (independiente de misiones). */
+export const ROUTE_MAPS: { key: string; name: string }[] = [
+  { key: 'ground-zero', name: 'Ground Zero' },
+  { key: 'factory', name: 'Factory' },
+  { key: 'customs', name: 'Customs' },
+  { key: 'woods', name: 'Woods' },
+  { key: 'shoreline', name: 'Shoreline' },
+  { key: 'interchange', name: 'Interchange' },
+  { key: 'reserve', name: 'Reserve' },
+  { key: 'lighthouse', name: 'Lighthouse' },
+  { key: 'streets-of-tarkov', name: 'Streets of Tarkov' },
+  { key: 'the-lab', name: 'The Lab' },
+];
+
+/**
+ * Interchange: el SVG upstream apila Second_Floor (planta parcial, más pequeña)
+ * encima de First_Floor. En vista plana eso hace que el interior del mall parezca
+ * a escala incorrecta. Usamos una copia local con Second_Floor oculto.
+ */
+const LOCAL_MAP_SVG: Partial<Record<string, string>> = {
+  interchange: '/maps/Interchange.svg',
+};
+
 export function getMapSvgUrl(normalizedName: string): string | null {
+  const local = LOCAL_MAP_SVG[normalizedName];
+  if (local) return local;
   const file = MAP_SVG_FILES[normalizedName];
   return file ? `${MAP_SVG_BASE}/${file}` : null;
 }

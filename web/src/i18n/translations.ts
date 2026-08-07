@@ -6,6 +6,10 @@ export const LANG_STORAGE_KEY = 'eft-quest-tracker-lang';
 
 export interface Translations {
   appTitle: string;
+  homeChooseTitle: string;
+  homeChooseHint: string;
+  homeRoutesHint: string;
+  homeBack: string;
   subtitle: (n: number) => string;
   loading: string;
   loadError: string;
@@ -13,10 +17,6 @@ export interface Translations {
   incompleteTasksTitle: string;
   incompleteTasksBody: (count: number) => string;
   staleCacheNotice: string;
-  statAvailable: (n: number) => string;
-  statStarted: (n: number) => string;
-  statCompleted: (n: number) => string;
-  statLocked: (n: number) => string;
   searchPlaceholder: string;
   allTraders: string;
   allStatuses: string;
@@ -42,20 +42,64 @@ export interface Translations {
   confirmReset: string;
   wipeAll: string;
   confirmWipeAll: string;
-  importScreenshot: string;
-  importScreenshotHint: string;
-  importScreenshotProcessing: string;
-  importScreenshotResult: (n: number) => string;
-  importScreenshotNoMatch: string;
-  importScreenshotNoImage: string;
-  importScreenshotError: string;
+  footerVisits: (n: number) => string;
   noTasksFilter: string;
   noActiveTasks: string;
   selectTask: string;
   tabAll: string;
   tabActive: string;
+  tabRoutes: string;
   tabStory: string;
   tabSideQuest: string;
+  routesTitle: string;
+  routesHint: string;
+  routesOpenMap: string;
+  routesBackToMaps: string;
+  routesDrawHint: string;
+  routesPointColor: string;
+  routesCustomColor: string;
+  routesPlayerNamePlaceholder: string;
+  routesPoints: (n: number) => string;
+  routesPointLabel: (n: number) => string;
+  routesNoPoints: string;
+  routesUndo: string;
+  routesClear: string;
+  routesConfirmClear: string;
+  routesRemovePoint: string;
+  routesFixedSection: string;
+  routesPersonalSection: string;
+  routesFixedPoints: (n: number) => string;
+  routesFixedHint: string;
+  routesNoFixedPoints: string;
+  routesFixedLoading: string;
+  routesFixedLoadError: string;
+  routesHideFixedPoints: string;
+  routesShowFixedPoints: string;
+  adminRoutesTitle: string;
+  adminRoutesHint: string;
+  adminLoginTitle: string;
+  adminTokenLabel: string;
+  adminTokenPlaceholder: string;
+  adminLogin: string;
+  adminLogout: string;
+  adminLoginError: string;
+  adminDrawHint: string;
+  adminPointLabel: string;
+  adminPointLabelPlaceholder: string;
+  adminPointImage: string;
+  adminPointImageHint: string;
+  adminPointImageUpload: string;
+  adminPointImageClear: string;
+  adminPointImageError: string;
+  adminMarkerType: string;
+  adminMarkerTypeDefault: string;
+  adminMarkerTypeKb: string;
+  adminMarkerTypeKbHint: string;
+  adminMarkerTypeQuestion: string;
+  adminMarkerTypeQuestionHint: string;
+  adminSaveLabel: string;
+  adminWorking: string;
+  adminDeletePoint: string;
   allChapters: string;
   searchStoryPlaceholder: string;
   selectStoryNode: string;
@@ -150,6 +194,10 @@ export interface Translations {
 export const translations: Record<Lang, Translations> = {
   es: {
     appTitle: 'Escape From Gorditos',
+    homeChooseTitle: 'Elige cómo usar la app',
+    homeChooseHint: 'Selecciona un modo para empezar. Puedes volver aquí desde el logo.',
+    homeRoutesHint: 'Dibuja y consulta rutas en los mapas, con puntos fijos compartidos.',
+    homeBack: 'Inicio',
     subtitle: (n) => `Tracker de misiones · ${n} quests · datos de tarkov.dev`,
     loading: 'Cargando misiones desde tarkov.dev…',
     loadError: 'Error al cargar',
@@ -161,11 +209,7 @@ export const translations: Record<Lang, Translations> = {
       + 'ni de tus misiones: con una lista tan incompleta, ninguna misión detectada en los logs (ni en modo Local) '
       + 'puede emparejarse correctamente, así que no se muestra nada. Reintenta en un momento.',
     staleCacheNotice:
-      'tarkov.dev no responde: mostrando misiones en caché (pueden no estar al día con EFT 1.1). Reintenta más tarde.',
-    statAvailable: (n) => `${n} disponibles`,
-    statStarted: (n) => `${n} en curso`,
-    statCompleted: (n) => `${n} completadas`,
-    statLocked: (n) => `${n} bloqueadas`,
+      'tarkov.dev no responde: mostrando misiones offline (pueden no estar al día con EFT 1.1). Reintenta más tarde.',
     searchPlaceholder: 'Buscar misión o comerciante…',
     allTraders: 'Todos los comerciantes',
     allStatuses: 'Todos los estados',
@@ -201,20 +245,65 @@ export const translations: Record<Lang, Translations> = {
     wipeAll: 'Wipe All',
     confirmWipeAll:
       'Se borrarán todos los datos guardados en el navegador (progreso de misiones, campaña Story, idioma, etc.). Esta acción no se puede deshacer.\n\n¿Continuar?',
-    importScreenshot: 'Importar activas',
-    importScreenshotHint: 'Pega la captura (Ctrl+V)',
-    importScreenshotProcessing: 'Leyendo captura…',
-    importScreenshotResult: (n) => `${n} misión${n === 1 ? '' : 'es'} marcada${n === 1 ? '' : 's'} en curso`,
-    importScreenshotNoMatch: 'No se encontraron misiones en la imagen',
-    importScreenshotNoImage: 'No hay imagen en el portapapeles',
-    importScreenshotError: 'No se pudo leer la imagen',
+    footerVisits: (n) => `${n.toLocaleString('es-ES')} visita${n === 1 ? '' : 's'}`,
     noTasksFilter: 'No hay misiones con estos filtros.',
     noActiveTasks: 'No tienes misiones en curso.',
     selectTask: 'Selecciona una misión para ver los detalles',
     tabAll: 'Todas',
     tabActive: 'Activas',
+    tabRoutes: 'Rutas',
     tabStory: 'Story',
     tabSideQuest: 'Side Quest',
+    routesTitle: 'Rutas en el mapa',
+    routesHint:
+      'Dibuja puntos de ruta sobre cualquier mapa de Tarkov. Independiente de las misiones: solo para planear recorridos.',
+    routesOpenMap: 'Abrir mapa',
+    routesBackToMaps: 'Todos los mapas',
+    routesDrawHint: 'Elige un color y haz clic en el mapa para añadir puntos. Clic en un punto para eliminarlo.',
+    routesPointColor: 'Color del jugador',
+    routesCustomColor: 'Personalizado',
+    routesPlayerNamePlaceholder: 'Nombre del jugador',
+    routesPoints: (n) => `${n} punto${n === 1 ? '' : 's'}`,
+    routesPointLabel: (n) => `Punto ${n}`,
+    routesNoPoints: 'Aún no hay puntos en este mapa.',
+    routesUndo: 'Deshacer',
+    routesClear: 'Borrar ruta',
+    routesConfirmClear: '¿Borrar todos los puntos de este mapa?',
+    routesRemovePoint: 'Eliminar punto',
+    routesFixedSection: 'Puntos fijos',
+    routesPersonalSection: 'Tus puntos',
+    routesFixedPoints: (n) => `${n} fijo${n === 1 ? '' : 's'}`,
+    routesFixedHint: 'Los puntos fijos los define el administrador y son visibles para todos.',
+    routesNoFixedPoints: 'No hay puntos fijos en este mapa.',
+    routesFixedLoading: 'Cargando puntos fijos…',
+    routesFixedLoadError: 'No se pudieron cargar los puntos fijos.',
+    routesHideFixedPoints: 'Ocultar puntos fijos',
+    routesShowFixedPoints: 'Mostrar puntos fijos',
+    adminRoutesTitle: 'Admin · Puntos fijos de rutas',
+    adminRoutesHint: 'Crea y edita puntos compartidos. Se guardan en el servidor (Turso).',
+    adminLoginTitle: 'Acceso admin',
+    adminTokenLabel: 'Token de administración',
+    adminTokenPlaceholder: 'ADMIN_TOKEN',
+    adminLogin: 'Entrar',
+    adminLogout: 'Salir',
+    adminLoginError: 'Token incorrecto o API no disponible.',
+    adminDrawHint: 'Elige un color y haz clic en el mapa para crear un punto fijo. Clic en un punto para eliminarlo.',
+    adminPointLabel: 'Etiqueta',
+    adminPointLabelPlaceholder: 'Nombre del punto (opcional)',
+    adminPointImage: 'Imagen',
+    adminPointImageHint: 'Se muestra al pasar el ratón sobre el punto.',
+    adminPointImageUpload: 'Subir imagen',
+    adminPointImageClear: 'Quitar imagen',
+    adminPointImageError: 'No se pudo procesar la imagen. Prueba con otra más ligera.',
+    adminMarkerType: 'Tipo de marcador',
+    adminMarkerTypeDefault: 'Normal',
+    adminMarkerTypeKb: 'KB especial',
+    adminMarkerTypeKbHint: 'Pin KB sin texto. El hover sigue mostrando la imagen.',
+    adminMarkerTypeQuestion: 'Interrogación',
+    adminMarkerTypeQuestionHint: 'Pin ? sin texto. El hover sigue mostrando la imagen.',
+    adminSaveLabel: 'Guardar etiqueta',
+    adminWorking: 'Guardando…',
+    adminDeletePoint: 'Eliminar punto fijo',
     allChapters: 'Todos los capítulos',
     searchStoryPlaceholder: 'Buscar objetivo o capítulo…',
     selectStoryNode: 'Selecciona un objetivo de la campaña Story',
@@ -337,6 +426,10 @@ export const translations: Record<Lang, Translations> = {
   },
   en: {
     appTitle: 'Escape From Gorditos',
+    homeChooseTitle: 'Choose how to use the app',
+    homeChooseHint: 'Pick a mode to get started. You can return here from the logo.',
+    homeRoutesHint: 'Draw and review routes on maps, including shared fixed points.',
+    homeBack: 'Home',
     subtitle: (n) => `Quest tracker · ${n} quests · data from tarkov.dev`,
     loading: 'Loading quests from tarkov.dev…',
     loadError: 'Failed to load',
@@ -348,11 +441,7 @@ export const translations: Record<Lang, Translations> = {
       + 'reader or your quests: with such an incomplete list, no quest detected in the logs (or in Local mode) '
       + 'can be matched correctly, so nothing shows up. Please retry in a moment.',
     staleCacheNotice:
-      'tarkov.dev is unreachable: showing cached quests (may not reflect EFT 1.1 yet). Retry later.',
-    statAvailable: (n) => `${n} available`,
-    statStarted: (n) => `${n} in progress`,
-    statCompleted: (n) => `${n} completed`,
-    statLocked: (n) => `${n} locked`,
+      'tarkov.dev is unreachable: showing offline quests (may not reflect EFT 1.1 yet). Retry later.',
     searchPlaceholder: 'Search quest or trader…',
     allTraders: 'All traders',
     allStatuses: 'All statuses',
@@ -388,20 +477,65 @@ export const translations: Record<Lang, Translations> = {
     wipeAll: 'Wipe All',
     confirmWipeAll:
       'All data stored in the browser will be deleted (quest progress, Story campaign, language, etc.). This cannot be undone.\n\nContinue?',
-    importScreenshot: 'Import active',
-    importScreenshotHint: 'Paste screenshot (Ctrl+V)',
-    importScreenshotProcessing: 'Reading screenshot…',
-    importScreenshotResult: (n) => `${n} quest${n === 1 ? '' : 's'} marked in progress`,
-    importScreenshotNoMatch: 'No quests found in the image',
-    importScreenshotNoImage: 'No image in clipboard',
-    importScreenshotError: 'Could not read the image',
+    footerVisits: (n) => `${n.toLocaleString('en-US')} visit${n === 1 ? '' : 's'}`,
     noTasksFilter: 'No quests match these filters.',
     noActiveTasks: 'You have no quests in progress.',
     selectTask: 'Select a quest to view details',
     tabAll: 'All',
     tabActive: 'Active',
+    tabRoutes: 'Routes',
     tabStory: 'Story',
     tabSideQuest: 'Side Quest',
+    routesTitle: 'Map routes',
+    routesHint:
+      'Draw route points on any Tarkov map. Separate from quests — just for planning your runs.',
+    routesOpenMap: 'Open map',
+    routesBackToMaps: 'All maps',
+    routesDrawHint: 'Pick a color and click the map to add points. Click a point to remove it.',
+    routesPointColor: 'Player color',
+    routesCustomColor: 'Custom',
+    routesPlayerNamePlaceholder: 'Player name',
+    routesPoints: (n) => `${n} point${n === 1 ? '' : 's'}`,
+    routesPointLabel: (n) => `Point ${n}`,
+    routesNoPoints: 'No points on this map yet.',
+    routesUndo: 'Undo',
+    routesClear: 'Clear route',
+    routesConfirmClear: 'Clear all points on this map?',
+    routesRemovePoint: 'Remove point',
+    routesFixedSection: 'Fixed points',
+    routesPersonalSection: 'Your points',
+    routesFixedPoints: (n) => `${n} fixed`,
+    routesFixedHint: 'Fixed points are set by an admin and visible to everyone.',
+    routesNoFixedPoints: 'No fixed points on this map.',
+    routesFixedLoading: 'Loading fixed points…',
+    routesFixedLoadError: 'Could not load fixed points.',
+    routesHideFixedPoints: 'Hide fixed points',
+    routesShowFixedPoints: 'Show fixed points',
+    adminRoutesTitle: 'Admin · Fixed route points',
+    adminRoutesHint: 'Create and edit shared points. Stored on the server (Turso).',
+    adminLoginTitle: 'Admin access',
+    adminTokenLabel: 'Admin token',
+    adminTokenPlaceholder: 'ADMIN_TOKEN',
+    adminLogin: 'Sign in',
+    adminLogout: 'Sign out',
+    adminLoginError: 'Invalid token or API unavailable.',
+    adminDrawHint: 'Pick a color and click the map to create a fixed point. Click a point to remove it.',
+    adminPointLabel: 'Label',
+    adminPointLabelPlaceholder: 'Point name (optional)',
+    adminPointImage: 'Image',
+    adminPointImageHint: 'Shown when hovering the point.',
+    adminPointImageUpload: 'Upload image',
+    adminPointImageClear: 'Remove image',
+    adminPointImageError: 'Could not process the image. Try a smaller one.',
+    adminMarkerType: 'Marker type',
+    adminMarkerTypeDefault: 'Normal',
+    adminMarkerTypeKb: 'KB special',
+    adminMarkerTypeKbHint: 'KB pin with no text. Hover still shows the image.',
+    adminMarkerTypeQuestion: 'Question mark',
+    adminMarkerTypeQuestionHint: '? pin with no text. Hover still shows the image.',
+    adminSaveLabel: 'Save label',
+    adminWorking: 'Saving…',
+    adminDeletePoint: 'Delete fixed point',
     allChapters: 'All chapters',
     searchStoryPlaceholder: 'Search objective or chapter…',
     selectStoryNode: 'Select a Story campaign objective',

@@ -116,23 +116,22 @@ export function DataSourceControl({
           {status === 'syncing' && (
             <>
               <span className={`log-sync-dot${taskCount === 0 ? ' log-sync-dot--warn' : ''}`} aria-hidden="true" />
-              <span className="log-sync-text" title={folderName ?? undefined}>
+              <span
+                className="log-sync-text"
+                title={[
+                  folderName,
+                  t.logsStats(sessionCount, totalSessionCount, taskCount, wipeVersion),
+                  taskCount === 0 ? t.logsNoEventsHint : null,
+                ].filter(Boolean).join('\n')}
+              >
                 {lastSyncedAt ? t.logsSyncedAt(lastSyncedAt.toLocaleTimeString(locale)) : folderName}
               </span>
-              <span className={`log-sync-stats${taskCount === 0 ? ' log-sync-stats--warn' : ''}`}>
-                {t.logsStats(sessionCount, totalSessionCount, taskCount, wipeVersion)}
-              </span>
-              {taskCount === 0 && (
-                <span className="log-sync-stats log-sync-stats--warn log-sync-hint">
-                  {t.logsNoEventsHint}
-                </span>
-              )}
               {unmatchedTaskIds.length > 0 && (
                 <span
                   className="log-sync-stats log-sync-stats--warn"
                   title={`${t.logsUnmatchedIds(unmatchedTaskIds.length)}:\n${unmatchedTaskIds.slice(0, 15).join('\n')}`}
                 >
-                  ⚠ {t.logsUnmatchedIds(unmatchedTaskIds.length)}
+                  ⚠ {unmatchedTaskIds.length}
                 </span>
               )}
               <div className="wipe-start-picker">

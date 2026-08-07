@@ -118,7 +118,11 @@ export interface PlayerProgress {
  */
 export type GameMode = 'regular' | 'pve' | 'seasonal';
 
+/** Todos los modos conocidos (incluye `pve` por compatibilidad con datos guardados). */
 export const GAME_MODES: GameMode[] = ['regular', 'pve', 'seasonal'];
+
+/** Modos seleccionables en la UI actual (sin PvE). */
+export const SELECTABLE_GAME_MODES: GameMode[] = ['regular', 'seasonal'];
 
 export const GAME_MODE_STORAGE_KEY = 'efg-game-mode';
 export const DEFAULT_GAME_MODE: GameMode = 'regular';

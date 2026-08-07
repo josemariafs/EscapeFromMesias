@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { fetchTasks } from '../api/tarkov';
+import { loadBundledFallbackTasks } from '../data/tasksFallback';
 import type { Lang } from '../i18n/translations';
 import type { GameMode, Task } from '../types';
 import { TASKS_CACHE_SCHEMA, toApiGameMode } from '../types';
-import { englishNamesFromTasks, loadEnglishTaskNames } from '../utils/englishTaskNames';
 import {
   isCacheUsableFallback,
   isCacheValid,
@@ -14,10 +14,9 @@ import {
 
 export function useTasks(lang: Lang, gameMode: GameMode) {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [englishNamesById, setEnglishNamesById] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  /** true si se está mostrando caché porque la API no respondió. */
+  /** true si se está mostrando caché/snapshot porque la API no respondió. */
   const [usingStaleCache, setUsingStaleCache] = useState(false);
 
   const load = useCallback(async (force = false) => {
@@ -52,14 +51,17 @@ export function useTasks(lang: Lang, gameMode: GameMode) {
         } catch {
           // La carga desde la API ya funcionó; ignorar fallos de caché.
         }
-      } catch (apiErr) {
-        // Si tarkov.dev está caído, preferir cualquier caché usable a una pantalla de error.
+      } catch {
+        // Orden de respaldo: caché IndexedDB → snapshot empaquetado en la app.
         if (cached && isCacheUsableFallback(cached, lang, gameMode)) {
           setTasks(cached.tasks);
           setUsingStaleCache(true);
           setError(null);
         } else {
-          throw apiErr;
+          const bundled = await loadBundledFallbackTasks(lang);
+          setTasks(bundled);
+          setUsingStaleCache(true);
+          setError(null);
         }
       }
     } catch (err) {
@@ -73,29 +75,8 @@ export function useTasks(lang: Lang, gameMode: GameMode) {
     void load();
   }, [load]);
 
-  useEffect(() => {
-    if (lang === 'en') {
-      setEnglishNamesById(englishNamesFromTasks(tasks));
-      return;
-    }
-
-    let cancelled = false;
-    void loadEnglishTaskNames(gameMode)
-      .then((names) => {
-        if (!cancelled) setEnglishNamesById(names);
-      })
-      .catch(() => {
-        if (!cancelled) setEnglishNamesById(new Map());
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [lang, tasks, gameMode]);
-
   return {
     tasks,
-    englishNamesById,
     loading,
     error,
     usingStaleCache,

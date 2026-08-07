@@ -61,6 +61,30 @@ npm run dev
 
 Open the URL shown by Vite (usually `http://localhost:5173`).
 
+### API + fixed route points (Turso)
+
+Fixed map points for **Routes** are stored in [Turso](https://turso.tech) (libSQL/SQLite) and served by Vercel serverless functions under `/api`.
+
+1. Create a Turso database and copy the URL + auth token.
+2. Copy [`web/.env.example`](web/.env.example) to `web/.env.local` and fill in:
+
+```bash
+TURSO_DATABASE_URL=libsql://...
+TURSO_AUTH_TOKEN=...
+ADMIN_TOKEN=your-secret-admin-token
+```
+
+3. For local frontend **and** API together:
+
+```bash
+cd web
+npm run dev:full   # vercel dev
+```
+
+Admin UI: open `/admin/routes` and sign in with `ADMIN_TOKEN`.
+
+Set the same env vars in the Vercel project settings for production.
+
 ### Build
 
 ```bash

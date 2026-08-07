@@ -1,9 +1,9 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActiveTasksView } from './components/ActiveTasksView';
 import { AppFooter } from './components/AppFooter';
 import { DataSourceControl } from './components/DataSourceControl';
-import { GameModeControl } from './components/GameModeControl';
-import { ScreenshotImportButton } from './components/ScreenshotImportButton';
+import { HomeUsageScreen, type HomeUsageChoice } from './components/HomeUsageScreen';
+import { RouteMapsView } from './components/RouteMapsView';
 import { StoryView } from './components/StoryView';
 import { getChapterDesc } from './utils/storylineData';
 import { StoryDetail } from './components/StoryDetail';
@@ -17,16 +17,18 @@ import { useGameMode } from './hooks/useGameMode';
 import { useViewMode } from './hooks/useViewMode';
 import { useProgress } from './hooks/useProgress';
 import { useLogsOverrides } from './hooks/useLogsOverrides';
+import { useFixedRouteMaps } from './hooks/useFixedRouteMaps';
+import { useRouteMaps } from './hooks/useRouteMaps';
 import { useStoryProgress } from './hooks/useStoryProgress';
 import { useTarkovLogSync } from './hooks/useTarkovLogSync';
 import { useTasks } from './hooks/useTasks';
 import { storylineData } from './utils/storylineData';
-import { countStoryByState } from './utils/storylineUnlock';
-import { countByState, recalculateStates, sortTasksForDisplay } from './utils/unlock';
+import { recalculateStates, sortTasksForDisplay } from './utils/unlock';
 import { isSideTask, isStoryApiTask } from './utils/taskCategory';
 import { MIN_VALID_TASK_COUNT } from './types';
 import './App.css';
 
+type AppUsage = 'home' | 'quests' | 'routes';
 type ViewTab = 'all' | 'active';
 type AllQuestTab = 'story' | 'side';
 
@@ -35,7 +37,8 @@ export default function App() {
   const { viewMode, setViewMode } = useViewMode();
   const { gameMode, setGameMode } = useGameMode();
   const { dataSource, setDataSource, isLogsMode } = useDataSource();
-  const { tasks, englishNamesById, loading, error, usingStaleCache, reload } = useTasks(lang, gameMode);
+  const [appUsage, setAppUsage] = useState<AppUsage>('home');
+  const { tasks, loading, error, usingStaleCache, reload } = useTasks(lang, gameMode);
   const {
     progress,
     traders,
@@ -44,7 +47,6 @@ export default function App() {
     startTask,
     completeTask,
     resetTask,
-    importActiveTasks,
     toggleObjective,
     setCustomMapMarker,
     clearCustomMapMarker,
@@ -62,6 +64,19 @@ export default function App() {
     resetNode,
     getRequirementNames,
   } = useStoryProgress(gameMode);
+  const {
+    routes,
+    colorLabels,
+    selectedColor,
+    setSelectedColor,
+    setColorLabel,
+    getPoints,
+    addPoint,
+    removePoint,
+    undoLast,
+    clearMap,
+  } = useRouteMaps();
+  const fixedRoutes = useFixedRouteMaps();
 
   // En modo Logs, el estado de las misiones se deriva de los eventos leídos de los logs de
   // Tarkov; no debe heredar ni mezclarse con el progreso manual guardado en localStorage
@@ -115,12 +130,20 @@ export default function App() {
   const [chapterFilter, setChapterFilter] = useState<number | 'all'>(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showTraderLevels, setShowTraderLevels] = useState(false);
+  const [selectedRouteMapKey, setSelectedRouteMapKey] = useState<string | null>(null);
 
   const locale = lang === 'en' ? 'en-US' : 'es-ES';
-  const isStoryTab = viewTab === 'all' && allQuestTab === 'story';
+  const isHome = appUsage === 'home';
+  const isRoutesUsage = appUsage === 'routes';
+  const isQuestsUsage = appUsage === 'quests';
+  const isStoryTab = isQuestsUsage && viewTab === 'all' && allQuestTab === 'story';
   const isTableView = viewMode === 'table';
-  const isSideTableView = isTableView && viewTab === 'all' && allQuestTab === 'side';
-  const isActiveTableView = isTableView && viewTab === 'active';
+  const isSideTableView = isQuestsUsage && isTableView && viewTab === 'all' && allQuestTab === 'side';
+  const isActiveTableView = isQuestsUsage && isTableView && viewTab === 'active';
+  const routePoints = selectedRouteMapKey ? getPoints(selectedRouteMapKey) : [];
+  const fixedRoutePoints = selectedRouteMapKey
+    ? fixedRoutes.getPoints(selectedRouteMapKey)
+    : [];
 
   const sideTasks = useMemo(() => tasks.filter(isSideTask), [tasks]);
   const storyApiTasks = useMemo(() => tasks.filter(isStoryApiTask), [tasks]);
@@ -133,21 +156,10 @@ export default function App() {
     return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, locale));
   }, [sideTasks, locale]);
 
-  const taskCounts = useMemo(
-    () => countByState(sideTasks, effectiveTaskStates),
+  const startedCount = useMemo(
+    () => sideTasks.filter((task) => (effectiveTaskStates[task.id] ?? 'locked') === 'started').length,
     [sideTasks, effectiveTaskStates],
   );
-
-  const storyCounts = useMemo(() => {
-    const counts = countStoryByState(storyNodes, storyProgress.nodeStates);
-    for (const task of storyApiTasks) {
-      const state = effectiveTaskStates[task.id] ?? 'locked';
-      counts[state] += 1;
-    }
-    return counts;
-  }, [storyNodes, storyProgress.nodeStates, storyApiTasks, effectiveTaskStates]);
-
-  const counts = isStoryTab ? storyCounts : taskCounts;
 
   const tasksById = useMemo(
     () => new Map(tasks.map((task) => [task.id, task])),
@@ -198,7 +210,32 @@ export default function App() {
     }
   };
 
-  if (loading) {
+  const goHome = () => {
+    setAppUsage('home');
+    setSelectedRouteMapKey(null);
+    setSelectedId(null);
+    setShowTraderLevels(false);
+  };
+
+  const handleHomeChoice = (choice: HomeUsageChoice) => {
+    if (choice === 'routes') {
+      setAppUsage('routes');
+      return;
+    }
+    setGameMode(choice === 'seasonal' ? 'seasonal' : 'regular');
+    setViewTab(isLogsMode ? 'active' : 'all');
+    setAppUsage('quests');
+  };
+
+  // En modo Logs solo tiene sentido la pestaña Active (progreso desde logs).
+  useEffect(() => {
+    if (isLogsMode && viewTab !== 'active') {
+      setViewTab('active');
+      setSelectedId(null);
+    }
+  }, [isLogsMode, viewTab]);
+
+  if (isQuestsUsage && loading) {
     return (
       <div className="app loading-screen">
         <div className="loader" />
@@ -207,7 +244,7 @@ export default function App() {
     );
   }
 
-  if (error) {
+  if (isQuestsUsage && error) {
     return (
       <div className="app error-screen">
         <h1>{t.loadError}</h1>
@@ -223,7 +260,7 @@ export default function App() {
   // llega aquí una lista de misiones sospechosamente incompleta, no seguimos mostrando la app
   // con todo a cero sin explicación: se avisa explícitamente de la causa real, en vez de dejar
   // que parezca un problema del lector de logs.
-  if (tasks.length < MIN_VALID_TASK_COUNT) {
+  if (isQuestsUsage && tasks.length < MIN_VALID_TASK_COUNT) {
     return (
       <div className="app error-screen">
         <h1>{t.incompleteTasksTitle}</h1>
@@ -237,149 +274,175 @@ export default function App() {
 
   return (
     <div className={`app${viewMode === 'compact' ? ' compact' : ''}${isLogsLocked ? ' logs-locked' : ''}`}>
-      <header className={`app-header${viewTab === 'all' ? ' app-header--with-search' : ''}`}>
+      <header className="app-header">
         <div className="header-grid">
           <div className="header-logo">
-            <img src="/logo.png" alt={t.appTitle} className="brand-logo" />
+            <button
+              type="button"
+              className="header-logo-btn"
+              onClick={goHome}
+              title={t.homeBack}
+              aria-label={t.homeBack}
+            >
+              <img src="/logo.png" alt={t.appTitle} className="brand-logo" />
+            </button>
           </div>
 
           <div className="header-tabs">
-            <div className="segmented" role="tablist" aria-label={t.tabAll}>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={viewTab === 'all'}
-                className={`segmented-item${viewTab === 'all' ? ' active' : ''}`}
-                onClick={() => setViewTab('all')}
-              >
-                {t.tabAll}
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={viewTab === 'active'}
-                className={`segmented-item${viewTab === 'active' ? ' active' : ''}`}
-                onClick={() => setViewTab('active')}
-              >
-                {t.tabActive}
-                {taskCounts.started > 0 && <span className="seg-count">{taskCounts.started}</span>}
-              </button>
-            </div>
+            {isQuestsUsage && (
+              <>
+                <span
+                  className={`header-mode-badge${gameMode === 'seasonal' ? ' seasonal' : ''}`}
+                  title={t.gameModeHint[gameMode === 'pve' ? 'regular' : gameMode]}
+                >
+                  {gameMode === 'seasonal' ? 'SEASONAL' : 'PVP'}
+                </span>
+                <div className="segmented" role="tablist" aria-label={t.tabAll}>
+                  {!isLogsMode && (
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={viewTab === 'all'}
+                      className={`segmented-item${viewTab === 'all' ? ' active' : ''}`}
+                      onClick={() => setViewTab('all')}
+                    >
+                      {t.tabAll}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={viewTab === 'active'}
+                    className={`segmented-item${viewTab === 'active' ? ' active' : ''}`}
+                    onClick={() => setViewTab('active')}
+                  >
+                    {t.tabActive}
+                    {startedCount > 0 && <span className="seg-count">{startedCount}</span>}
+                  </button>
+                </div>
 
-            {viewTab === 'all' && (
-              <div className="segmented segmented-sub" role="tablist" aria-label={t.tabAll}>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={allQuestTab === 'story'}
-                  className={`segmented-item${allQuestTab === 'story' ? ' active' : ''}`}
-                  onClick={() => handleQuestTabChange('story')}
-                >
-                  {t.tabStory}
-                  <span className="seg-count">{storyNodes.length + storyApiTasks.length}</span>
-                </button>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={allQuestTab === 'side'}
-                  className={`segmented-item${allQuestTab === 'side' ? ' active' : ''}`}
-                  onClick={() => handleQuestTabChange('side')}
-                >
-                  {t.tabSideQuest}
-                  <span className="seg-count">{sideTasks.length}</span>
-                </button>
-              </div>
+                {!isLogsMode && viewTab === 'all' && (
+                  <div className="segmented segmented-sub" role="tablist" aria-label={t.tabAll}>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={allQuestTab === 'story'}
+                      className={`segmented-item${allQuestTab === 'story' ? ' active' : ''}`}
+                      onClick={() => handleQuestTabChange('story')}
+                    >
+                      {t.tabStory}
+                      <span className="seg-count">{storyNodes.length + storyApiTasks.length}</span>
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={allQuestTab === 'side'}
+                      className={`segmented-item${allQuestTab === 'side' ? ' active' : ''}`}
+                      onClick={() => handleQuestTabChange('side')}
+                    >
+                      {t.tabSideQuest}
+                      <span className="seg-count">{sideTasks.length}</span>
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+            {isRoutesUsage && (
+              <span className="header-mode-badge routes">{t.tabRoutes}</span>
             )}
           </div>
 
           <div className="header-right">
             <div className="header-controls-top">
-              <GameModeControl gameMode={gameMode} onChange={setGameMode} t={t} />
-              <label className="header-level">
-                <span className="header-level-label">{t.playerLevel}</span>
-                <input
-                  type="number"
-                  min={0}
-                  max={79}
-                  value={progress.playerLevel}
-                  onChange={(e) => setPlayerLevel(Number(e.target.value))}
-                />
-              </label>
-              <button
-                type="button"
-                className={`btn-trader-levels${showTraderLevels ? ' active' : ''}`}
-                onClick={() => setShowTraderLevels((v) => !v)}
-                aria-pressed={showTraderLevels}
-                title={t.traderLevels}
-              >
-                {t.traderLevels}
-              </button>
-              <DataSourceControl
-                dataSource={dataSource}
-                onChangeDataSource={setDataSource}
-                status={logSync.status}
-                folderName={logSync.folderName}
-                lastSyncedAt={logSync.lastSyncedAt}
-                errorMessage={logSync.errorMessage}
-                sessionCount={logSync.sessionCount}
-                totalSessionCount={logSync.totalSessionCount}
-                taskCount={Object.keys(logSync.taskStatusMap).length}
-                wipeVersion={logSync.wipeVersion}
-                unmatchedTaskIds={unmatchedLogTaskIds}
-                breakpoints={logSync.breakpoints}
-                wipeStartSelection={logSync.wipeStartSelection}
-                resolvedWipeStartSession={logSync.resolvedWipeStartSession}
-                onChangeWipeStart={logSync.setWipeStart}
-                locale={locale}
-                t={t}
-                onConnect={logSync.connect}
-                onReconnect={logSync.reconnect}
-                onDisconnect={logSync.disconnect}
-              />
-              <div className="view-mode-toggle" role="group" aria-label={t.viewMode}>
-                <button
-                  type="button"
-                  className={`view-mode-btn${viewMode === 'normal' ? ' active' : ''}`}
-                  onClick={() => setViewMode('normal')}
-                  aria-pressed={viewMode === 'normal'}
-                  title={t.viewModeNormal}
-                >
-                  <svg viewBox="0 0 20 14" width="18" height="13" aria-hidden="true">
-                    <rect x="1" y="1" width="18" height="5.5" rx="1.2" fill="currentColor" opacity="0.85" />
-                    <rect x="1" y="7.5" width="18" height="5.5" rx="1.2" fill="currentColor" opacity="0.85" />
-                  </svg>
-                  <span className="sr-only">{t.viewModeNormal}</span>
-                </button>
-                <button
-                  type="button"
-                  className={`view-mode-btn${viewMode === 'compact' ? ' active' : ''}`}
-                  onClick={() => setViewMode('compact')}
-                  aria-pressed={viewMode === 'compact'}
-                  title={t.viewModeCompact}
-                >
-                  <svg viewBox="0 0 20 14" width="18" height="13" aria-hidden="true">
-                    <rect x="1" y="1" width="18" height="3" rx="0.9" fill="currentColor" />
-                    <rect x="1" y="5.5" width="18" height="3" rx="0.9" fill="currentColor" />
-                    <rect x="1" y="10" width="18" height="3" rx="0.9" fill="currentColor" />
-                  </svg>
-                  <span className="sr-only">{t.viewModeCompact}</span>
-                </button>
-                <button
-                  type="button"
-                  className={`view-mode-btn${viewMode === 'table' ? ' active' : ''}`}
-                  onClick={() => setViewMode('table')}
-                  aria-pressed={viewMode === 'table'}
-                  title={t.viewModeTable}
-                >
-                  <svg viewBox="0 0 20 14" width="18" height="13" aria-hidden="true">
-                    <rect x="1" y="1" width="18" height="12" rx="1.2" fill="none" stroke="currentColor" strokeWidth="1.4" />
-                    <line x1="1" y1="5.5" x2="19" y2="5.5" stroke="currentColor" strokeWidth="1.2" />
-                    <line x1="1" y1="9.5" x2="19" y2="9.5" stroke="currentColor" strokeWidth="1.2" />
-                    <line x1="10" y1="1" x2="10" y2="13" stroke="currentColor" strokeWidth="1.2" />
-                  </svg>
-                  <span className="sr-only">{t.viewModeTable}</span>
-                </button>
-              </div>
+              {isQuestsUsage && (
+                <>
+                  <label className="header-level" title={t.playerLevel}>
+                    <span className="header-level-label">Lv</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={79}
+                      value={progress.playerLevel}
+                      onChange={(e) => setPlayerLevel(Number(e.target.value))}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className={`btn-trader-levels${showTraderLevels ? ' active' : ''}`}
+                    onClick={() => setShowTraderLevels((v) => !v)}
+                    aria-pressed={showTraderLevels}
+                    title={t.traderLevels}
+                  >
+                    LL
+                  </button>
+                  <DataSourceControl
+                    dataSource={dataSource}
+                    onChangeDataSource={setDataSource}
+                    status={logSync.status}
+                    folderName={logSync.folderName}
+                    lastSyncedAt={logSync.lastSyncedAt}
+                    errorMessage={logSync.errorMessage}
+                    sessionCount={logSync.sessionCount}
+                    totalSessionCount={logSync.totalSessionCount}
+                    taskCount={Object.keys(logSync.taskStatusMap).length}
+                    wipeVersion={logSync.wipeVersion}
+                    unmatchedTaskIds={unmatchedLogTaskIds}
+                    breakpoints={logSync.breakpoints}
+                    wipeStartSelection={logSync.wipeStartSelection}
+                    resolvedWipeStartSession={logSync.resolvedWipeStartSession}
+                    onChangeWipeStart={logSync.setWipeStart}
+                    locale={locale}
+                    t={t}
+                    onConnect={logSync.connect}
+                    onReconnect={logSync.reconnect}
+                    onDisconnect={logSync.disconnect}
+                  />
+                  <div className="view-mode-toggle" role="group" aria-label={t.viewMode}>
+                    <button
+                      type="button"
+                      className={`view-mode-btn${viewMode === 'normal' ? ' active' : ''}`}
+                      onClick={() => setViewMode('normal')}
+                      aria-pressed={viewMode === 'normal'}
+                      title={t.viewModeNormal}
+                    >
+                      <svg viewBox="0 0 20 14" width="18" height="13" aria-hidden="true">
+                        <rect x="1" y="1" width="18" height="5.5" rx="1.2" fill="currentColor" opacity="0.85" />
+                        <rect x="1" y="7.5" width="18" height="5.5" rx="1.2" fill="currentColor" opacity="0.85" />
+                      </svg>
+                      <span className="sr-only">{t.viewModeNormal}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`view-mode-btn${viewMode === 'compact' ? ' active' : ''}`}
+                      onClick={() => setViewMode('compact')}
+                      aria-pressed={viewMode === 'compact'}
+                      title={t.viewModeCompact}
+                    >
+                      <svg viewBox="0 0 20 14" width="18" height="13" aria-hidden="true">
+                        <rect x="1" y="1" width="18" height="3" rx="0.9" fill="currentColor" />
+                        <rect x="1" y="5.5" width="18" height="3" rx="0.9" fill="currentColor" />
+                        <rect x="1" y="10" width="18" height="3" rx="0.9" fill="currentColor" />
+                      </svg>
+                      <span className="sr-only">{t.viewModeCompact}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`view-mode-btn${viewMode === 'table' ? ' active' : ''}`}
+                      onClick={() => setViewMode('table')}
+                      aria-pressed={viewMode === 'table'}
+                      title={t.viewModeTable}
+                    >
+                      <svg viewBox="0 0 20 14" width="18" height="13" aria-hidden="true">
+                        <rect x="1" y="1" width="18" height="12" rx="1.2" fill="none" stroke="currentColor" strokeWidth="1.4" />
+                        <line x1="1" y1="5.5" x2="19" y2="5.5" stroke="currentColor" strokeWidth="1.2" />
+                        <line x1="1" y1="9.5" x2="19" y2="9.5" stroke="currentColor" strokeWidth="1.2" />
+                        <line x1="10" y1="1" x2="10" y2="13" stroke="currentColor" strokeWidth="1.2" />
+                      </svg>
+                      <span className="sr-only">{t.viewModeTable}</span>
+                    </button>
+                  </div>
+                </>
+              )}
               <div className="lang-flags" role="group" aria-label={t.language}>
                 <button
                   type="button"
@@ -401,46 +464,63 @@ export default function App() {
                 </button>
               </div>
               <div className="header-actions">
-                {!isLogsLocked && (
-                  <ScreenshotImportButton
-                    tasks={tasks}
-                    englishNamesById={englishNamesById}
-                    t={t}
-                    onImport={importActiveTasks}
-                  />
-                )}
                 <button type="button" className="btn btn-wipe" onClick={handleWipeAll}>
                   {t.wipeAll}
                 </button>
               </div>
             </div>
-
-            <div className="header-stats">
-              <div className="stats-bar">
-                <span className="stat available">{t.statAvailable(counts.available)}</span>
-                <span className="stat started">{t.statStarted(counts.started)}</span>
-                <span className="stat completed">{t.statCompleted(counts.completed)}</span>
-                <span className="stat locked">{t.statLocked(counts.locked)}</span>
-              </div>
-              {usingStaleCache && (
-                <p className="logs-readonly-notice logs-warning-notice">
-                  {t.staleCacheNotice}{' '}
-                  <button type="button" className="link-btn" onClick={() => reload()}>
-                    {t.retry}
-                  </button>
-                </p>
-              )}
-              {isLogsLocked && (
-                <p className="logs-readonly-notice">{t.logsReadOnlyNotice}</p>
-              )}
-              {isLogsLocked && Object.keys(logSync.taskStatusMap).length === 0 && (
-                <p className="logs-readonly-notice logs-warning-notice">{t.logsNoEventsHint}</p>
-              )}
-            </div>
           </div>
+        </div>
+      </header>
 
+      {showTraderLevels && isQuestsUsage && (
+        <TraderLevelsPanel
+          traders={traders}
+          traderLevels={progress.traderLevels}
+          onChange={setTraderLevel}
+          t={t}
+          onClose={() => setShowTraderLevels(false)}
+        />
+      )}
+
+      <main className={`main-layout${isRoutesUsage || isHome ? ' main-layout--routes' : ''}`}>
+        {isHome ? (
+          <HomeUsageScreen t={t} onChoose={handleHomeChoice} />
+        ) : isRoutesUsage ? (
+          <RouteMapsView
+            routes={routes}
+            fixedRoutes={fixedRoutes.routes}
+            selectedMapKey={selectedRouteMapKey}
+            onSelectMap={setSelectedRouteMapKey}
+            points={routePoints}
+            fixedPoints={fixedRoutePoints}
+            selectedColor={selectedColor}
+            colorLabels={colorLabels}
+            onChangeColor={setSelectedColor}
+            onChangeColorLabel={setColorLabel}
+            onAddPoint={(left, top) => {
+              if (selectedRouteMapKey) addPoint(selectedRouteMapKey, left, top);
+            }}
+            onRemovePoint={(pointId) => {
+              if (selectedRouteMapKey) removePoint(selectedRouteMapKey, pointId);
+            }}
+            onUndoLast={() => {
+              if (selectedRouteMapKey) undoLast(selectedRouteMapKey);
+            }}
+            onClearMap={() => {
+              if (selectedRouteMapKey) clearMap(selectedRouteMapKey);
+            }}
+            fixedLoading={fixedRoutes.loading}
+            fixedError={fixedRoutes.error}
+            t={t}
+          />
+        ) : (
+        <>
+        <div
+          className={`task-list${viewTab === 'active' ? ' active-tab' : ''}${isStoryTab ? ' story-tree-tab' : ''}${isSideTableView || isActiveTableView ? ' table-view-tab' : ''}`}
+        >
           {viewTab === 'all' && (
-            <div className="header-search">
+            <div className="view-filters">
               <input
                 type="search"
                 placeholder={isStoryTab ? t.searchStoryPlaceholder : t.searchPlaceholder}
@@ -450,7 +530,7 @@ export default function App() {
               />
               {isStoryTab ? (
                 <select
-                  className="header-chapter-select"
+                  className="view-filter-select"
                   value={chapterFilter === 'all' ? 'all' : String(chapterFilter)}
                   onChange={(e) => {
                     const v = e.target.value;
@@ -464,7 +544,7 @@ export default function App() {
                 </select>
               ) : (
                 <select
-                  className="header-chapter-select"
+                  className="view-filter-select"
                   value={traderFilter}
                   onChange={(e) => setTraderFilter(e.target.value)}
                 >
@@ -476,23 +556,6 @@ export default function App() {
               )}
             </div>
           )}
-        </div>
-      </header>
-
-      {showTraderLevels && (
-        <TraderLevelsPanel
-          traders={traders}
-          traderLevels={progress.traderLevels}
-          onChange={setTraderLevel}
-          t={t}
-          onClose={() => setShowTraderLevels(false)}
-        />
-      )}
-
-      <main className="main-layout">
-        <div
-          className={`task-list${viewTab === 'active' ? ' active-tab' : ''}${isStoryTab ? ' story-tree-tab' : ''}${isSideTableView || isActiveTableView ? ' table-view-tab' : ''}`}
-        >
           {viewTab === 'active' ? (
             <ActiveTasksView
               tasks={tasks}
@@ -616,9 +679,32 @@ export default function App() {
             logRawState={selectedId ? logSync.taskStatusMap[selectedId] ?? null : null}
           />
         )}
+        </>
+        )}
       </main>
 
-      <AppFooter locale={locale} />
+      <AppFooter
+        locale={locale}
+        formatVisits={t.footerVisits}
+        notices={(usingStaleCache || isLogsLocked) ? (
+          <>
+            {usingStaleCache && (
+              <p className="footer-notice footer-notice--warn">
+                {t.staleCacheNotice}{' '}
+                <button type="button" className="link-btn" onClick={() => reload()}>
+                  {t.retry}
+                </button>
+              </p>
+            )}
+            {isLogsLocked && (
+              <p className="footer-notice">{t.logsReadOnlyNotice}</p>
+            )}
+            {isLogsLocked && Object.keys(logSync.taskStatusMap).length === 0 && (
+              <p className="footer-notice footer-notice--warn">{t.logsNoEventsHint}</p>
+            )}
+          </>
+        ) : undefined}
+      />
     </div>
   );
 }

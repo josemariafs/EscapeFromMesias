@@ -17,3 +17,5 @@ web/.vercel/
 Thumbs.db
 .vscode/
 .idea/
+
+.vercel

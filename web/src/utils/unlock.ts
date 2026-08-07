@@ -270,26 +270,6 @@ export function getQuestItemRequirements(task: Task): QuestItemRequirement[] {
   return [...byId.values()];
 }
 
-export function countByState(
-  tasks: Task[],
-  states: Record<string, TaskProgressState>,
-): Record<TaskProgressState, number> {
-  const counts: Record<TaskProgressState, number> = {
-    locked: 0,
-    available: 0,
-    started: 0,
-    completed: 0,
-    failed: 0,
-  };
-
-  for (const task of tasks) {
-    const state = states[task.id] ?? 'locked';
-    counts[state]++;
-  }
-
-  return counts;
-}
-
 export function displayStateSortRank(state: TaskProgressState): number {
   switch (state) {
     case 'started':

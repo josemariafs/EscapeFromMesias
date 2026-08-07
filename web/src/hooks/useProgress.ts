@@ -8,7 +8,6 @@ import type {
   TaskProgressState,
 } from '../types';
 import { progressStorageKey } from '../types';
-import { buildImportStateUpdate } from '../utils/taskImport';
 import { DEFAULT_TRADER_LOYALTY, recalculateStates } from '../utils/unlock';
 
 const defaultProgress = (): PlayerProgress => ({
@@ -151,25 +150,6 @@ export function useProgress(tasks: Task[], gameMode: GameMode) {
     });
   }, []);
 
-  const importActiveTasks = useCallback((activeTaskIds: string[]) => {
-    if (activeTaskIds.length === 0) return;
-
-    setProgress((prev) => {
-      const { activeIds, completedIds } = buildImportStateUpdate(tasks, activeTaskIds);
-      const taskStates = { ...prev.taskStates };
-
-      for (const id of completedIds) {
-        taskStates[id] = 'completed';
-      }
-      for (const id of activeIds) {
-        taskStates[id] = 'started';
-      }
-
-      const next = { ...prev, taskStates, updatedAt: new Date().toISOString() };
-      return { ...next, taskStates: recalculateStates(tasks, next) };
-    });
-  }, [tasks]);
-
   const setCustomMapMarker = useCallback((
     mapKey: string,
     taskId: string,
@@ -226,7 +206,6 @@ export function useProgress(tasks: Task[], gameMode: GameMode) {
     startTask,
     completeTask,
     resetTask,
-    importActiveTasks,
     toggleObjective,
     setCustomMapMarker,
     clearCustomMapMarker,

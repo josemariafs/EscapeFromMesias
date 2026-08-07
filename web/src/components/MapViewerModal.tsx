@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CustomMapMarkerPin, CustomMapMarkers, Task } from '../types';
 import type { Translations } from '../i18n/translations';
+import { mapPercentToAreaPoint, useMapPanZoom } from '../hooks/useMapPanZoom';
 import {
   getAllMapMarkers,
   getTasksWithoutMapMarkers,
@@ -51,9 +52,20 @@ export function MapViewerModal({
 }: MapViewerModalProps) {
   const [placingTaskId, setPlacingTaskId] = useState<string | null>(null);
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
-  const mapAreaRef = useRef<HTMLDivElement>(null);
+  const [areaSize, setAreaSize] = useState({ width: 0, height: 0 });
   const imageWrapRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+  const {
+    containerRef: mapAreaRef,
+    setContainerRef: setMapAreaRef,
+    zoom,
+    panX,
+    panY,
+    isPanning,
+    contentStyle,
+    panHandlers,
+    shouldSuppressClick,
+  } = useMapPanZoom(mapKey);
 
   const markers = useMemo(
     () => getAllMapMarkers(mapKey, mapTasks, completedObjectives, customMapMarkers),
@@ -79,7 +91,9 @@ export function MapViewerModal({
   const updateImageSize = useCallback(() => {
     const area = mapAreaRef.current;
     const img = imageRef.current;
-    if (!area || !img?.naturalWidth) return;
+    if (!area) return;
+    setAreaSize({ width: area.clientWidth, height: area.clientHeight });
+    if (!img?.naturalWidth) return;
 
     setImageSize(fitImageSize(
       img.naturalWidth,
@@ -118,6 +132,7 @@ export function MapViewerModal({
 
   const handleMapClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!placingTaskId || !imageWrapRef.current) return;
+    if (shouldSuppressClick()) return;
 
     const rect = imageWrapRef.current.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return;
@@ -171,8 +186,9 @@ export function MapViewerModal({
         )}
         <div className="map-modal-body">
           <div
-            ref={mapAreaRef}
-            className={`map-modal-map-area${placingTaskId ? ' map-modal-map-area--placing' : ''}`}
+            ref={setMapAreaRef}
+            className={`map-modal-map-area${placingTaskId ? ' map-modal-map-area--placing' : ''}${zoom > 1 ? ' map-modal-map-area--zoomed' : ''}${isPanning ? ' is-panning' : ''}`}
+            {...panHandlers}
           >
             <div
               ref={imageWrapRef}
@@ -180,6 +196,7 @@ export function MapViewerModal({
               style={{
                 width: imageSize.width > 0 ? `${imageSize.width}px` : undefined,
                 height: imageSize.height > 0 ? `${imageSize.height}px` : undefined,
+                ...contentStyle,
               }}
               onClick={placingTaskId ? handleMapClick : undefined}
               role={placingTaskId ? 'button' : undefined}
@@ -193,23 +210,36 @@ export function MapViewerModal({
                 className="map-modal-image"
                 onLoad={updateImageSize}
               />
-              {markers.length > 0 && imageSize.width > 0 && (
-                <div className="map-modal-markers" aria-hidden="true">
-                  {markers.map((marker) => (
+            </div>
+            {markers.length > 0 && imageSize.width > 0 && areaSize.width > 0 && (
+              <div className="map-modal-markers map-modal-markers--overlay" aria-hidden="true">
+                {markers.map((marker) => {
+                  const pos = mapPercentToAreaPoint(
+                    marker.left,
+                    marker.top,
+                    imageSize.width,
+                    imageSize.height,
+                    areaSize.width,
+                    areaSize.height,
+                    zoom,
+                    panX,
+                    panY,
+                  );
+                  return (
                     <div
                       key={marker.id}
                       className={`map-quest-marker${marker.custom ? ' map-quest-marker--custom' : ''}`}
-                      style={{ left: `${marker.left}%`, top: `${marker.top}%` }}
+                      style={{ left: pos.x, top: pos.y }}
                       title={`${marker.taskName}\n${marker.custom ? t.mapMarkerManual : marker.objectiveDescription}`}
                       onClick={(e) => e.stopPropagation()}
                     >
                       <span className="map-quest-marker-pin" />
                       <span className="map-quest-marker-label">{marker.taskName}</span>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
           {hasLegend && (
             <aside className="map-modal-legend">
