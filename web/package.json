@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "dev:full": "npx vercel dev --listen 3000",
-    "build": "tsc -b && vite build",
+    "build": "node scripts/resolve-app-version.mjs && tsc -b && vite build",
+    "version:resolve": "node scripts/resolve-app-version.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },

@@ -3,14 +3,28 @@ import { readFileSync } from 'node:fs';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import {
-  getDailyAccessCode,
-  getSpanishAuthDayKey,
+  getSpanishAuthWeekKey,
+  getWeeklyAccessCode,
   hasSiteAccessPasswords,
   resolveSiteLogin,
   resolveSiteSession,
 } from './api/_lib/siteAccess';
 
 const pkg = JSON.parse(readFileSync('./package.json', 'utf-8')) as { version: string };
+
+function resolveAppVersion(): string {
+  try {
+    const generated = JSON.parse(
+      readFileSync('./src/generated/app-version.json', 'utf-8'),
+    ) as { version?: string };
+    if (typeof generated.version === 'string' && generated.version.trim()) {
+      return generated.version.trim();
+    }
+  } catch {
+    // local / first run: package.json
+  }
+  return pkg.version;
+}
 
 function readJsonBody(req: IncomingMessage): Promise<Record<string, unknown>> {
   return new Promise((resolve) => {
@@ -118,17 +132,20 @@ function siteAuthDevPlugin(): Plugin {
           return;
         }
 
-        const code = getDailyAccessCode();
+        const code = getWeeklyAccessCode();
         if (!code) {
-          sendJson(res, 503, { error: 'Daily code is not configured' });
+          sendJson(res, 503, { error: 'Weekly code is not configured' });
           return;
         }
 
+        const weekKey = getSpanishAuthWeekKey();
         sendJson(res, 200, {
           ok: true,
           code,
-          dayKey: getSpanishAuthDayKey(),
+          dayKey: weekKey,
+          weekKey,
           rotatesAtHour: 5,
+          rotatesOn: 'monday',
           timeZone: 'Europe/Madrid',
         });
       });
@@ -144,10 +161,12 @@ export default defineConfig(({ mode }) => {
     if (process.env[key] === undefined) process.env[key] = value;
   }
 
+  const appVersion = resolveAppVersion();
+
   return {
     plugins: [react(), siteAuthDevPlugin()],
     define: {
-      __APP_VERSION__: JSON.stringify(pkg.version),
+      __APP_VERSION__: JSON.stringify(appVersion),
       __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
     },
   };

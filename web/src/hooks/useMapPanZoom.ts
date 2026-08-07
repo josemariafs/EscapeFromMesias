@@ -10,6 +10,8 @@ import {
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 5;
 const ZOOM_STEP = 1.12;
+/** Distancia² mínima para considerar arrastre (pan) y no un click de marcador. */
+const PAN_THRESHOLD_SQ = 36; // 6px
 
 interface PanZoomState {
   zoom: number;
@@ -17,9 +19,19 @@ interface PanZoomState {
   panY: number;
 }
 
+interface DragState {
+  pointerId: number;
+  startX: number;
+  startY: number;
+  originX: number;
+  originY: number;
+  target: HTMLElement;
+  active: boolean;
+}
+
 /**
  * Zoom con rueda (hacia el cursor) y arrastre para panear cuando hay zoom.
- * Usa callback ref para enganchar la rueda en cuanto existe el contenedor del mapa.
+ * Un click sin arrastre no inicia pan (permite colocar marcadores).
  */
 export function useMapPanZoom(resetKey: unknown) {
   const [container, setContainer] = useState<HTMLElement | null>(null);
@@ -34,23 +46,26 @@ export function useMapPanZoom(resetKey: unknown) {
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  const dragRef = useRef<{
-    pointerId: number;
-    startX: number;
-    startY: number;
-    originX: number;
-    originY: number;
-    moved: boolean;
-  } | null>(null);
+  const dragRef = useRef<DragState | null>(null);
   const didPanRef = useRef(false);
   const [isPanning, setIsPanning] = useState(false);
+
+  const clearWindowDragListeners = useRef<(() => void) | null>(null);
+
+  const stopWindowDragTracking = useCallback(() => {
+    clearWindowDragListeners.current?.();
+    clearWindowDragListeners.current = null;
+  }, []);
 
   useEffect(() => {
     setState({ zoom: 1, panX: 0, panY: 0 });
     dragRef.current = null;
     didPanRef.current = false;
     setIsPanning(false);
-  }, [resetKey]);
+    stopWindowDragTracking();
+  }, [resetKey, stopWindowDragTracking]);
+
+  useEffect(() => () => stopWindowDragTracking(), [stopWindowDragTracking]);
 
   useEffect(() => {
     if (!container) return undefined;
@@ -89,45 +104,69 @@ export function useMapPanZoom(resetKey: unknown) {
     const target = event.target as HTMLElement | null;
     if (target?.closest('button, a, input, label')) return;
 
-    dragRef.current = {
+    stopWindowDragTracking();
+
+    const drag: DragState = {
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
       originX: stateRef.current.panX,
       originY: stateRef.current.panY,
-      moved: false,
+      target: event.currentTarget,
+      active: false,
     };
-    event.currentTarget.setPointerCapture(event.pointerId);
-    setIsPanning(true);
-  }, []);
+    dragRef.current = drag;
 
-  const onPointerMove = useCallback((event: ReactPointerEvent<HTMLElement>) => {
-    const drag = dragRef.current;
-    if (!drag || drag.pointerId !== event.pointerId) return;
-    const dx = event.clientX - drag.startX;
-    const dy = event.clientY - drag.startY;
-    if (!drag.moved && dx * dx + dy * dy > 9) {
-      drag.moved = true;
-    }
-    setState((prev) => ({
-      ...prev,
-      panX: drag.originX + dx,
-      panY: drag.originY + dy,
-    }));
-  }, []);
+    const onWindowMove = (moveEvent: PointerEvent) => {
+      if (moveEvent.pointerId !== drag.pointerId) return;
+      const dx = moveEvent.clientX - drag.startX;
+      const dy = moveEvent.clientY - drag.startY;
 
-  const endPan = useCallback((event: ReactPointerEvent<HTMLElement>) => {
-    const drag = dragRef.current;
-    if (!drag || drag.pointerId !== event.pointerId) return;
-    didPanRef.current = drag.moved;
-    dragRef.current = null;
-    setIsPanning(false);
-    try {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    } catch {
-      // ignore
-    }
-  }, []);
+      if (!drag.active) {
+        if (dx * dx + dy * dy <= PAN_THRESHOLD_SQ) return;
+        drag.active = true;
+        didPanRef.current = true;
+        try {
+          drag.target.setPointerCapture(drag.pointerId);
+        } catch {
+          // ignore
+        }
+        setIsPanning(true);
+      }
+
+      setState((prev) => ({
+        ...prev,
+        panX: drag.originX + dx,
+        panY: drag.originY + dy,
+      }));
+    };
+
+    const onWindowUp = (upEvent: PointerEvent) => {
+      if (upEvent.pointerId !== drag.pointerId) return;
+      didPanRef.current = drag.active;
+      if (dragRef.current?.pointerId === drag.pointerId) {
+        dragRef.current = null;
+      }
+      setIsPanning(false);
+      if (drag.active) {
+        try {
+          drag.target.releasePointerCapture(drag.pointerId);
+        } catch {
+          // ignore
+        }
+      }
+      stopWindowDragTracking();
+    };
+
+    window.addEventListener('pointermove', onWindowMove);
+    window.addEventListener('pointerup', onWindowUp);
+    window.addEventListener('pointercancel', onWindowUp);
+    clearWindowDragListeners.current = () => {
+      window.removeEventListener('pointermove', onWindowMove);
+      window.removeEventListener('pointerup', onWindowUp);
+      window.removeEventListener('pointercancel', onWindowUp);
+    };
+  }, [stopWindowDragTracking]);
 
   const shouldSuppressClick = useCallback(() => {
     if (didPanRef.current) {
@@ -153,9 +192,6 @@ export function useMapPanZoom(resetKey: unknown) {
     contentStyle,
     panHandlers: {
       onPointerDown,
-      onPointerMove,
-      onPointerUp: endPan,
-      onPointerCancel: endPan,
     },
     shouldSuppressClick,
   };

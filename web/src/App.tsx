@@ -2,8 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActiveTasksView } from './components/ActiveTasksView';
 import { AppFooter } from './components/AppFooter';
 import { DataSourceControl } from './components/DataSourceControl';
+import { CrtViewTransition } from './components/CrtViewTransition';
 import { HomeUsageScreen, type HomeUsageChoice } from './components/HomeUsageScreen';
 import { useSiteAuthContext } from './context/SiteAuthContext';
+import { useCrtViewTransition } from './hooks/useCrtViewTransition';
 import { RouteMapsView } from './components/RouteMapsView';
 import { StoryView } from './components/StoryView';
 import { getChapterDesc } from './utils/storylineData';
@@ -41,6 +43,7 @@ export default function App() {
   const { gameMode, setGameMode } = useGameMode();
   const { dataSource, setDataSource, isLogsMode } = useDataSource();
   const { canRevealDailyCode } = useSiteAuthContext();
+  const { active: crtActive, playId: crtPlayId, transitionTo } = useCrtViewTransition();
   const [appUsage, setAppUsage] = useState<AppUsage>('home');
   /** Routes y Seasonal comparten mapas; PVP Zone (regular) tiene los suyos. */
   const routeEnvironment: RouteEnvironment =
@@ -241,22 +244,26 @@ export default function App() {
   };
 
   const goHome = () => {
-    setAppUsage('home');
-    setSelectedRouteMapKey(null);
-    setSelectedId(null);
-    setShowTraderLevels(false);
+    transitionTo(() => {
+      setAppUsage('home');
+      setSelectedRouteMapKey(null);
+      setSelectedId(null);
+      setShowTraderLevels(false);
+    });
   };
 
   const handleHomeChoice = (choice: HomeUsageChoice) => {
-    if (choice === 'routes') {
-      // Routes comparte datos de mapa con Seasonal.
-      setGameMode('seasonal');
-      setAppUsage('routes');
-      return;
-    }
-    setGameMode(choice === 'seasonal' ? 'seasonal' : 'regular');
-    setViewTab(isLogsMode ? 'active' : 'all');
-    setAppUsage('quests');
+    transitionTo(() => {
+      if (choice === 'routes') {
+        // Routes comparte datos de mapa con Seasonal.
+        setGameMode('seasonal');
+        setAppUsage('routes');
+        return;
+      }
+      setGameMode(choice === 'seasonal' ? 'seasonal' : 'regular');
+      setViewTab(isLogsMode ? 'active' : 'all');
+      setAppUsage('quests');
+    });
   };
 
   // En modo Logs: Activas y Completadas (progreso desde logs).
@@ -265,6 +272,7 @@ export default function App() {
       setViewTab('active');
       setSelectedId(null);
     }
+    if (isLogsMode) setShowTraderLevels(false);
   }, [isLogsMode, viewTab]);
 
   useEffect(() => {
@@ -310,6 +318,7 @@ export default function App() {
 
   return (
     <div className={`app${isHome ? ' app--home' : ''}${isLogsLocked ? ' logs-locked' : ''}`}>
+      <CrtViewTransition active={crtActive} playId={crtPlayId} />
       {!isHome && (
       <header className="app-header">
         <div className="header-grid">
@@ -408,32 +417,29 @@ export default function App() {
             <div className="header-controls-top">
               {isQuestsUsage && (
                 <>
-                  <label
-                    className="header-level"
-                    title={isLogsMode ? t.playerLevelLogsHint : t.playerLevel}
-                  >
-                    <span className="header-level-label">Lv</span>
-                    <input
-                      type="number"
-                      min={0}
-                      max={79}
-                      value={progress.playerLevel}
-                      readOnly={isLogsMode}
-                      onChange={(e) => {
-                        if (isLogsMode) return;
-                        setPlayerLevel(Number(e.target.value));
-                      }}
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    className={`btn-trader-levels${showTraderLevels ? ' active' : ''}`}
-                    onClick={() => setShowTraderLevels((v) => !v)}
-                    aria-pressed={showTraderLevels}
-                    title={t.traderLevels}
-                  >
-                    LL
-                  </button>
+                  {!isLogsMode && (
+                    <>
+                      <label className="header-level" title={t.playerLevel}>
+                        <span className="header-level-label">Lv</span>
+                        <input
+                          type="number"
+                          min={0}
+                          max={79}
+                          value={progress.playerLevel}
+                          onChange={(e) => setPlayerLevel(Number(e.target.value))}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        className={`btn-trader-levels${showTraderLevels ? ' active' : ''}`}
+                        onClick={() => setShowTraderLevels((v) => !v)}
+                        aria-pressed={showTraderLevels}
+                        title={t.traderLevels}
+                      >
+                        LL
+                      </button>
+                    </>
+                  )}
                   <DataSourceControl
                     dataSource={dataSource}
                     onChangeDataSource={setDataSource}
@@ -493,7 +499,7 @@ export default function App() {
       </header>
       )}
 
-      {showTraderLevels && isQuestsUsage && (
+      {showTraderLevels && isQuestsUsage && !isLogsMode && (
         <TraderLevelsPanel
           traders={traders}
           traderLevels={progress.traderLevels}

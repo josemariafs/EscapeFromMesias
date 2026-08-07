@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import {
-  getDailyAccessCode,
-  getSpanishAuthDayKey,
+  getSpanishAuthWeekKey,
+  getWeeklyAccessCode,
   hasSiteAccessPasswords,
   resolveSiteSession,
 } from '../_lib/auth.js';
@@ -11,7 +11,7 @@ interface DailyCodeBody {
   token?: string;
 }
 
-/** Solo sesiones `public` pueden ver el código diario activo. */
+/** Solo sesiones `public` pueden ver el código semanal activo. */
 export default function handler(req: VercelRequest, res: VercelResponse) {
   if (handleOptions(req, res)) return;
 
@@ -43,19 +43,22 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const code = getDailyAccessCode();
+  const code = getWeeklyAccessCode();
   if (!code) {
     applyCors(res);
-    res.status(503).json({ error: 'Daily code is not configured' });
+    res.status(503).json({ error: 'Weekly code is not configured' });
     return;
   }
 
+  const weekKey = getSpanishAuthWeekKey();
   applyCors(res);
   res.status(200).json({
     ok: true,
     code,
-    dayKey: getSpanishAuthDayKey(),
+    dayKey: weekKey,
+    weekKey,
     rotatesAtHour: 5,
+    rotatesOn: 'monday',
     timeZone: 'Europe/Madrid',
   });
 }

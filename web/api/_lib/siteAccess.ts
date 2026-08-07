@@ -3,9 +3,10 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 export type SiteAuthKind = 'public' | 'private' | 'daily' | 'legacy';
 
 const SITE_SESSION_PAYLOAD = 'efg-site-access-v1';
-const DAILY_CODE_PAYLOAD = 'efg-daily-code';
+/** Prefijo distinto al diario antiguo para invalidar códigos previos. */
+const WEEKLY_CODE_PAYLOAD = 'efg-weekly-code-v1';
 const MADRID_TZ = 'Europe/Madrid';
-const DAY_ROLLOVER_HOUR = 5;
+const WEEK_ROLLOVER_HOUR = 5;
 
 function safeEqualStrings(a: string, b: string): boolean {
   const left = Buffer.from(a);
@@ -41,18 +42,32 @@ function getMadridParts(now: Date): { year: number; month: number; day: number; 
   };
 }
 
-/** Día de autenticación ES: cambia a las 05:00 Europe/Madrid. */
-export function getSpanishAuthDayKey(now = new Date()): string {
+/**
+ * Semana de autenticación ES: lunes 05:00 Europe/Madrid.
+ * Devuelve la fecha (YYYY-MM-DD) del lunes que abre la semana vigente.
+ */
+export function getSpanishAuthWeekKey(now = new Date()): string {
   const z = getMadridParts(now);
   let utcMidday = Date.UTC(z.year, z.month - 1, z.day, 12, 0, 0);
-  if (z.hour < DAY_ROLLOVER_HOUR) {
+  // Antes de las 05:00 cuenta como el día civil anterior.
+  if (z.hour < WEEK_ROLLOVER_HOUR) {
     utcMidday -= 24 * 60 * 60 * 1000;
   }
-  const d = new Date(utcMidday);
-  return `${d.getUTCFullYear()}-${pad2(d.getUTCMonth() + 1)}-${pad2(d.getUTCDate())}`;
+
+  const civil = new Date(utcMidday);
+  const dayOfWeek = civil.getUTCDay(); // 0=domingo … 1=lunes …
+  const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const monday = new Date(utcMidday - daysFromMonday * 24 * 60 * 60 * 1000);
+
+  return `${monday.getUTCFullYear()}-${pad2(monday.getUTCMonth() + 1)}-${pad2(monday.getUTCDate())}`;
 }
 
-function getDailyCodeSecret(): string | null {
+/** @deprecated Usar getSpanishAuthWeekKey. */
+export function getSpanishAuthDayKey(now = new Date()): string {
+  return getSpanishAuthWeekKey(now);
+}
+
+function getWeeklyCodeSecret(): string | null {
   const secret =
     process.env.PERMANENT_TOKEN_PRIVATE?.trim()
     || process.env.PERMANENT_TOKEN_PUBLIC?.trim()
@@ -61,25 +76,30 @@ function getDailyCodeSecret(): string | null {
   return secret || null;
 }
 
-/** Código diario de 4 dígitos (válido hasta las 05:00 ES del día siguiente). */
-export function getDailyAccessCode(now = new Date()): string | null {
-  const secret = getDailyCodeSecret();
+/** Código semanal de 4 dígitos (válido hasta el lunes 05:00 Europe/Madrid). */
+export function getWeeklyAccessCode(now = new Date()): string | null {
+  const secret = getWeeklyCodeSecret();
   if (!secret) return null;
 
-  const dayKey = getSpanishAuthDayKey(now);
+  const weekKey = getSpanishAuthWeekKey(now);
   const digest = createHmac('sha256', secret)
-    .update(`${DAILY_CODE_PAYLOAD}:${dayKey}`)
+    .update(`${WEEKLY_CODE_PAYLOAD}:${weekKey}`)
     .digest();
   const num = digest.readUInt32BE(0) % 10000;
   return String(num).padStart(4, '0');
+}
+
+/** @deprecated Usar getWeeklyAccessCode. */
+export function getDailyAccessCode(now = new Date()): string | null {
+  return getWeeklyAccessCode(now);
 }
 
 export function createSiteSessionToken(material: string): string {
   return createHmac('sha256', material).update(SITE_SESSION_PAYLOAD).digest('hex');
 }
 
-function dailySessionMaterial(dayKey: string, code: string): string {
-  return `daily:${dayKey}:${code}`;
+function weeklySessionMaterial(weekKey: string, code: string): string {
+  return `weekly:${weekKey}:${code}`;
 }
 
 export function getPermanentAccessEntries(): Array<{ kind: SiteAuthKind; password: string }> {
@@ -100,7 +120,7 @@ export function getPermanentAccessEntries(): Array<{ kind: SiteAuthKind; passwor
 }
 
 export function hasSiteAccessPasswords(): boolean {
-  return getPermanentAccessEntries().length > 0 || Boolean(getDailyCodeSecret());
+  return getPermanentAccessEntries().length > 0 || Boolean(getWeeklyCodeSecret());
 }
 
 export interface SiteSessionOk {
@@ -113,7 +133,7 @@ export interface SiteSessionFail {
   ok: false;
 }
 
-/** Login: permanent tokens o código diario del día ES actual. */
+/** Login: permanent tokens o código semanal ES actual. */
 export function resolveSiteLogin(
   password: string | null | undefined,
   now = new Date(),
@@ -128,12 +148,12 @@ export function resolveSiteLogin(
     }
   }
 
-  const dayKey = getSpanishAuthDayKey(now);
-  const daily = getDailyAccessCode(now);
-  if (daily && safeEqualStrings(password, daily)) {
+  const weekKey = getSpanishAuthWeekKey(now);
+  const weekly = getWeeklyAccessCode(now);
+  if (weekly && safeEqualStrings(password, weekly)) {
     // Si coincide con un permanente por azar, prevalece el permanente (matched ya set).
     if (!matched) {
-      matched = { kind: 'daily', material: dailySessionMaterial(dayKey, daily) };
+      matched = { kind: 'daily', material: weeklySessionMaterial(weekKey, weekly) };
     }
   }
 
@@ -161,10 +181,10 @@ export function resolveSiteSession(
     }
   }
 
-  const dayKey = getSpanishAuthDayKey(now);
-  const daily = getDailyAccessCode(now);
-  if (daily) {
-    const expected = createSiteSessionToken(dailySessionMaterial(dayKey, daily));
+  const weekKey = getSpanishAuthWeekKey(now);
+  const weekly = getWeeklyAccessCode(now);
+  if (weekly) {
+    const expected = createSiteSessionToken(weeklySessionMaterial(weekKey, weekly));
     if (safeEqualStrings(token, expected)) {
       matched = { ok: true, kind: 'daily', token: expected };
     }

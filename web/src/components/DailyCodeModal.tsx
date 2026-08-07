@@ -102,16 +102,16 @@ export function DailyCodeModal({ open, onClose }: DailyCodeModalProps) {
         <div className="tv-login-glow" aria-hidden />
 
         <div className="tv-modal-panel">
-          <p className="tv-login-eyebrow">CH-04 // DAILY KEY</p>
+          <p className="tv-login-eyebrow">CH-04 // WEEKLY KEY</p>
           <h2 id="daily-code-title" className="tv-login-title">
-            TODAY'S ACCESS CODE
+            THIS WEEK'S ACCESS CODE
           </h2>
           <p className="tv-login-status">
             {loading
               ? 'TUNING FREQUENCY…'
               : error
                 ? error
-                : 'VALID UNTIL 05:00 EUROPE/MADRID'}
+                : 'ROTATES MONDAY 05:00 EUROPE/MADRID'}
           </p>
 
           <div className="tv-modal-code" aria-live="polite">
@@ -119,7 +119,7 @@ export function DailyCodeModal({ open, onClose }: DailyCodeModalProps) {
           </div>
 
           {dayKey && !error && (
-            <p className="tv-modal-day">DAY {dayKey}</p>
+            <p className="tv-modal-day">WEEK OF {dayKey}</p>
           )}
 
           <button type="button" className="tv-login-submit" onClick={onClose}>

@@ -80,7 +80,7 @@ export const MAX_ROUTE_POINT_COLORS = 5;
 
 export const ROUTE_POINT_COLORS = [
   '#e6a817',
-  '#3d8bfd',
+  '#6ec4b6',
   '#3dba6d',
   '#e85d4c',
   '#c77dff',

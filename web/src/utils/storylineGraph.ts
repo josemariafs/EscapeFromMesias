@@ -163,9 +163,9 @@ export function edgeStroke(
     return { stroke: 'var(--accent)', strokeWidth: 2, opacity: 0.85 };
   }
   if (fromState === 'started') {
-    return { stroke: '#8b95a8', strokeWidth: 1.5, strokeDasharray: '6 4', opacity: 0.7 };
+    return { stroke: '#7a8e8a', strokeWidth: 1.5, strokeDasharray: '6 4', opacity: 0.7 };
   }
-  return { stroke: '#4a5160', strokeWidth: 1.5, strokeDasharray: '4 6', opacity: 0.45 };
+  return { stroke: '#3a4a48', strokeWidth: 1.5, strokeDasharray: '4 6', opacity: 0.45 };
 }
 
 export function pointsToPath(points: { x: number; y: number }[]): string {

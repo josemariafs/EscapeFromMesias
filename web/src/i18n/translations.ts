@@ -278,7 +278,7 @@ export const translations: Record<Lang, Translations> = {
     wipeAll: 'Wipe All',
     confirmWipeAll:
       'Se borrarán todos los datos guardados en el navegador (progreso de misiones, campaña Story, idioma, etc.). Esta acción no se puede deshacer.\n\n¿Continuar?',
-    footerVisits: (n) => `${n.toLocaleString('es-ES')} visita${n === 1 ? '' : 's'}`,
+    footerVisits: (n) => `${n.toLocaleString('es-ES')} visita${n === 1 ? '' : 's'} única${n === 1 ? '' : 's'}`,
     noTasksFilter: 'No hay misiones con estos filtros.',
     noActiveTasks: 'No tienes misiones en curso.',
     noCompletedTasks: 'No tienes misiones completadas.',
@@ -538,7 +538,7 @@ export const translations: Record<Lang, Translations> = {
     wipeAll: 'Wipe All',
     confirmWipeAll:
       'All data stored in the browser will be deleted (quest progress, Story campaign, language, etc.). This cannot be undone.\n\nContinue?',
-    footerVisits: (n) => `${n.toLocaleString('en-US')} visit${n === 1 ? '' : 's'}`,
+    footerVisits: (n) => `${n.toLocaleString('en-US')} unique visit${n === 1 ? '' : 's'}`,
     noTasksFilter: 'No quests match these filters.',
     noActiveTasks: 'You have no quests in progress.',
     noCompletedTasks: 'You have no completed quests.',

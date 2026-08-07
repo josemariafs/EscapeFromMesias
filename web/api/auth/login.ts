@@ -6,7 +6,7 @@ interface LoginBody {
   password?: string;
 }
 
-/** Valida tokens permanentes o el código diario ES y emite sesión. */
+/** Valida tokens permanentes o el código semanal ES y emite sesión. */
 export default function handler(req: VercelRequest, res: VercelResponse) {
   if (handleOptions(req, res)) return;
 

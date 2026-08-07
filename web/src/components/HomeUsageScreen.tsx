@@ -151,7 +151,7 @@ export function HomeUsageScreen({
           className="home-daily-code-btn"
           onClick={() => setDailyOpen(true)}
         >
-          Daily access code
+          Weekly access code
         </button>
       )}
 

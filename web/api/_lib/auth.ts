@@ -5,6 +5,8 @@ export {
   createSiteSessionToken,
   getDailyAccessCode,
   getSpanishAuthDayKey,
+  getSpanishAuthWeekKey,
+  getWeeklyAccessCode,
   hasSiteAccessPasswords,
   isValidSiteSessionToken,
   resolveSiteLogin,
