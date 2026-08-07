@@ -4,9 +4,11 @@ import {
   clampPct,
   ensureSchema,
   getDb,
+  resolveRowEnvironment,
   rowToDto,
   type FixedRoutePointRow,
 } from '../_lib/db.js';
+import { normalizeRouteEnvironment } from '../_lib/environment.js';
 import { applyCors, handleOptions, readJsonBody, serverError } from '../_lib/http.js';
 import { normalizeImageUrl } from '../_lib/image.js';
 import { isValidMapKey } from '../_lib/maps.js';
@@ -19,6 +21,7 @@ import {
 
 interface PatchBody {
   mapKey?: string;
+  environment?: string | null;
   left?: number;
   top?: number;
   color?: string;
@@ -64,7 +67,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (req.method === 'PATCH') {
       const existing = await db.execute({
-        sql: `SELECT id, map_key, left_pct, top_pct, color, label, image_url, marker_type, created_at, updated_at
+        sql: `SELECT id, map_key, environment, left_pct, top_pct, color, label, image_url, marker_type, created_at, updated_at
               FROM fixed_route_points WHERE id = ?`,
         args: [id],
       });
@@ -78,6 +81,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const body = readJsonBody<PatchBody>(req);
 
       let mapKey = current.map_key;
+      let environment = resolveRowEnvironment(current.environment);
       let leftPct = current.left_pct;
       let topPct = current.top_pct;
       let color = current.color;
@@ -93,6 +97,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return;
         }
         mapKey = next;
+      }
+      if (body.environment !== undefined) {
+        const envParsed = normalizeRouteEnvironment(body.environment);
+        if (envParsed.ok === false) {
+          applyCors(res);
+          res.status(400).json({ error: envParsed.error });
+          return;
+        }
+        environment = envParsed.value;
       }
       if (body.left !== undefined) {
         if (typeof body.left !== 'number' || !Number.isFinite(body.left)) {
@@ -154,9 +167,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const now = new Date().toISOString();
       await db.execute({
         sql: `UPDATE fixed_route_points
-              SET map_key = ?, left_pct = ?, top_pct = ?, color = ?, label = ?, image_url = ?, marker_type = ?, updated_at = ?
+              SET map_key = ?, environment = ?, left_pct = ?, top_pct = ?, color = ?, label = ?, image_url = ?, marker_type = ?, updated_at = ?
               WHERE id = ?`,
-        args: [mapKey, leftPct, topPct, color, label, imageUrl, markerType, now, id],
+        args: [mapKey, environment, leftPct, topPct, color, label, imageUrl, markerType, now, id],
       });
 
       applyCors(res);
@@ -164,6 +177,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         point: rowToDto({
           id,
           map_key: mapKey,
+          environment,
           left_pct: leftPct,
           top_pct: topPct,
           color,

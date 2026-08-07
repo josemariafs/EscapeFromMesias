@@ -3,6 +3,7 @@ import { ActiveTasksView } from './components/ActiveTasksView';
 import { AppFooter } from './components/AppFooter';
 import { DataSourceControl } from './components/DataSourceControl';
 import { HomeUsageScreen, type HomeUsageChoice } from './components/HomeUsageScreen';
+import { useSiteAuthContext } from './context/SiteAuthContext';
 import { RouteMapsView } from './components/RouteMapsView';
 import { StoryView } from './components/StoryView';
 import { getChapterDesc } from './utils/storylineData';
@@ -11,6 +12,7 @@ import { TaskCard } from './components/TaskCard';
 import { TaskTableView } from './components/TaskTableView';
 import { TaskDetail } from './components/TaskDetail';
 import { TraderLevelsPanel } from './components/TraderLevelsPanel';
+import { getTranslations } from './i18n/translations';
 import { useLanguage } from './i18n/useLanguage';
 import { useDataSource } from './hooks/useDataSource';
 import { useGameMode } from './hooks/useGameMode';
@@ -26,24 +28,31 @@ import { storylineData } from './utils/storylineData';
 import { recalculateStates, sortTasksForDisplay } from './utils/unlock';
 import { isSideTask, isStoryApiTask } from './utils/taskCategory';
 import { MIN_VALID_TASK_COUNT } from './types';
+import type { RouteEnvironment } from './types/routes';
 import './App.css';
 
 type AppUsage = 'home' | 'quests' | 'routes';
-type ViewTab = 'all' | 'active';
+type ViewTab = 'all' | 'active' | 'completed';
 type AllQuestTab = 'story' | 'side';
 
 export default function App() {
   const { lang, setLang, t } = useLanguage();
-  const { viewMode, setViewMode } = useViewMode();
+  const { isTable: isTableView } = useViewMode();
   const { gameMode, setGameMode } = useGameMode();
   const { dataSource, setDataSource, isLogsMode } = useDataSource();
+  const { canRevealDailyCode } = useSiteAuthContext();
   const [appUsage, setAppUsage] = useState<AppUsage>('home');
-  const { tasks, loading, error, usingStaleCache, reload } = useTasks(lang, gameMode);
+  /** Routes y Seasonal comparten mapas; PVP Zone (regular) tiene los suyos. */
+  const routeEnvironment: RouteEnvironment =
+    appUsage === 'routes' || gameMode === 'seasonal' ? 'seasonal' : 'regular';
+  const { tasks, loading, error, usingStaleCache, apiError, reload } = useTasks(lang, gameMode);
   const {
     progress,
     traders,
     setPlayerLevel,
     setTraderLevel,
+    syncTraderLevelsFromTaskStates,
+    syncPlayerLevelFromTaskStates,
     startTask,
     completeTask,
     resetTask,
@@ -51,7 +60,7 @@ export default function App() {
     setCustomMapMarker,
     clearCustomMapMarker,
   } = useProgress(tasks, gameMode);
-  const logSync = useTarkovLogSync(isLogsMode);
+  const logSync = useTarkovLogSync(isLogsMode, gameMode);
   const logsOverrides = useLogsOverrides(gameMode);
   // El estado solo se bloquea a edición manual una vez la sincronización con los
   // logs está realmente activa; mientras se conecta o falla, se permite edición manual.
@@ -75,8 +84,8 @@ export default function App() {
     removePoint,
     undoLast,
     clearMap,
-  } = useRouteMaps();
-  const fixedRoutes = useFixedRouteMaps();
+  } = useRouteMaps(routeEnvironment);
+  const fixedRoutes = useFixedRouteMaps(routeEnvironment);
 
   // En modo Logs, el estado de las misiones se deriva de los eventos leídos de los logs de
   // Tarkov; no debe heredar ni mezclarse con el progreso manual guardado en localStorage
@@ -89,6 +98,22 @@ export default function App() {
     const merged = { ...logsOverrides.overrides, ...logSync.taskStatusMap };
     return recalculateStates(tasks, { ...progress, taskStates: merged });
   }, [isLogsMode, progress, logSync.taskStatusMap, logsOverrides.overrides, tasks]);
+
+  // LL automático: misiones started/completed prueban el Loyalty Level mínimo de cada trader.
+  // Nivel PJ automático (solo Logs): el mayor minPlayerLevel de esas misiones fija el suelo.
+  useEffect(() => {
+    if (tasks.length === 0) return;
+    syncTraderLevelsFromTaskStates(effectiveTaskStates);
+    if (isLogsMode) {
+      syncPlayerLevelFromTaskStates(effectiveTaskStates);
+    }
+  }, [
+    tasks,
+    effectiveTaskStates,
+    isLogsMode,
+    syncTraderLevelsFromTaskStates,
+    syncPlayerLevelFromTaskStates,
+  ]);
 
   // Conjunto de misiones cuyo estado viene directamente de un evento real en los logs:
   // esas se bloquean a edición manual (los logs mandan). El resto se puede editar a mano
@@ -137,9 +162,9 @@ export default function App() {
   const isRoutesUsage = appUsage === 'routes';
   const isQuestsUsage = appUsage === 'quests';
   const isStoryTab = isQuestsUsage && viewTab === 'all' && allQuestTab === 'story';
-  const isTableView = viewMode === 'table';
   const isSideTableView = isQuestsUsage && isTableView && viewTab === 'all' && allQuestTab === 'side';
-  const isActiveTableView = isQuestsUsage && isTableView && viewTab === 'active';
+  const isActiveTableView =
+    isQuestsUsage && isTableView && (viewTab === 'active' || viewTab === 'completed');
   const routePoints = selectedRouteMapKey ? getPoints(selectedRouteMapKey) : [];
   const fixedRoutePoints = selectedRouteMapKey
     ? fixedRoutes.getPoints(selectedRouteMapKey)
@@ -157,8 +182,13 @@ export default function App() {
   }, [sideTasks, locale]);
 
   const startedCount = useMemo(
-    () => sideTasks.filter((task) => (effectiveTaskStates[task.id] ?? 'locked') === 'started').length,
-    [sideTasks, effectiveTaskStates],
+    () => tasks.filter((task) => (effectiveTaskStates[task.id] ?? 'locked') === 'started').length,
+    [tasks, effectiveTaskStates],
+  );
+
+  const completedCount = useMemo(
+    () => tasks.filter((task) => (effectiveTaskStates[task.id] ?? 'locked') === 'completed').length,
+    [tasks, effectiveTaskStates],
   );
 
   const tasksById = useMemo(
@@ -219,6 +249,8 @@ export default function App() {
 
   const handleHomeChoice = (choice: HomeUsageChoice) => {
     if (choice === 'routes') {
+      // Routes comparte datos de mapa con Seasonal.
+      setGameMode('seasonal');
       setAppUsage('routes');
       return;
     }
@@ -227,13 +259,17 @@ export default function App() {
     setAppUsage('quests');
   };
 
-  // En modo Logs solo tiene sentido la pestaña Active (progreso desde logs).
+  // En modo Logs: Activas y Completadas (progreso desde logs).
   useEffect(() => {
-    if (isLogsMode && viewTab !== 'active') {
+    if (isLogsMode && viewTab !== 'active' && viewTab !== 'completed') {
       setViewTab('active');
       setSelectedId(null);
     }
   }, [isLogsMode, viewTab]);
+
+  useEffect(() => {
+    setSelectedRouteMapKey(null);
+  }, [routeEnvironment]);
 
   if (isQuestsUsage && loading) {
     return (
@@ -273,7 +309,8 @@ export default function App() {
   }
 
   return (
-    <div className={`app${viewMode === 'compact' ? ' compact' : ''}${isLogsLocked ? ' logs-locked' : ''}`}>
+    <div className={`app${isHome ? ' app--home' : ''}${isLogsLocked ? ' logs-locked' : ''}`}>
+      {!isHome && (
       <header className="app-header">
         <div className="header-grid">
           <div className="header-logo">
@@ -319,6 +356,19 @@ export default function App() {
                     {t.tabActive}
                     {startedCount > 0 && <span className="seg-count">{startedCount}</span>}
                   </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={viewTab === 'completed'}
+                    className={`segmented-item${viewTab === 'completed' ? ' active' : ''}`}
+                    onClick={() => {
+                      setViewTab('completed');
+                      setSelectedId(null);
+                    }}
+                  >
+                    {t.tabCompleted}
+                    {completedCount > 0 && <span className="seg-count">{completedCount}</span>}
+                  </button>
                 </div>
 
                 {!isLogsMode && viewTab === 'all' && (
@@ -348,7 +398,9 @@ export default function App() {
               </>
             )}
             {isRoutesUsage && (
-              <span className="header-mode-badge routes">{t.tabRoutes}</span>
+              <span className="header-mode-badge routes" title={t.routeEnvironmentHint}>
+                {t.tabRoutes} · {t.routeEnvironmentSeasonal}
+              </span>
             )}
           </div>
 
@@ -356,14 +408,21 @@ export default function App() {
             <div className="header-controls-top">
               {isQuestsUsage && (
                 <>
-                  <label className="header-level" title={t.playerLevel}>
+                  <label
+                    className="header-level"
+                    title={isLogsMode ? t.playerLevelLogsHint : t.playerLevel}
+                  >
                     <span className="header-level-label">Lv</span>
                     <input
                       type="number"
                       min={0}
                       max={79}
                       value={progress.playerLevel}
-                      onChange={(e) => setPlayerLevel(Number(e.target.value))}
+                      readOnly={isLogsMode}
+                      onChange={(e) => {
+                        if (isLogsMode) return;
+                        setPlayerLevel(Number(e.target.value));
+                      }}
                     />
                   </label>
                   <button
@@ -391,56 +450,16 @@ export default function App() {
                     wipeStartSelection={logSync.wipeStartSelection}
                     resolvedWipeStartSession={logSync.resolvedWipeStartSession}
                     onChangeWipeStart={logSync.setWipeStart}
+                    knownProfiles={logSync.knownProfiles}
+                    activeProfileId={logSync.activeProfileId}
+                    onAssignProfileMode={logSync.assignProfileMode}
+                    canLivePoll={logSync.canLivePoll}
                     locale={locale}
                     t={t}
                     onConnect={logSync.connect}
                     onReconnect={logSync.reconnect}
                     onDisconnect={logSync.disconnect}
                   />
-                  <div className="view-mode-toggle" role="group" aria-label={t.viewMode}>
-                    <button
-                      type="button"
-                      className={`view-mode-btn${viewMode === 'normal' ? ' active' : ''}`}
-                      onClick={() => setViewMode('normal')}
-                      aria-pressed={viewMode === 'normal'}
-                      title={t.viewModeNormal}
-                    >
-                      <svg viewBox="0 0 20 14" width="18" height="13" aria-hidden="true">
-                        <rect x="1" y="1" width="18" height="5.5" rx="1.2" fill="currentColor" opacity="0.85" />
-                        <rect x="1" y="7.5" width="18" height="5.5" rx="1.2" fill="currentColor" opacity="0.85" />
-                      </svg>
-                      <span className="sr-only">{t.viewModeNormal}</span>
-                    </button>
-                    <button
-                      type="button"
-                      className={`view-mode-btn${viewMode === 'compact' ? ' active' : ''}`}
-                      onClick={() => setViewMode('compact')}
-                      aria-pressed={viewMode === 'compact'}
-                      title={t.viewModeCompact}
-                    >
-                      <svg viewBox="0 0 20 14" width="18" height="13" aria-hidden="true">
-                        <rect x="1" y="1" width="18" height="3" rx="0.9" fill="currentColor" />
-                        <rect x="1" y="5.5" width="18" height="3" rx="0.9" fill="currentColor" />
-                        <rect x="1" y="10" width="18" height="3" rx="0.9" fill="currentColor" />
-                      </svg>
-                      <span className="sr-only">{t.viewModeCompact}</span>
-                    </button>
-                    <button
-                      type="button"
-                      className={`view-mode-btn${viewMode === 'table' ? ' active' : ''}`}
-                      onClick={() => setViewMode('table')}
-                      aria-pressed={viewMode === 'table'}
-                      title={t.viewModeTable}
-                    >
-                      <svg viewBox="0 0 20 14" width="18" height="13" aria-hidden="true">
-                        <rect x="1" y="1" width="18" height="12" rx="1.2" fill="none" stroke="currentColor" strokeWidth="1.4" />
-                        <line x1="1" y1="5.5" x2="19" y2="5.5" stroke="currentColor" strokeWidth="1.2" />
-                        <line x1="1" y1="9.5" x2="19" y2="9.5" stroke="currentColor" strokeWidth="1.2" />
-                        <line x1="10" y1="1" x2="10" y2="13" stroke="currentColor" strokeWidth="1.2" />
-                      </svg>
-                      <span className="sr-only">{t.viewModeTable}</span>
-                    </button>
-                  </div>
                 </>
               )}
               <div className="lang-flags" role="group" aria-label={t.language}>
@@ -472,6 +491,7 @@ export default function App() {
           </div>
         </div>
       </header>
+      )}
 
       {showTraderLevels && isQuestsUsage && (
         <TraderLevelsPanel
@@ -485,7 +505,11 @@ export default function App() {
 
       <main className={`main-layout${isRoutesUsage || isHome ? ' main-layout--routes' : ''}`}>
         {isHome ? (
-          <HomeUsageScreen t={t} onChoose={handleHomeChoice} />
+          <HomeUsageScreen
+            t={getTranslations('en')}
+            onChoose={handleHomeChoice}
+            canRevealDailyCode={canRevealDailyCode}
+          />
         ) : isRoutesUsage ? (
           <RouteMapsView
             routes={routes}
@@ -517,7 +541,7 @@ export default function App() {
         ) : (
         <>
         <div
-          className={`task-list${viewTab === 'active' ? ' active-tab' : ''}${isStoryTab ? ' story-tree-tab' : ''}${isSideTableView || isActiveTableView ? ' table-view-tab' : ''}`}
+          className={`task-list${viewTab === 'active' || viewTab === 'completed' ? ' active-tab' : ''}${isStoryTab ? ' story-tree-tab' : ''}${isSideTableView || isActiveTableView ? ' table-view-tab' : ''}`}
         >
           {viewTab === 'all' && (
             <div className="view-filters">
@@ -556,15 +580,19 @@ export default function App() {
               )}
             </div>
           )}
-          {viewTab === 'active' ? (
+          {viewTab === 'active' || viewTab === 'completed' ? (
             <ActiveTasksView
               tasks={tasks}
               taskStates={effectiveTaskStates}
               completedObjectives={progress.completedObjectives}
               customMapMarkers={progress.customMapMarkers ?? {}}
+              routeMaps={routes}
+              fixedRouteMaps={fixedRoutes.routes}
+              routeColorLabels={colorLabels}
               selectedId={selectedId}
               t={t}
               isTable={isActiveTableView}
+              listMode={viewTab === 'completed' ? 'completed' : 'started'}
               onSelect={setSelectedId}
               onStart={guardedStartTask}
               onComplete={guardedCompleteTask}
@@ -683,28 +711,31 @@ export default function App() {
         )}
       </main>
 
-      <AppFooter
-        locale={locale}
-        formatVisits={t.footerVisits}
-        notices={(usingStaleCache || isLogsLocked) ? (
-          <>
-            {usingStaleCache && (
-              <p className="footer-notice footer-notice--warn">
-                {t.staleCacheNotice}{' '}
-                <button type="button" className="link-btn" onClick={() => reload()}>
-                  {t.retry}
-                </button>
-              </p>
-            )}
-            {isLogsLocked && (
-              <p className="footer-notice">{t.logsReadOnlyNotice}</p>
-            )}
-            {isLogsLocked && Object.keys(logSync.taskStatusMap).length === 0 && (
-              <p className="footer-notice footer-notice--warn">{t.logsNoEventsHint}</p>
-            )}
-          </>
-        ) : undefined}
-      />
+      {!isHome && (
+        <AppFooter
+          locale={locale}
+          formatVisits={t.footerVisits}
+          notices={(usingStaleCache || isLogsLocked) ? (
+            <>
+              {usingStaleCache && (
+                <p className="footer-notice footer-notice--warn">
+                  {t.staleCacheNotice}
+                  {apiError ? ` ${t.staleCacheNoticeDetail(apiError)}` : ''}{' '}
+                  <button type="button" className="link-btn" onClick={() => reload()}>
+                    {t.retry}
+                  </button>
+                </p>
+              )}
+              {isLogsLocked && (
+                <p className="footer-notice">{t.logsReadOnlyNotice}</p>
+              )}
+              {isLogsLocked && Object.keys(logSync.taskStatusMap).length === 0 && (
+                <p className="footer-notice footer-notice--warn">{t.logsNoEventsHint}</p>
+              )}
+            </>
+          ) : undefined}
+        />
+      )}
     </div>
   );
 }

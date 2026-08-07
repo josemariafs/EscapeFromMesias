@@ -42,14 +42,19 @@ export function taskHasPendingObjectivesOnMap(
     return false;
   }
 
+  const taskMapKey = task.map ? getMapGroupKey(task.map) : null;
+
   if (mapKey === ANY_MAP_ID) {
+    // Solo si no hay mapa de misión ni en los objetivos pendientes.
+    if (taskMapKey) return false;
     return pending.some((obj) => getObjectiveMapGroupKeys(obj).length === 0);
   }
 
   return pending.some((obj) => {
     const keys = getObjectiveMapGroupKeys(obj);
     if (keys.length === 0) {
-      return false;
+      // Objetivo sin mapas: hereda el mapa de la misión si existe.
+      return taskMapKey === mapKey;
     }
     return keys.includes(mapKey);
   });
@@ -60,6 +65,23 @@ export function groupActiveTasksByMap(
   completedObjectives: Record<string, string[]>,
   anyMapLabel: string,
 ): { map: GameMap; tasks: Task[] }[] {
+  return groupTasksByMap(tasks, anyMapLabel, {
+    onlyPendingOnMap: true,
+    completedObjectives,
+  });
+}
+
+/** Agrupa misiones por mapa; en completadas no exige objetivos pendientes. */
+export function groupTasksByMap(
+  tasks: Task[],
+  anyMapLabel: string,
+  options?: {
+    onlyPendingOnMap?: boolean;
+    completedObjectives?: Record<string, string[]>;
+  },
+): { map: GameMap; tasks: Task[] }[] {
+  const onlyPending = options?.onlyPendingOnMap === true;
+  const completedObjectives = options?.completedObjectives ?? {};
   const groups = new Map<string, { map: GameMap; tasks: Task[] }>();
 
   for (const task of tasks) {
@@ -79,7 +101,7 @@ export function groupActiveTasksByMap(
       if (groupKeysSeen.has(key)) continue;
       groupKeysSeen.add(key);
 
-      if (!taskHasPendingObjectivesOnMap(task, key, completed)) continue;
+      if (onlyPending && !taskHasPendingObjectivesOnMap(task, key, completed)) continue;
 
       if (!groups.has(key)) {
         groups.set(key, {

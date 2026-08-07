@@ -7,6 +7,7 @@ import {
   DEFAULT_FIXED_MARKER_TYPE,
   DEFAULT_ROUTE_POINT_COLOR,
   type FixedMarkerType,
+  type RouteEnvironment,
 } from '../types/routes';
 import { fileToCompressedDataUrl } from '../utils/routePointImage';
 import { RouteMapsView } from './RouteMapsView';
@@ -21,7 +22,8 @@ function readStoredToken(): string {
 
 export function AdminRoutesPage() {
   const { t } = useLanguage();
-  const fixed = useFixedRouteMaps();
+  const [environment, setEnvironment] = useState<RouteEnvironment>('seasonal');
+  const fixed = useFixedRouteMaps(environment);
   const [token, setToken] = useState(readStoredToken);
   const [authed, setAuthed] = useState(() => Boolean(readStoredToken()));
   const [loginValue, setLoginValue] = useState('');
@@ -36,6 +38,13 @@ export function AdminRoutesPage() {
   const [actionError, setActionError] = useState<string | null>(null);
 
   const fixedPoints = selectedMapKey ? fixed.getPoints(selectedMapKey) : [];
+
+  const handleEnvironmentChange = (next: RouteEnvironment) => {
+    if (next === environment) return;
+    setEnvironment(next);
+    setSelectedMapKey(null);
+    setActionError(null);
+  };
 
   const handleLogin = async (event: FormEvent) => {
     event.preventDefault();
@@ -76,13 +85,24 @@ export function AdminRoutesPage() {
         label: draftMarkerType === 'default' ? (draftLabel.trim() || null) : null,
         imageUrl: draftImageUrl,
         markerType: draftMarkerType,
+        environment,
       });
     } catch (err) {
       setActionError(err instanceof Error ? err.message : t.adminLoginError);
     } finally {
       setBusy(false);
     }
-  }, [draftImageUrl, draftLabel, draftMarkerType, fixed, selectedColor, selectedMapKey, t.adminLoginError, token]);
+  }, [
+    draftImageUrl,
+    draftLabel,
+    draftMarkerType,
+    environment,
+    fixed,
+    selectedColor,
+    selectedMapKey,
+    t.adminLoginError,
+    token,
+  ]);
 
   const handleRemoveFixed = useCallback(async (pointId: string) => {
     if (!token) return;
@@ -199,6 +219,27 @@ export function AdminRoutesPage() {
         <div>
           <h1>{t.adminRoutesTitle}</h1>
           <p>{t.adminRoutesHint}</p>
+          <p className="admin-env-hint">{t.routeEnvironmentHint}</p>
+          <div className="segmented admin-env-segmented" role="tablist" aria-label={t.routeEnvironmentHint}>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={environment === 'regular'}
+              className={`segmented-item${environment === 'regular' ? ' active' : ''}`}
+              onClick={() => handleEnvironmentChange('regular')}
+            >
+              {t.routeEnvironmentRegular}
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={environment === 'seasonal'}
+              className={`segmented-item${environment === 'seasonal' ? ' active' : ''}`}
+              onClick={() => handleEnvironmentChange('seasonal')}
+            >
+              {t.routeEnvironmentSeasonal}
+            </button>
+          </div>
         </div>
         <div className="admin-routes-toolbar-actions">
           <a className="btn btn-reset" href="/">{t.appTitle}</a>
@@ -237,7 +278,11 @@ export function AdminRoutesPage() {
           fixedError={fixed.error}
           busy={busy}
           title={t.adminRoutesTitle}
-          hint={t.adminRoutesHint}
+          hint={
+            environment === 'regular'
+              ? t.routeEnvironmentRegular
+              : t.routeEnvironmentSeasonal
+          }
           t={t}
         />
       </div>

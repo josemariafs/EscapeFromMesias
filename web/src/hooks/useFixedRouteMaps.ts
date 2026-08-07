@@ -7,7 +7,11 @@ import {
   type CreateFixedRoutePointInput,
   type UpdateFixedRoutePointInput,
 } from '../api/fixedRoutes';
-import type { FixedRouteMapsData, FixedRoutePoint } from '../types/routes';
+import type {
+  FixedRouteMapsData,
+  FixedRoutePoint,
+  RouteEnvironment,
+} from '../types/routes';
 
 function groupByMap(points: FixedRoutePoint[]): FixedRouteMapsData {
   const next: FixedRouteMapsData = {};
@@ -19,7 +23,7 @@ function groupByMap(points: FixedRoutePoint[]): FixedRouteMapsData {
   return next;
 }
 
-export function useFixedRouteMaps() {
+export function useFixedRouteMaps(environment: RouteEnvironment) {
   const [points, setPoints] = useState<FixedRoutePoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,14 +32,14 @@ export function useFixedRouteMaps() {
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchFixedRoutes();
+      const data = await fetchFixedRoutes(environment);
       setPoints(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load fixed routes');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [environment]);
 
   useEffect(() => {
     void reload();
@@ -48,19 +52,32 @@ export function useFixedRouteMaps() {
     [routes],
   );
 
-  const addPoint = useCallback(async (token: string, input: CreateFixedRoutePointInput) => {
-    const point = await createFixedRoutePoint(token, input);
+  const addPoint = useCallback(async (
+    token: string,
+    input: Omit<CreateFixedRoutePointInput, 'environment'> & { environment?: RouteEnvironment },
+  ) => {
+    const point = await createFixedRoutePoint(token, {
+      ...input,
+      environment: input.environment ?? environment,
+    });
     setPoints((prev) => [...prev, point]);
     return point;
-  }, []);
+  }, [environment]);
 
   const patchPoint = useCallback(
     async (token: string, id: string, input: UpdateFixedRoutePointInput) => {
       const point = await updateFixedRoutePoint(token, id, input);
-      setPoints((prev) => prev.map((p) => (p.id === id ? point : p)));
+      setPoints((prev) => {
+        // Respuestas antiguas sin `environment` se tratan como el bucket actual.
+        const pointEnv = point.environment ?? environment;
+        if (pointEnv !== environment) {
+          return prev.filter((p) => p.id !== id);
+        }
+        return prev.map((p) => (p.id === id ? { ...point, environment: pointEnv } : p));
+      });
       return point;
     },
-    [],
+    [environment],
   );
 
   const removePoint = useCallback(async (token: string, id: string) => {

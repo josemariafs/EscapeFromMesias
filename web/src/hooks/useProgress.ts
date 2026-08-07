@@ -8,7 +8,29 @@ import type {
   TaskProgressState,
 } from '../types';
 import { progressStorageKey } from '../types';
-import { DEFAULT_TRADER_LOYALTY, recalculateStates } from '../utils/unlock';
+import {
+  DEFAULT_TRADER_LOYALTY,
+  inferPlayerLevel,
+  inferTraderLoyaltyLevels,
+  raisePlayerLevelToInferred,
+  raiseTraderLevelsToInferred,
+  recalculateStates,
+} from '../utils/unlock';
+
+function withInferredTraderLevels(
+  progress: PlayerProgress,
+  tasks: Task[],
+  taskStates: Record<string, TaskProgressState> = progress.taskStates,
+): PlayerProgress {
+  const inferred = inferTraderLoyaltyLevels(tasks, taskStates);
+  const { traderLevels, changed } = raiseTraderLevelsToInferred(progress.traderLevels, inferred);
+  if (!changed) return progress;
+  return {
+    ...progress,
+    traderLevels,
+    updatedAt: new Date().toISOString(),
+  };
+}
 
 const defaultProgress = (): PlayerProgress => ({
   playerLevel: 1,
@@ -52,11 +74,19 @@ export function useProgress(tasks: Task[], gameMode: GameMode) {
 
   useEffect(() => {
     if (tasks.length === 0) return;
-    setProgress((prev) => ({
-      ...prev,
-      taskStates: recalculateStates(tasks, prev),
-      updatedAt: new Date().toISOString(),
-    }));
+    setProgress((prev) => {
+      const withStates = {
+        ...prev,
+        taskStates: recalculateStates(tasks, prev),
+        updatedAt: new Date().toISOString(),
+      };
+      const withLl = withInferredTraderLevels(withStates, tasks);
+      if (withLl === withStates) return withStates;
+      return {
+        ...withLl,
+        taskStates: recalculateStates(tasks, withLl),
+      };
+    });
   }, [tasks]);
 
   useEffect(() => {
@@ -82,11 +112,49 @@ export function useProgress(tasks: Task[], gameMode: GameMode) {
 
   const setTraderLevel = useCallback((traderId: string, level: number) => {
     setProgress((prev) => {
+      const inferred = inferTraderLoyaltyLevels(tasks, prev.taskStates);
+      const floor = inferred[traderId] ?? DEFAULT_TRADER_LOYALTY;
       const traderLevels = {
         ...prev.traderLevels,
-        [traderId]: Math.max(1, Math.min(4, Math.round(level) || DEFAULT_TRADER_LOYALTY)),
+        [traderId]: Math.max(
+          floor,
+          Math.max(1, Math.min(4, Math.round(level) || DEFAULT_TRADER_LOYALTY)),
+        ),
       };
       const next = { ...prev, traderLevels, updatedAt: new Date().toISOString() };
+      return { ...next, taskStates: recalculateStates(tasks, next) };
+    });
+  }, [tasks]);
+
+  /** Sube LL según misiones started/completed (p. ej. estados efectivos del modo Logs). */
+  const syncTraderLevelsFromTaskStates = useCallback((
+    taskStates: Record<string, TaskProgressState>,
+  ) => {
+    if (tasks.length === 0) return;
+    setProgress((prev) => {
+      const raised = withInferredTraderLevels(prev, tasks, taskStates);
+      if (raised === prev) return prev;
+      return {
+        ...raised,
+        taskStates: recalculateStates(tasks, raised),
+      };
+    });
+  }, [tasks]);
+
+  /** Sube nivel PJ según minPlayerLevel de misiones started/completed (modo Logs). */
+  const syncPlayerLevelFromTaskStates = useCallback((
+    taskStates: Record<string, TaskProgressState>,
+  ) => {
+    if (tasks.length === 0) return;
+    setProgress((prev) => {
+      const inferred = inferPlayerLevel(tasks, taskStates);
+      const { playerLevel, changed } = raisePlayerLevelToInferred(prev.playerLevel, inferred);
+      if (!changed) return prev;
+      const next = {
+        ...prev,
+        playerLevel,
+        updatedAt: new Date().toISOString(),
+      };
       return { ...next, taskStates: recalculateStates(tasks, next) };
     });
   }, [tasks]);
@@ -94,7 +162,8 @@ export function useProgress(tasks: Task[], gameMode: GameMode) {
   const setTaskState = useCallback((taskId: string, state: TaskProgressState) => {
     setProgress((prev) => {
       const taskStates = { ...prev.taskStates, [taskId]: state };
-      const next = { ...prev, taskStates, updatedAt: new Date().toISOString() };
+      let next = { ...prev, taskStates, updatedAt: new Date().toISOString() };
+      next = withInferredTraderLevels(next, tasks);
       return { ...next, taskStates: recalculateStates(tasks, next) };
     });
   }, [tasks]);
@@ -119,13 +188,14 @@ export function useProgress(tasks: Task[], gameMode: GameMode) {
           }
         }
       }
-      const next = {
+      let next: PlayerProgress = {
         ...prev,
         taskStates,
         completedObjectives,
         customMapMarkers,
         updatedAt: new Date().toISOString(),
       };
+      next = withInferredTraderLevels(next, tasks);
       return { ...next, taskStates: recalculateStates(tasks, next) };
     });
   }, [tasks]);
@@ -203,6 +273,8 @@ export function useProgress(tasks: Task[], gameMode: GameMode) {
     traders,
     setPlayerLevel,
     setTraderLevel,
+    syncTraderLevelsFromTaskStates,
+    syncPlayerLevelFromTaskStates,
     startTask,
     completeTask,
     resetTask,

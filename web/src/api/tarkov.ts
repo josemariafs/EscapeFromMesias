@@ -1,4 +1,65 @@
-import { MIN_VALID_TASK_COUNT, toApiGameMode, type GameMode, type Task } from '../types';
+import {
+  MIN_VALID_TASK_COUNT,
+  toGraphqlGameMode,
+  type GameMode,
+  type GameMap,
+  type MapPosition,
+  type Task,
+  type TaskObjective,
+  type TaskZone,
+} from '../types';
+
+interface GraphqlPossibleLocation {
+  map?: GameMap | null;
+  positions?: MapPosition[] | null;
+}
+
+type GraphqlObjective = TaskObjective & {
+  possibleLocations?: GraphqlPossibleLocation[] | null;
+};
+
+/** Integra possibleLocations (quest items) como zonas con posición para el mapa. */
+function mergePossibleLocationsIntoZones(tasks: Task[]): Task[] {
+  return tasks.map((task) => ({
+    ...task,
+    objectives: task.objectives.map((objective) => {
+      const possible = (objective as GraphqlObjective).possibleLocations;
+      if (!possible?.length) {
+        const { possibleLocations: _drop, ...rest } = objective as GraphqlObjective;
+        return rest as TaskObjective;
+      }
+
+      const extraZones: TaskZone[] = [];
+      const mapsByKey = new Map<string, GameMap>();
+      for (const map of objective.maps ?? []) {
+        mapsByKey.set(map.normalizedName, map);
+      }
+
+      for (const [locIndex, entry] of possible.entries()) {
+        const map = entry.map;
+        if (!map?.normalizedName) continue;
+        mapsByKey.set(map.normalizedName, map);
+        for (const [posIndex, position] of (entry.positions ?? []).entries()) {
+          if (!position || !Number.isFinite(position.x)) continue;
+          const z = Number.isFinite(position.z) ? Number(position.z) : position.y;
+          if (!Number.isFinite(z)) continue;
+          extraZones.push({
+            id: `${objective.id}:possible:${locIndex}:${posIndex}`,
+            map,
+            position: { x: position.x, y: position.y, z },
+          });
+        }
+      }
+
+      const { possibleLocations: _drop, ...rest } = objective as GraphqlObjective;
+      return {
+        ...rest,
+        maps: [...mapsByKey.values()],
+        zones: [...(objective.zones ?? []), ...extraZones],
+      } as TaskObjective;
+    }),
+  }));
+}
 
 const API_URL = 'https://api.tarkov.dev/graphql';
 
@@ -68,6 +129,10 @@ const TASKS_QUERY = `
           questItem { id name shortName iconLink }
           count
           zones { id map { normalizedName name } position { x y z } }
+          possibleLocations {
+            map { normalizedName name }
+            positions { x y z }
+          }
         }
       }
       finishRewards {
@@ -94,7 +159,16 @@ export async function fetchTasks(
   lang: 'es' | 'en' = 'es',
   gameMode: GameMode = 'regular',
 ): Promise<Task[]> {
-  const apiMode = toApiGameMode(gameMode);
+  // GraphQL aún no expone pvp-season; pedir `regular` contaminaría los datos de Seasonal.
+  if (gameMode === 'seasonal') {
+    throw new Error(
+      lang === 'en'
+        ? 'GraphQL does not expose seasonal (pvp-season) tasks; use the JSON API.'
+        : 'GraphQL no expone misiones Seasonal (pvp-season); usar la API JSON.',
+    );
+  }
+
+  const apiMode = toGraphqlGameMode(gameMode);
 
   let response: Response;
   try {
@@ -156,5 +230,5 @@ export async function fetchTasks(
     );
   }
 
-  return json.data.tasks;
+  return mergePossibleLocationsIntoZones(json.data.tasks);
 }

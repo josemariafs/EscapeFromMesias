@@ -29,7 +29,7 @@ const TRADER_META = {
   '69e0d6cc77b63940375b9173': { name: 'Survivor', normalizedName: 'survivor' },
 };
 
-const LOCATION_MAP = {
+const LOCATION_BY_KEY = {
   any: null,
   factory4_day: { normalizedName: 'factory', name: 'Factory' },
   factory4_night: { normalizedName: 'factory', name: 'Factory' },
@@ -45,7 +45,30 @@ const LOCATION_MAP = {
   sandbox_high: { normalizedName: 'ground-zero', name: 'Ground Zero' },
   labirint: { normalizedName: 'the-labyrinth', name: 'The Labyrinth' },
   terminal: { normalizedName: 'terminal', name: 'Terminal' },
+  marathon: null,
 };
+
+/** IDs Mongo de ubicaciones SPT (quest.location usa estos desde hace tiempo). */
+const LOCATION_BY_ID = {
+  '55f2d3fd4bdc2d5f408b4567': LOCATION_BY_KEY.factory4_day,
+  '59fc81d786f774390775787e': LOCATION_BY_KEY.factory4_night,
+  '56f40101d2720b2a4d8b45d6': LOCATION_BY_KEY.bigmap,
+  '5704e3c2d2720bac5b8b4567': LOCATION_BY_KEY.woods,
+  '5704e554d2720bac5b8b456e': LOCATION_BY_KEY.shoreline,
+  '5714dbc024597771384a510d': LOCATION_BY_KEY.interchange,
+  '5704e5fad2720bc05b8b4567': LOCATION_BY_KEY.rezervbase,
+  '5b0fc42d86f7744a585f9105': LOCATION_BY_KEY.laboratory,
+  '5704e4dad2720bb55b8b4567': LOCATION_BY_KEY.lighthouse,
+  '5714dc692459777137212e12': LOCATION_BY_KEY.tarkovstreets,
+  '653e6760052c01c1c805532f': LOCATION_BY_KEY.sandbox,
+  '65b8d6f5cdde2479cb2a3125': LOCATION_BY_KEY.sandbox_high,
+  '5704e5a4d2720bb45b8b4567': LOCATION_BY_KEY.terminal,
+};
+
+function resolveLocation(locationKey) {
+  if (!locationKey || locationKey === 'any' || locationKey === 'marathon') return null;
+  return LOCATION_BY_ID[locationKey] ?? LOCATION_BY_KEY[locationKey] ?? null;
+}
 
 const QUEST_STATUS = {
   2: 'started',
@@ -99,20 +122,34 @@ function mapQuestStatuses(statusCodes) {
   return mapped.length ? mapped : ['complete'];
 }
 
+function locationFromCounter(cond) {
+  const conditions = cond.counter?.conditions ?? [];
+  for (const c of conditions) {
+    if (c.conditionType === 'Location' && c.target) {
+      const targets = Array.isArray(c.target) ? c.target : [c.target];
+      for (const target of targets) {
+        const loc = resolveLocation(target);
+        if (loc) return loc;
+      }
+    }
+  }
+  return null;
+}
+
 function buildObjectives(quest, locale) {
+  const questMap = resolveLocation(quest.location);
   const objectives = [];
   for (const cond of quest.conditions?.AvailableForFinish ?? []) {
     const id = cond.id;
     const description = t(locale, id, cond.conditionType ?? 'Objective');
     const optional = cond.isNecessary === false;
-    const maps = [];
     let type = 'visit';
     const objective = {
       id,
       type,
       description,
       optional,
-      maps,
+      maps: [],
     };
 
     switch (cond.conditionType) {
@@ -134,7 +171,7 @@ function buildObjectives(quest, locale) {
         const targets = Array.isArray(cond.target) ? cond.target : [cond.target];
         if (targets[0]) objective.item = itemRef(targets[0], locale);
         objective.count = Number(cond.value) || 1;
-        const loc = LOCATION_MAP[cond.zoneId] ?? LOCATION_MAP[quest.location];
+        const loc = resolveLocation(cond.zoneId) ?? questMap;
         if (loc) objective.maps = [loc];
         break;
       }
@@ -145,6 +182,8 @@ function buildObjectives(quest, locale) {
         if (kill?.target) {
           objective.targetNames = Array.isArray(kill.target) ? kill.target : [kill.target];
         }
+        const loc = locationFromCounter(cond) ?? questMap;
+        if (loc) objective.maps = [loc];
         break;
       }
       case 'WeaponAssembly':
@@ -156,6 +195,10 @@ function buildObjectives(quest, locale) {
         break;
     }
 
+    if (objective.maps.length === 0 && questMap) {
+      objective.maps = [questMap];
+    }
+
     objectives.push(objective);
   }
   return objectives;
@@ -164,7 +207,7 @@ function buildObjectives(quest, locale) {
 function transformQuest(quest, locale, questNameById) {
   const name = t(locale, quest.name, quest.QuestName || quest._id);
   const trader = traderOf(quest.traderId, locale);
-  const map = LOCATION_MAP[quest.location] ?? null;
+  const map = resolveLocation(quest.location);
 
   let minPlayerLevel = null;
   const taskRequirements = [];

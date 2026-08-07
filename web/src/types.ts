@@ -127,12 +127,33 @@ export const SELECTABLE_GAME_MODES: GameMode[] = ['regular', 'seasonal'];
 export const GAME_MODE_STORAGE_KEY = 'efg-game-mode';
 export const DEFAULT_GAME_MODE: GameMode = 'regular';
 
-/** Valor aceptado por la API de tarkov.dev (aún no expone `seasonal` como GameMode). */
-export type ApiGameMode = 'regular' | 'pve';
+/**
+ * Valor de `gameMode` en GraphQL de tarkov.dev.
+ * GraphQL solo documenta `regular` | `pve`; el modo temporada vive en json.tarkov.dev como `pvp-season`.
+ */
+export type GraphqlGameMode = 'regular' | 'pve';
 
-/** Mapea el modo de la app al `gameMode` de tarkov.dev. */
-export function toApiGameMode(mode: GameMode): ApiGameMode {
+/** Modo en json.tarkov.dev (ruta `/{mode}/tasks`). */
+export type JsonApiGameMode = 'regular' | 'pve' | 'pvp-season';
+
+/** @deprecated Usar toGraphqlGameMode / toJsonGameMode. */
+export type ApiGameMode = GraphqlGameMode;
+
+/** Mapea el modo de la app al enum GraphQL (sin temporada). */
+export function toGraphqlGameMode(mode: GameMode): GraphqlGameMode {
   return mode === 'pve' ? 'pve' : 'regular';
+}
+
+/** Mapea el modo de la app a la ruta de json.tarkov.dev. */
+export function toJsonGameMode(mode: GameMode): JsonApiGameMode {
+  if (mode === 'pve') return 'pve';
+  if (mode === 'seasonal') return 'pvp-season';
+  return 'regular';
+}
+
+/** @deprecated Usar toGraphqlGameMode. */
+export function toApiGameMode(mode: GameMode): ApiGameMode {
+  return toGraphqlGameMode(mode);
 }
 
 export const STORAGE_KEY = 'eft-quest-tracker-progress';
@@ -140,7 +161,7 @@ export const TASKS_CACHE_KEY = 'eft-quest-tracker-tasks-cache';
 /** Incrementar al cambiar el esquema de datos cacheados (p. ej. zonas con posición), o para
  * invalidar de golpe cachés corruptos guardados por versiones anteriores (p. ej. una respuesta
  * parcial de la API de tarkov.dev con muy pocas misiones). */
-export const TASKS_CACHE_SCHEMA = 4;
+export const TASKS_CACHE_SCHEMA = 8;
 
 /** Clave de progreso local por modo (regular reutiliza la clave histórica sin sufijo). */
 export function progressStorageKey(mode: GameMode): string {

@@ -1,4 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { GameMode } from '../types';
+import {
+  autoBindLatestProfile,
+  modeHasProfile,
+  profileMatchesMode,
+  readLogProfileModes,
+  setLogProfileMode,
+  toLogProfileMode,
+  type LogProfileGameMode,
+} from '../utils/logProfileModes';
 import {
   buildTaskStatusMap,
   extractTaskEventsFromLogText,
@@ -9,14 +19,9 @@ import {
 import {
   clearLogsDirHandle,
   isLogSyncSupported,
-  listSessionFolders,
-  loadLogsDirHandle,
-  pickTarkovLogsDirectory,
-  queryReadPermission,
-  readSessionApplicationText,
-  readSessionNotificationsText,
-  requestReadPermission,
-  saveLogsDirHandle,
+  pickLogsDirectory,
+  tryRestoreLogsDirectory,
+  type LogsDirectory,
   type SessionFolderInfo,
 } from '../utils/tarkovLogsFs';
 
@@ -50,6 +55,14 @@ export interface WipeBreakpoint {
   profileId: string;
 }
 
+export interface LogProfileInfo {
+  profileId: string;
+  accountId: string;
+  lastVersion: string;
+  lastSeenAt: number;
+  mode: LogProfileGameMode | null;
+}
+
 function readStoredWipeStart(): string | null {
   return localStorage.getItem(WIPE_START_STORAGE_KEY);
 }
@@ -70,7 +83,7 @@ async function scanWipeBreakpoints(
   let lastKnown: ProfileSelectEvent | null = null;
 
   for (let i = 0; i < folders.length; i++) {
-    const text = await readSessionApplicationText(folders[i].handle);
+    const text = await folders[i].readApplicationText();
     const event = getLatestProfileSelectEvent(text);
     if (event) {
       if (!lastKnown || event.version !== lastKnown.version || event.profileId !== lastKnown.profileId) {
@@ -89,13 +102,47 @@ async function scanWipeBreakpoints(
   return { breakpoints, resolvedProfiles };
 }
 
+function collectProfileInfos(
+  folders: SessionFolderInfo[],
+  resolvedProfiles: (ProfileSelectEvent | null)[],
+  modes: Record<string, LogProfileGameMode>,
+): LogProfileInfo[] {
+  const byId = new Map<string, LogProfileInfo>();
+  for (let i = 0; i < folders.length; i++) {
+    const profile = resolvedProfiles[i];
+    if (!profile) continue;
+    const prev = byId.get(profile.profileId);
+    if (!prev || folders[i].timestamp >= prev.lastSeenAt) {
+      byId.set(profile.profileId, {
+        profileId: profile.profileId,
+        accountId: profile.accountId,
+        lastVersion: profile.version,
+        lastSeenAt: folders[i].timestamp,
+        mode: modes[profile.profileId] ?? null,
+      });
+    }
+  }
+  return [...byId.values()].sort((a, b) => b.lastSeenAt - a.lastSeenAt);
+}
+
+function sessionMatchesMode(
+  profile: ProfileSelectEvent | null,
+  mode: LogProfileGameMode,
+  modes: Record<string, LogProfileGameMode>,
+): boolean {
+  return profileMatchesMode(profile?.profileId, mode, modes);
+}
+
 /**
- * Conecta con la carpeta Logs de Tarkov (File System Access API), reconstruye el historial
- * de misiones a partir del punto de inicio de temporada configurado (automático o elegido
- * manualmente entre los "breakpoints" de versión detectados), y sondea la sesión más
+ * Conecta con la carpeta Logs de Tarkov (File System Access en Chromium, o selección
+ * webkitdirectory en Firefox), reconstruye el historial de misiones a partir del punto
+ * de inicio de temporada configurado, y —si el backend lo permite— sondea la sesión más
  * reciente periódicamente para reflejar eventos en vivo.
+ *
+ * Filtra por ProfileId según el modo activo (PVP Regular vs Seasonal).
  */
-export function useTarkovLogSync(enabled: boolean) {
+export function useTarkovLogSync(enabled: boolean, gameMode: GameMode) {
+  const logMode = toLogProfileMode(gameMode);
   const [status, setStatus] = useState<TarkovLogSyncStatus>(() =>
     isLogSyncSupported() ? 'disconnected' : 'unsupported',
   );
@@ -111,8 +158,15 @@ export function useTarkovLogSync(enabled: boolean) {
   const [breakpoints, setBreakpoints] = useState<WipeBreakpoint[]>([]);
   const [wipeStartSelection, setWipeStartSelectionState] = useState<string | null>(() => readStoredWipeStart());
   const [resolvedWipeStartSession, setResolvedWipeStartSession] = useState<string | null>(null);
+  /** false en Firefox: la carpeta es una instantánea; hay que volver a elegirla para refrescar. */
+  const [canLivePoll, setCanLivePoll] = useState(false);
+  const [profileModes, setProfileModes] = useState<Record<string, LogProfileGameMode>>(() =>
+    readLogProfileModes(),
+  );
+  const [knownProfiles, setKnownProfiles] = useState<LogProfileInfo[]>([]);
+  const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
 
-  const directoryRef = useRef<FileSystemDirectoryHandle | null>(null);
+  const directoryRef = useRef<LogsDirectory | null>(null);
   const baseMapRef = useRef<Record<string, TarkovLogTaskStatus>>({});
   /** Total de eventos de misión ya consolidados en baseMapRef (sesiones que no son la más reciente). */
   const baseEventCountRef = useRef(0);
@@ -120,8 +174,16 @@ export function useTarkovLogSync(enabled: boolean) {
   const currentWipeRef = useRef<ProfileSelectEvent | null>(null);
   const wipeStartRef = useRef<string | null>(wipeStartSelection);
   const latestFolderRef = useRef<SessionFolderInfo | null>(null);
+  const modeFoldersRef = useRef<SessionFolderInfo[]>([]);
+  const resolvedProfilesRef = useRef<(ProfileSelectEvent | null)[]>([]);
+  const foldersRef = useRef<SessionFolderInfo[]>([]);
+  const logModeRef = useRef(logMode);
+  const profileModesRef = useRef(profileModes);
   const intervalRef = useRef<number | null>(null);
   const runIdRef = useRef(0);
+
+  logModeRef.current = logMode;
+  profileModesRef.current = profileModes;
 
   const stopPolling = useCallback(() => {
     if (intervalRef.current != null) {
@@ -130,56 +192,98 @@ export function useTarkovLogSync(enabled: boolean) {
     }
   }, []);
 
-  const pollLatestFolder = useCallback(async (root: FileSystemDirectoryHandle, runId: number) => {
+  const pollLatestFolder = useCallback(async (root: LogsDirectory, runId: number) => {
     try {
-      const folders = await listSessionFolders(root);
+      const folders = await root.listSessionFolders();
       if (folders.length === 0) return;
 
-      const latest = folders[folders.length - 1];
-      const previousLatest = latestFolderRef.current;
-      // El seguimiento dinámico de temporada (auto-reset al detectar nueva versión) solo
-      // se aplica cuando el usuario no ha fijado manualmente un punto de inicio.
-      const isAutoMode = !wipeStartRef.current;
+      const mode = logModeRef.current;
+      const modes = profileModesRef.current;
+      const { resolvedProfiles } = await scanWipeBreakpoints(folders);
+      foldersRef.current = folders;
+      resolvedProfilesRef.current = resolvedProfiles;
 
-      if (previousLatest && previousLatest.name !== latest.name) {
-        let isNewWipe = false;
-        if (isAutoMode) {
-          const latestAppText = await readSessionApplicationText(latest.handle);
-          const latestProfile = getLatestProfileSelectEvent(latestAppText);
-          isNewWipe =
-            latestProfile != null &&
-            currentWipeRef.current != null &&
-            (latestProfile.version !== currentWipeRef.current.version
-              || latestProfile.profileId !== currentWipeRef.current.profileId);
-          if (isNewWipe) currentWipeRef.current = latestProfile;
-        }
-
-        if (isNewWipe) {
-          // Ha empezado un nuevo wipe mientras la app estaba conectada: se descarta el historial anterior.
-          baseMapRef.current = {};
-          baseEventCountRef.current = 0;
-          wipeSessionCountRef.current = 1;
-        } else {
-          // La sesión previa dejó de ser la más reciente: se fija de forma permanente.
-          const previousText = await readSessionNotificationsText(previousLatest.handle);
-          const previousEvents = extractTaskEventsFromLogText(previousText);
-          baseEventCountRef.current += previousEvents.length;
-          baseMapRef.current = buildTaskStatusMap(previousEvents, baseMapRef.current);
-          wipeSessionCountRef.current += 1;
+      const modeIndices: number[] = [];
+      for (let i = 0; i < folders.length; i++) {
+        if (sessionMatchesMode(resolvedProfiles[i], mode, modes)) {
+          modeIndices.push(i);
         }
       }
 
+      // Mantener el corte de wipe del sync inicial (o el elegido manualmente).
+      let startAt = 0;
+      if (wipeStartRef.current === WIPE_START_ALL) {
+        startAt = 0;
+      } else if (wipeStartRef.current) {
+        const idx = modeIndices.findIndex((i) => folders[i].name === wipeStartRef.current);
+        startAt = idx === -1 ? 0 : idx;
+      } else if (modeFoldersRef.current[0]) {
+        const idx = modeIndices.findIndex((i) => folders[i].name === modeFoldersRef.current[0].name);
+        startAt = idx === -1 ? 0 : idx;
+      }
+
+      const wipeModeIndices = modeIndices.slice(startAt);
+      const wipeFolders = wipeModeIndices.map((i) => folders[i]);
+      modeFoldersRef.current = wipeFolders;
+
+      if (wipeFolders.length === 0) {
+        if (runIdRef.current !== runId) return;
+        baseMapRef.current = {};
+        baseEventCountRef.current = 0;
+        wipeSessionCountRef.current = 0;
+        latestFolderRef.current = null;
+        setTaskStatusMap({});
+        setSessionCount(0);
+        setTotalSessionCount(folders.length);
+        setEventCount(0);
+        setLastSyncedAt(new Date());
+        setStatus('syncing');
+        setErrorMessage(null);
+        setKnownProfiles(collectProfileInfos(folders, resolvedProfiles, modes));
+        return;
+      }
+
+      const previousLatest = latestFolderRef.current;
+      const latest = wipeFolders[wipeFolders.length - 1];
+      const latestAbsIndex = wipeModeIndices[wipeModeIndices.length - 1];
+      const latestProfile = resolvedProfiles[latestAbsIndex];
+
+      if (previousLatest && previousLatest.name !== latest.name) {
+        // Nueva sesión del modo activo: consolidar la anterior si seguía en la ventana.
+        const prevStillInWindow = wipeFolders.some((f) => f.name === previousLatest.name);
+        if (prevStillInWindow) {
+          const previousText = await previousLatest.readNotificationsText();
+          const previousEvents = extractTaskEventsFromLogText(previousText);
+          baseEventCountRef.current += previousEvents.length;
+          baseMapRef.current = buildTaskStatusMap(previousEvents, baseMapRef.current);
+        } else {
+          // Cambio de perfil/wipe del modo: reconstruir base desde cero (salvo la última).
+          baseMapRef.current = {};
+          baseEventCountRef.current = 0;
+          for (let i = 0; i < wipeFolders.length - 1; i++) {
+            const text = await wipeFolders[i].readNotificationsText();
+            const events = extractTaskEventsFromLogText(text);
+            baseEventCountRef.current += events.length;
+            baseMapRef.current = buildTaskStatusMap(events, baseMapRef.current);
+          }
+        }
+        wipeSessionCountRef.current = wipeFolders.length;
+        if (latestProfile) currentWipeRef.current = latestProfile;
+      }
+
       latestFolderRef.current = latest;
-      const text = await readSessionNotificationsText(latest.handle);
+      const text = await latest.readNotificationsText();
       const events = extractTaskEventsFromLogText(text);
       const combined = buildTaskStatusMap(events, baseMapRef.current);
 
       if (runIdRef.current !== runId) return;
       setTaskStatusMap(combined);
-      setSessionCount(wipeSessionCountRef.current);
+      setSessionCount(wipeFolders.length);
       setTotalSessionCount(folders.length);
       setEventCount(baseEventCountRef.current + events.length);
-      setWipeVersion(currentWipeRef.current?.version ?? null);
+      setWipeVersion(currentWipeRef.current?.version ?? latestProfile?.version ?? null);
+      setActiveProfileId(latestProfile?.profileId ?? null);
+      setKnownProfiles(collectProfileInfos(folders, resolvedProfiles, modes));
       setLastSyncedAt(new Date());
       setStatus('syncing');
       setErrorMessage(null);
@@ -190,49 +294,73 @@ export function useTarkovLogSync(enabled: boolean) {
     }
   }, []);
 
-  const startSyncing = useCallback((root: FileSystemDirectoryHandle) => {
+  const startSyncing = useCallback((root: LogsDirectory) => {
     const runId = ++runIdRef.current;
     directoryRef.current = root;
+    setCanLivePoll(root.canPoll);
     baseMapRef.current = {};
     baseEventCountRef.current = 0;
     wipeSessionCountRef.current = 0;
     currentWipeRef.current = null;
     latestFolderRef.current = null;
+    modeFoldersRef.current = [];
     stopPolling();
 
     void (async () => {
       try {
-        const folders = await listSessionFolders(root);
+        const folders = await root.listSessionFolders();
         if (folders.length === 0) {
           throw new Error(NO_SESSION_FOLDERS_ERROR);
         }
-        const { breakpoints: bps, resolvedProfiles } = await scanWipeBreakpoints(folders);
+        const { breakpoints: allBps, resolvedProfiles } = await scanWipeBreakpoints(folders);
+        foldersRef.current = folders;
+        resolvedProfilesRef.current = resolvedProfiles;
 
-        // Índice sugerido por defecto: el tramo de versión más reciente (heurística "auto").
-        let boundaryIndex = 0;
-        if (bps.length > 0) {
-          const lastBp = bps[bps.length - 1];
-          const idx = folders.findIndex((f) => f.name === lastBp.session);
-          boundaryIndex = idx === -1 ? 0 : idx;
+        const mode = logModeRef.current;
+        let modes = readLogProfileModes();
+        const latestAny = resolvedProfiles[resolvedProfiles.length - 1];
+        modes = autoBindLatestProfile(latestAny?.profileId, mode, modes);
+        profileModesRef.current = modes;
+        setProfileModes(modes);
+
+        const modeIndices: number[] = [];
+        for (let i = 0; i < folders.length; i++) {
+          if (sessionMatchesMode(resolvedProfiles[i], mode, modes)) {
+            modeIndices.push(i);
+          }
+        }
+
+        const modeBreakpoints = allBps.filter((bp) =>
+          profileMatchesMode(bp.profileId, mode, modes),
+        );
+
+        // Índice sugerido por defecto: el tramo de versión más reciente del modo.
+        let boundaryPos = 0;
+        if (modeBreakpoints.length > 0) {
+          const lastBp = modeBreakpoints[modeBreakpoints.length - 1];
+          const idx = modeIndices.findIndex((i) => folders[i].name === lastBp.session);
+          boundaryPos = idx === -1 ? 0 : idx;
         }
 
         const selection = wipeStartRef.current;
         if (selection === WIPE_START_ALL) {
-          boundaryIndex = 0;
+          boundaryPos = 0;
         } else if (selection) {
-          const idx = folders.findIndex((f) => f.name === selection);
-          if (idx !== -1) boundaryIndex = idx;
+          const idx = modeIndices.findIndex((i) => folders[i].name === selection);
+          if (idx !== -1) boundaryPos = idx;
         }
 
-        currentWipeRef.current = resolvedProfiles[boundaryIndex]
+        const wipeModeIndices = modeIndices.slice(boundaryPos);
+        const wipeFolders = wipeModeIndices.map((i) => folders[i]);
+        modeFoldersRef.current = wipeFolders;
+
+        const boundaryAbs = wipeModeIndices[0] ?? modeIndices[0] ?? 0;
+        currentWipeRef.current = resolvedProfiles[boundaryAbs]
           ?? resolvedProfiles[resolvedProfiles.length - 1]
           ?? null;
 
-        const wipeFolders = folders.slice(boundaryIndex);
-
-        // Todas las sesiones de la temporada actual salvo la más reciente se consolidan de forma permanente.
         for (let i = 0; i < wipeFolders.length - 1; i++) {
-          const text = await readSessionNotificationsText(wipeFolders[i].handle);
+          const text = await wipeFolders[i].readNotificationsText();
           const events = extractTaskEventsFromLogText(text);
           baseEventCountRef.current += events.length;
           baseMapRef.current = buildTaskStatusMap(events, baseMapRef.current);
@@ -240,25 +368,30 @@ export function useTarkovLogSync(enabled: boolean) {
 
         let latestEventCount = 0;
         let combined = baseMapRef.current;
+        let latestProfileId: string | null = null;
         if (wipeFolders.length > 0) {
           const latest = wipeFolders[wipeFolders.length - 1];
           latestFolderRef.current = latest;
-          const text = await readSessionNotificationsText(latest.handle);
+          const text = await latest.readNotificationsText();
           const events = extractTaskEventsFromLogText(text);
           latestEventCount = events.length;
           combined = buildTaskStatusMap(events, baseMapRef.current);
+          const abs = wipeModeIndices[wipeModeIndices.length - 1];
+          latestProfileId = resolvedProfiles[abs]?.profileId ?? null;
         }
 
         wipeSessionCountRef.current = wipeFolders.length;
 
         if (runIdRef.current !== runId) return;
-        setBreakpoints(bps);
-        setResolvedWipeStartSession(folders[boundaryIndex]?.name ?? null);
+        setBreakpoints(modeBreakpoints);
+        setResolvedWipeStartSession(wipeFolders[0]?.name ?? null);
         setTaskStatusMap(combined);
         setSessionCount(wipeFolders.length);
         setTotalSessionCount(folders.length);
         setEventCount(baseEventCountRef.current + latestEventCount);
         setWipeVersion(currentWipeRef.current?.version ?? null);
+        setActiveProfileId(latestProfileId);
+        setKnownProfiles(collectProfileInfos(folders, resolvedProfiles, modes));
         setLastSyncedAt(new Date());
         setStatus('syncing');
         setErrorMessage(null);
@@ -269,9 +402,11 @@ export function useTarkovLogSync(enabled: boolean) {
         return;
       }
 
-      intervalRef.current = window.setInterval(() => {
-        void pollLatestFolder(root, runId);
-      }, POLL_INTERVAL_MS);
+      if (root.canPoll) {
+        intervalRef.current = window.setInterval(() => {
+          void pollLatestFolder(root, runId);
+        }, POLL_INTERVAL_MS);
+      }
     })();
   }, [pollLatestFolder, stopPolling]);
 
@@ -288,18 +423,29 @@ export function useTarkovLogSync(enabled: boolean) {
     }
   }, [startSyncing]);
 
+  const assignProfileMode = useCallback((profileId: string, mode: LogProfileGameMode | null) => {
+    const next = setLogProfileMode(profileId, mode, profileModesRef.current);
+    profileModesRef.current = next;
+    setProfileModes(next);
+    setKnownProfiles((prev) =>
+      prev.map((p) => (p.profileId === profileId ? { ...p, mode } : p)),
+    );
+    if (directoryRef.current) {
+      startSyncing(directoryRef.current);
+    }
+  }, [startSyncing]);
+
   const connect = useCallback(async () => {
     if (!isLogSyncSupported()) return;
     setStatus('connecting');
     setErrorMessage(null);
     try {
-      const handle = await pickTarkovLogsDirectory();
-      await saveLogsDirHandle(handle);
-      setFolderName(handle.name);
-      startSyncing(handle);
+      const directory = await pickLogsDirectory();
+      setFolderName(directory.name);
+      startSyncing(directory);
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') {
-        setStatus('disconnected');
+        setStatus(directoryRef.current ? 'syncing' : 'disconnected');
         return;
       }
       setStatus('error');
@@ -308,26 +454,28 @@ export function useTarkovLogSync(enabled: boolean) {
   }, [startSyncing]);
 
   const reconnect = useCallback(async () => {
-    const handle = directoryRef.current ?? (await loadLogsDirHandle());
-    if (!handle) {
-      setStatus('disconnected');
+    const directory = directoryRef.current;
+    if (directory?.canPoll) {
+      setStatus('connecting');
+      setErrorMessage(null);
+      try {
+        const permission = await directory.ensureReadPermission();
+        if (permission !== 'granted') {
+          setStatus('needs-permission');
+          return;
+        }
+        setFolderName(directory.name);
+        startSyncing(directory);
+      } catch (err) {
+        setStatus('error');
+        setErrorMessage(err instanceof Error ? err.message : String(err));
+      }
       return;
     }
-    setStatus('connecting');
-    setErrorMessage(null);
-    try {
-      const permission = await requestReadPermission(handle);
-      if (permission !== 'granted') {
-        setStatus('needs-permission');
-        return;
-      }
-      setFolderName(handle.name);
-      startSyncing(handle);
-    } catch (err) {
-      setStatus('error');
-      setErrorMessage(err instanceof Error ? err.message : String(err));
-    }
-  }, [startSyncing]);
+
+    // Firefox / sin carpeta en memoria: hay que volver a elegir la carpeta.
+    await connect();
+  }, [connect, startSyncing]);
 
   const disconnect = useCallback(async () => {
     runIdRef.current += 1;
@@ -337,7 +485,9 @@ export function useTarkovLogSync(enabled: boolean) {
     wipeSessionCountRef.current = 0;
     currentWipeRef.current = null;
     latestFolderRef.current = null;
+    modeFoldersRef.current = [];
     directoryRef.current = null;
+    setCanLivePoll(false);
     setTaskStatusMap({});
     setFolderName(null);
     setLastSyncedAt(null);
@@ -348,6 +498,8 @@ export function useTarkovLogSync(enabled: boolean) {
     setWipeVersion(null);
     setBreakpoints([]);
     setResolvedWipeStartSession(null);
+    setKnownProfiles([]);
+    setActiveProfileId(null);
     await clearLogsDirHandle();
     setStatus(isLogSyncSupported() ? 'disconnected' : 'unsupported');
   }, [stopPolling]);
@@ -362,18 +514,19 @@ export function useTarkovLogSync(enabled: boolean) {
     let cancelled = false;
 
     void (async () => {
-      const handle = await loadLogsDirHandle();
+      const directory = await tryRestoreLogsDirectory();
       if (cancelled) return;
-      if (!handle) {
+      if (!directory) {
         setStatus('disconnected');
         return;
       }
-      const permission = await queryReadPermission(handle);
+      const permission = await directory.queryReadPermission();
       if (cancelled) return;
-      directoryRef.current = handle;
-      setFolderName(handle.name);
+      directoryRef.current = directory;
+      setFolderName(directory.name);
+      setCanLivePoll(directory.canPoll);
       if (permission === 'granted') {
-        startSyncing(handle);
+        startSyncing(directory);
       } else {
         setStatus('needs-permission');
       }
@@ -384,10 +537,9 @@ export function useTarkovLogSync(enabled: boolean) {
       runIdRef.current += 1;
       stopPolling();
     };
-    // startSyncing/stopPolling son estables (useCallback sin dependencias variables);
-    // solo queremos re-ejecutar este efecto cuando cambia `enabled`.
+    // Re-sincroniza al activar Logs o al cambiar Regular ↔ Seasonal.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled]);
+  }, [enabled, logMode]);
 
   return {
     status,
@@ -402,7 +554,14 @@ export function useTarkovLogSync(enabled: boolean) {
     breakpoints,
     wipeStartSelection,
     resolvedWipeStartSession,
+    canLivePoll,
+    knownProfiles,
+    profileModes,
+    activeProfileId,
+    logMode,
+    modeHasAssignedProfile: modeHasProfile(profileModes, logMode),
     setWipeStart,
+    assignProfileMode,
     connect,
     reconnect,
     disconnect,

@@ -9,6 +9,12 @@ export interface Translations {
   homeChooseTitle: string;
   homeChooseHint: string;
   homeRoutesHint: string;
+  homeCardRoutes: string;
+  homeCardPvp: string;
+  homeCardSeasonal: string;
+  homeCardTagRoutes: string;
+  homeCardTagRegular: string;
+  homeCardTagSeasonal: string;
   homeBack: string;
   subtitle: (n: number) => string;
   loading: string;
@@ -17,6 +23,7 @@ export interface Translations {
   incompleteTasksTitle: string;
   incompleteTasksBody: (count: number) => string;
   staleCacheNotice: string;
+  staleCacheNoticeDetail: (detail: string) => string;
   searchPlaceholder: string;
   allTraders: string;
   allStatuses: string;
@@ -25,6 +32,7 @@ export interface Translations {
   statusCompleted: string;
   statusLocked: string;
   playerLevel: string;
+  playerLevelLogsHint: string;
   gameMode: string;
   gameModeLabel: Record<GameMode, string>;
   gameModeHint: Record<GameMode, string>;
@@ -45,9 +53,11 @@ export interface Translations {
   footerVisits: (n: number) => string;
   noTasksFilter: string;
   noActiveTasks: string;
+  noCompletedTasks: string;
   selectTask: string;
   tabAll: string;
   tabActive: string;
+  tabCompleted: string;
   tabRoutes: string;
   tabStory: string;
   tabSideQuest: string;
@@ -77,6 +87,9 @@ export interface Translations {
   routesShowFixedPoints: string;
   adminRoutesTitle: string;
   adminRoutesHint: string;
+  routeEnvironmentRegular: string;
+  routeEnvironmentSeasonal: string;
+  routeEnvironmentHint: string;
   adminLoginTitle: string;
   adminTokenLabel: string;
   adminTokenPlaceholder: string;
@@ -91,6 +104,7 @@ export interface Translations {
   adminPointImageUpload: string;
   adminPointImageClear: string;
   adminPointImageError: string;
+  routesPointImageModal: string;
   adminMarkerType: string;
   adminMarkerTypeDefault: string;
   adminMarkerTypeKb: string;
@@ -150,6 +164,7 @@ export interface Translations {
   anyMap: string;
   anyItem: string;
   activeByMap: (n: number) => string;
+  completedByMap: (n: number) => string;
   viewMap: string;
   viewMapOnTarkovDev: string;
   mapMarkersTitle: (n: number) => string;
@@ -168,6 +183,8 @@ export interface Translations {
   logsConnect: string;
   logsReconnect: string;
   logsChangeFolder: string;
+  logsRefreshFolder: string;
+  logsSnapshotHint: string;
   logsDisconnect: string;
   logsConnecting: string;
   logsNeedsPermission: string;
@@ -188,6 +205,13 @@ export interface Translations {
   logsWipeStartAll: string;
   logsWipeStartOption: (date: string, version: string) => string;
   logsWipeStartAutoTag: string;
+  logsProfilesTitle: string;
+  logsProfilesHint: string;
+  logsProfileRegular: string;
+  logsProfileSeasonal: string;
+  logsProfileUnassigned: string;
+  logsProfileActive: string;
+  logsProfileNeedsAssign: string;
   state: Record<TaskProgressState, string>;
 }
 
@@ -197,6 +221,12 @@ export const translations: Record<Lang, Translations> = {
     homeChooseTitle: 'Elige cómo usar la app',
     homeChooseHint: 'Selecciona un modo para empezar. Puedes volver aquí desde el logo.',
     homeRoutesHint: 'Dibuja y consulta rutas en los mapas, con puntos fijos compartidos.',
+    homeCardRoutes: 'Routes Zone',
+    homeCardPvp: 'PvP Zone',
+    homeCardSeasonal: 'PvP Season',
+    homeCardTagRoutes: 'MAPS',
+    homeCardTagRegular: 'REGULAR',
+    homeCardTagSeasonal: 'SEASONAL',
     homeBack: 'Inicio',
     subtitle: (n) => `Tracker de misiones · ${n} quests · datos de tarkov.dev`,
     loading: 'Cargando misiones desde tarkov.dev…',
@@ -209,7 +239,8 @@ export const translations: Record<Lang, Translations> = {
       + 'ni de tus misiones: con una lista tan incompleta, ninguna misión detectada en los logs (ni en modo Local) '
       + 'puede emparejarse correctamente, así que no se muestra nada. Reintenta en un momento.',
     staleCacheNotice:
-      'tarkov.dev no responde: mostrando misiones offline (pueden no estar al día con EFT 1.1). Reintenta más tarde.',
+      'Ni GraphQL ni json.tarkov.dev respondieron: mostrando misiones offline empaquetadas.',
+    staleCacheNoticeDetail: (detail) => `Detalle: ${detail}`,
     searchPlaceholder: 'Buscar misión o comerciante…',
     allTraders: 'Todos los comerciantes',
     allStatuses: 'Todos los estados',
@@ -218,6 +249,8 @@ export const translations: Record<Lang, Translations> = {
     statusCompleted: 'Completadas',
     statusLocked: 'Bloqueadas',
     playerLevel: 'Nivel PJ',
+    playerLevelLogsHint:
+      'En modo Logs el nivel se calcula solo: el mayor nivel exigido por tus misiones activas o completadas.',
     gameMode: 'Modo de juego',
     gameModeLabel: {
       regular: 'PvP',
@@ -232,7 +265,7 @@ export const translations: Record<Lang, Translations> = {
     settings: 'Ajustes',
     traderLevels: 'Loyalty Level de comerciantes',
     traderLevelsHint:
-      'En EFT 1.1 las side quests se desbloquean por Loyalty Level (LL). Ajusta el LL de cada comerciante para ver qué misiones tienes disponibles.',
+      'Se calcula solo: si tienes una misión activa o completada que exige cierto LL, ese valor se usa como mínimo. Puedes subirlo a mano si hace falta.',
     loyaltyShort: (n) => `LL${n}`,
     exportProgress: 'Exportar progreso',
     importProgress: 'Importar progreso',
@@ -248,9 +281,11 @@ export const translations: Record<Lang, Translations> = {
     footerVisits: (n) => `${n.toLocaleString('es-ES')} visita${n === 1 ? '' : 's'}`,
     noTasksFilter: 'No hay misiones con estos filtros.',
     noActiveTasks: 'No tienes misiones en curso.',
+    noCompletedTasks: 'No tienes misiones completadas.',
     selectTask: 'Selecciona una misión para ver los detalles',
     tabAll: 'Todas',
     tabActive: 'Activas',
+    tabCompleted: 'Completadas',
     tabRoutes: 'Rutas',
     tabStory: 'Story',
     tabSideQuest: 'Side Quest',
@@ -281,6 +316,9 @@ export const translations: Record<Lang, Translations> = {
     routesShowFixedPoints: 'Mostrar puntos fijos',
     adminRoutesTitle: 'Admin · Puntos fijos de rutas',
     adminRoutesHint: 'Crea y edita puntos compartidos. Se guardan en el servidor (Turso).',
+    routeEnvironmentRegular: 'PVP Zone',
+    routeEnvironmentSeasonal: 'Seasonal / Routes',
+    routeEnvironmentHint: 'PVP Zone y Seasonal tienen mapas independientes. Routes comparte datos con Seasonal.',
     adminLoginTitle: 'Acceso admin',
     adminTokenLabel: 'Token de administración',
     adminTokenPlaceholder: 'ADMIN_TOKEN',
@@ -291,10 +329,11 @@ export const translations: Record<Lang, Translations> = {
     adminPointLabel: 'Etiqueta',
     adminPointLabelPlaceholder: 'Nombre del punto (opcional)',
     adminPointImage: 'Imagen',
-    adminPointImageHint: 'Se muestra al pasar el ratón sobre el punto.',
+    adminPointImageHint: 'Se muestra al pasar el ratón; clic en el punto para verla en grande.',
     adminPointImageUpload: 'Subir imagen',
     adminPointImageClear: 'Quitar imagen',
     adminPointImageError: 'No se pudo procesar la imagen. Prueba con otra más ligera.',
+    routesPointImageModal: 'Imagen del punto',
     adminMarkerType: 'Tipo de marcador',
     adminMarkerTypeDefault: 'Normal',
     adminMarkerTypeKb: 'KB especial',
@@ -358,6 +397,7 @@ export const translations: Record<Lang, Translations> = {
     anyMap: 'Cualquier mapa',
     anyItem: 'Cualquier ítem',
     activeByMap: (n) => `${n} en curso`,
+    completedByMap: (n) => `${n} completada${n === 1 ? '' : 's'}`,
     viewMap: 'Map',
     viewMapOnTarkovDev: 'Ver en tarkov.dev →',
     mapMarkersTitle: (n) => `${n} ubicación${n === 1 ? '' : 'es'} en el mapa`,
@@ -373,10 +413,13 @@ export const translations: Record<Lang, Translations> = {
     dataSource: 'Fuente de datos',
     dataSourceLocal: 'Local',
     dataSourceLogs: 'Logs',
-    dataSourceLogsUnsupportedTitle: 'Requiere Chrome o Edge de escritorio',
+    dataSourceLogsUnsupportedTitle: 'Tu navegador no permite elegir carpetas',
     logsConnect: 'Conectar carpeta de Logs',
     logsReconnect: 'Reconectar',
     logsChangeFolder: 'Cambiar carpeta',
+    logsRefreshFolder: 'Actualizar (volver a elegir la carpeta)',
+    logsSnapshotHint:
+      'En este navegador la carpeta se lee como una instantánea. Para ver misiones nuevas, vuelve a elegir la carpeta Logs.',
     logsDisconnect: 'Desconectar',
     logsConnecting: 'Conectando…',
     logsNeedsPermission: 'Se requiere permiso de acceso a la carpeta',
@@ -416,6 +459,15 @@ export const translations: Record<Lang, Translations> = {
     logsWipeStartAll: 'Usar todo el historial (sin filtrar)',
     logsWipeStartOption: (date, version) => `Desde ${date} · v${version}`,
     logsWipeStartAutoTag: ' (auto)',
+    logsProfilesTitle: 'Perfiles PMC (logs)',
+    logsProfilesHint:
+      'Seasonal y PVP Regular usan ProfileId distintos. Asigna cada perfil al modo correcto; '
+      + 'al conectar Logs en un modo sin perfil, se enlaza automáticamente el último visto.',
+    logsProfileRegular: 'PVP Zone',
+    logsProfileSeasonal: 'Seasonal',
+    logsProfileUnassigned: 'Sin asignar',
+    logsProfileActive: 'activo',
+    logsProfileNeedsAssign: 'Hay perfiles sin asignar. Enlázalos para separar Seasonal y Regular.',
     state: {
       locked: 'Bloqueada',
       available: 'Disponible',
@@ -429,6 +481,12 @@ export const translations: Record<Lang, Translations> = {
     homeChooseTitle: 'Choose how to use the app',
     homeChooseHint: 'Pick a mode to get started. You can return here from the logo.',
     homeRoutesHint: 'Draw and review routes on maps, including shared fixed points.',
+    homeCardRoutes: 'Routes Zone',
+    homeCardPvp: 'PvP Zone',
+    homeCardSeasonal: 'PvP Season',
+    homeCardTagRoutes: 'MAPS',
+    homeCardTagRegular: 'REGULAR',
+    homeCardTagSeasonal: 'SEASONAL',
     homeBack: 'Home',
     subtitle: (n) => `Quest tracker · ${n} quests · data from tarkov.dev`,
     loading: 'Loading quests from tarkov.dev…',
@@ -441,7 +499,8 @@ export const translations: Record<Lang, Translations> = {
       + 'reader or your quests: with such an incomplete list, no quest detected in the logs (or in Local mode) '
       + 'can be matched correctly, so nothing shows up. Please retry in a moment.',
     staleCacheNotice:
-      'tarkov.dev is unreachable: showing offline quests (may not reflect EFT 1.1 yet). Retry later.',
+      'Neither GraphQL nor json.tarkov.dev responded: showing bundled offline quests.',
+    staleCacheNoticeDetail: (detail) => `Detail: ${detail}`,
     searchPlaceholder: 'Search quest or trader…',
     allTraders: 'All traders',
     allStatuses: 'All statuses',
@@ -450,6 +509,8 @@ export const translations: Record<Lang, Translations> = {
     statusCompleted: 'Completed',
     statusLocked: 'Locked',
     playerLevel: 'Player level',
+    playerLevelLogsHint:
+      'In Logs mode, level is auto-detected from the highest level required by your active or completed quests.',
     gameMode: 'Game mode',
     gameModeLabel: {
       regular: 'PvP',
@@ -464,7 +525,7 @@ export const translations: Record<Lang, Translations> = {
     settings: 'Settings',
     traderLevels: 'Trader loyalty levels',
     traderLevelsHint:
-      'In EFT 1.1 side quests unlock by Loyalty Level (LL). Set each trader’s LL to see which quests are available.',
+      'Auto-detected: an active or completed quest that requires a given LL sets that as the minimum. You can raise it manually if needed.',
     loyaltyShort: (n) => `LL${n}`,
     exportProgress: 'Export progress',
     importProgress: 'Import progress',
@@ -480,9 +541,11 @@ export const translations: Record<Lang, Translations> = {
     footerVisits: (n) => `${n.toLocaleString('en-US')} visit${n === 1 ? '' : 's'}`,
     noTasksFilter: 'No quests match these filters.',
     noActiveTasks: 'You have no quests in progress.',
+    noCompletedTasks: 'You have no completed quests.',
     selectTask: 'Select a quest to view details',
     tabAll: 'All',
     tabActive: 'Active',
+    tabCompleted: 'Completed',
     tabRoutes: 'Routes',
     tabStory: 'Story',
     tabSideQuest: 'Side Quest',
@@ -513,6 +576,9 @@ export const translations: Record<Lang, Translations> = {
     routesShowFixedPoints: 'Show fixed points',
     adminRoutesTitle: 'Admin · Fixed route points',
     adminRoutesHint: 'Create and edit shared points. Stored on the server (Turso).',
+    routeEnvironmentRegular: 'PVP Zone',
+    routeEnvironmentSeasonal: 'Seasonal / Routes',
+    routeEnvironmentHint: 'PVP Zone and Seasonal have separate maps. Routes shares data with Seasonal.',
     adminLoginTitle: 'Admin access',
     adminTokenLabel: 'Admin token',
     adminTokenPlaceholder: 'ADMIN_TOKEN',
@@ -523,10 +589,11 @@ export const translations: Record<Lang, Translations> = {
     adminPointLabel: 'Label',
     adminPointLabelPlaceholder: 'Point name (optional)',
     adminPointImage: 'Image',
-    adminPointImageHint: 'Shown when hovering the point.',
+    adminPointImageHint: 'Shown on hover; click the point to view it larger.',
     adminPointImageUpload: 'Upload image',
     adminPointImageClear: 'Remove image',
     adminPointImageError: 'Could not process the image. Try a smaller one.',
+    routesPointImageModal: 'Point image',
     adminMarkerType: 'Marker type',
     adminMarkerTypeDefault: 'Normal',
     adminMarkerTypeKb: 'KB special',
@@ -590,6 +657,7 @@ export const translations: Record<Lang, Translations> = {
     anyMap: 'Any map',
     anyItem: 'Any item',
     activeByMap: (n) => `${n} in progress`,
+    completedByMap: (n) => `${n} completed`,
     viewMap: 'Map',
     viewMapOnTarkovDev: 'View on tarkov.dev →',
     mapMarkersTitle: (n) => `${n} map location${n === 1 ? '' : 's'}`,
@@ -605,10 +673,13 @@ export const translations: Record<Lang, Translations> = {
     dataSource: 'Data source',
     dataSourceLocal: 'Local',
     dataSourceLogs: 'Logs',
-    dataSourceLogsUnsupportedTitle: 'Requires desktop Chrome or Edge',
+    dataSourceLogsUnsupportedTitle: 'Your browser cannot pick folders',
     logsConnect: 'Connect Logs folder',
     logsReconnect: 'Reconnect',
     logsChangeFolder: 'Change folder',
+    logsRefreshFolder: 'Refresh (pick the folder again)',
+    logsSnapshotHint:
+      'In this browser the folder is read as a snapshot. To see new quests, pick the Logs folder again.',
     logsDisconnect: 'Disconnect',
     logsConnecting: 'Connecting…',
     logsNeedsPermission: 'Folder access permission required',
@@ -648,6 +719,15 @@ export const translations: Record<Lang, Translations> = {
     logsWipeStartAll: 'Use full history (no filtering)',
     logsWipeStartOption: (date, version) => `From ${date} · v${version}`,
     logsWipeStartAutoTag: ' (auto)',
+    logsProfilesTitle: 'PMC profiles (logs)',
+    logsProfilesHint:
+      'Seasonal and PVP Regular use different ProfileIds. Assign each profile to the right mode; '
+      + 'connecting Logs in a mode with no profile auto-links the latest seen one.',
+    logsProfileRegular: 'PVP Zone',
+    logsProfileSeasonal: 'Seasonal',
+    logsProfileUnassigned: 'Unassigned',
+    logsProfileActive: 'active',
+    logsProfileNeedsAssign: 'Unassigned profiles found. Link them to separate Seasonal and Regular.',
     state: {
       locked: 'Locked',
       available: 'Available',

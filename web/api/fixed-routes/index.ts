@@ -8,6 +8,10 @@ import {
   rowToDto,
   type FixedRoutePointRow,
 } from '../_lib/db.js';
+import {
+  DEFAULT_ROUTE_ENVIRONMENT,
+  normalizeRouteEnvironment,
+} from '../_lib/environment.js';
 import { applyCors, handleOptions, readJsonBody, serverError } from '../_lib/http.js';
 import { normalizeImageUrl } from '../_lib/image.js';
 import { isValidMapKey } from '../_lib/maps.js';
@@ -19,6 +23,7 @@ import {
 
 interface CreateBody {
   mapKey?: string;
+  environment?: string | null;
   left?: number;
   top?: number;
   color?: string;
@@ -35,14 +40,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const db = getDb();
 
     if (req.method === 'GET') {
-      const result = await db.execute(
-        `SELECT id, map_key, left_pct, top_pct, color, label, image_url, marker_type, created_at, updated_at
-         FROM fixed_route_points
-         ORDER BY map_key ASC, created_at ASC`,
-      );
+      const rawEnv = Array.isArray(req.query.environment)
+        ? req.query.environment[0]
+        : req.query.environment;
+      const envParsed = normalizeRouteEnvironment(rawEnv ?? DEFAULT_ROUTE_ENVIRONMENT);
+      if (envParsed.ok === false) {
+        applyCors(res);
+        res.status(400).json({ error: envParsed.error });
+        return;
+      }
+
+      const result = await db.execute({
+        sql: `SELECT id, map_key, environment, left_pct, top_pct, color, label, image_url, marker_type, created_at, updated_at
+              FROM fixed_route_points
+              WHERE environment = ?
+              ORDER BY map_key ASC, created_at ASC`,
+        args: [envParsed.value],
+      });
       const points = result.rows.map((row) => rowToDto(row as unknown as FixedRoutePointRow));
       applyCors(res);
-      res.status(200).json({ points });
+      res.status(200).json({ points, environment: envParsed.value });
       return;
     }
 
@@ -58,6 +75,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const left = typeof body.left === 'number' ? body.left : Number.NaN;
       const top = typeof body.top === 'number' ? body.top : Number.NaN;
       const color = typeof body.color === 'string' ? body.color.trim() : '';
+      const envParsed = normalizeRouteEnvironment(body.environment);
+      if (envParsed.ok === false) {
+        applyCors(res);
+        res.status(400).json({ error: envParsed.error });
+        return;
+      }
+      const environment = envParsed.value;
       const markerParsed = normalizeMarkerType(body.markerType);
       if (markerParsed.ok === false) {
         applyCors(res);
@@ -102,9 +126,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       await db.execute({
         sql: `INSERT INTO fixed_route_points
-          (id, map_key, left_pct, top_pct, color, label, image_url, marker_type, created_at, updated_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        args: [id, mapKey, leftPct, topPct, color, label, imageUrl, markerType, now, now],
+          (id, map_key, environment, left_pct, top_pct, color, label, image_url, marker_type, created_at, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        args: [id, mapKey, environment, leftPct, topPct, color, label, imageUrl, markerType, now, now],
       });
 
       applyCors(res);
@@ -112,6 +136,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         point: rowToDto({
           id,
           map_key: mapKey,
+          environment,
           left_pct: leftPct,
           top_pct: topPct,
           color,

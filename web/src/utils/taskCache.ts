@@ -1,6 +1,6 @@
 import type { Lang } from '../i18n/translations';
 import type { GameMode, Task } from '../types';
-import { MIN_VALID_TASK_COUNT, TASKS_CACHE_KEY, TASKS_CACHE_SCHEMA, toApiGameMode } from '../types';
+import { MIN_VALID_TASK_COUNT, TASKS_CACHE_KEY, TASKS_CACHE_SCHEMA } from '../types';
 
 const DB_NAME = 'eft-quest-tracker';
 const STORE_NAME = 'tasks-cache';
@@ -11,8 +11,8 @@ export const CACHE_TTL_MS = 1000 * 60 * 60 * 6;
 export interface CachedTasks {
   schema: number;
   lang: Lang;
-  /** Modo de API usado al fetch (regular | pve). Ausente en cachés anteriores a EFT 1.1. */
-  gameMode?: 'regular' | 'pve';
+  /** Modo de la app usado al fetch (regular | pve | seasonal). */
+  gameMode?: GameMode;
   fetchedAt: string;
   tasks: Task[];
 }
@@ -37,8 +37,7 @@ function cacheHasZonePositions(tasks: Task[]): boolean {
 }
 
 function cacheId(lang: Lang, gameMode: GameMode) {
-  const apiMode = toApiGameMode(gameMode);
-  return `${TASKS_CACHE_KEY}-${lang}-${apiMode}`;
+  return `${TASKS_CACHE_KEY}-${lang}-${gameMode}`;
 }
 
 /** Clave previa a la separación por gameMode. */
@@ -46,9 +45,15 @@ function legacyCacheId(lang: Lang) {
   return `${TASKS_CACHE_KEY}-${lang}`;
 }
 
+/** Claves antiguas que colapsaban seasonal → regular vía toApiGameMode. */
+function collapsedApiCacheId(lang: Lang, apiMode: 'regular' | 'pve') {
+  return `${TASKS_CACHE_KEY}-${lang}-${apiMode}`;
+}
+
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onerror = () => reject(request.error ?? new Error('IndexedDB open failed'));
     request.onupgradeneeded = () => {
       const db = request.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
@@ -56,7 +61,6 @@ function openDb(): Promise<IDBDatabase> {
       }
     };
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error ?? new Error('IndexedDB open failed'));
   });
 }
 
@@ -64,9 +68,9 @@ function idbGet<T>(db: IDBDatabase, key: string): Promise<T | undefined> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readonly');
     const store = tx.objectStore(STORE_NAME);
-    const request = store.get(key);
-    request.onsuccess = () => resolve(request.result as T | undefined);
-    request.onerror = () => reject(request.error);
+    const req = store.get(key);
+    req.onerror = () => reject(req.error ?? new Error('IndexedDB get failed'));
+    req.onsuccess = () => resolve(req.result as T | undefined);
   });
 }
 
@@ -74,9 +78,9 @@ function idbSet(db: IDBDatabase, key: string, value: unknown): Promise<void> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORE_NAME);
-    const request = store.put(value, key);
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
+    const req = store.put(value, key);
+    req.onerror = () => reject(req.error ?? new Error('IndexedDB put failed'));
+    req.onsuccess = () => resolve();
   });
 }
 
@@ -87,9 +91,14 @@ export async function readTaskCache(lang: Lang, gameMode: GameMode): Promise<Cac
       const cached = await idbGet<CachedTasks>(db, cacheId(lang, gameMode));
       if (cached) return cached;
 
-      // Respaldo: caché pre-1.1 (sin sufijo de modo), solo útil para regular/seasonal.
-      if (toApiGameMode(gameMode) === 'regular') {
-        return (await idbGet<CachedTasks>(db, legacyCacheId(lang))) ?? null;
+      // Solo Regular puede reutilizar cachés legacy (sin sufijo / colapsadas a api regular).
+      // Seasonal nunca debe leer datos de Regular.
+      if (gameMode === 'regular' || gameMode === 'pve') {
+        const collapsed = await idbGet<CachedTasks>(db, collapsedApiCacheId(lang, gameMode === 'pve' ? 'pve' : 'regular'));
+        if (collapsed) return collapsed;
+        if (gameMode === 'regular') {
+          return (await idbGet<CachedTasks>(db, legacyCacheId(lang))) ?? null;
+        }
       }
       return null;
     } finally {
@@ -116,14 +125,14 @@ export async function writeTaskCache(
 export function isCacheValid(cached: CachedTasks, lang: Lang, gameMode: GameMode): boolean {
   if (cached.schema !== TASKS_CACHE_SCHEMA) return false;
   if (cached.lang !== lang || cached.tasks.length < MIN_VALID_TASK_COUNT) return false;
-  if (cached.gameMode != null && cached.gameMode !== toApiGameMode(gameMode)) return false;
+  if (cached.gameMode != null && cached.gameMode !== gameMode) return false;
   if (!cacheHasZonePositions(cached.tasks)) return false;
   return Date.now() - new Date(cached.fetchedAt).getTime() < CACHE_TTL_MS;
 }
 
 /**
  * Caché usable cuando la API falla: admite schema antiguo / TTL caducado,
- * siempre que el listado sea completo y del idioma correcto.
+ * siempre que el listado sea completo y del idioma/modo correcto.
  */
 export function isCacheUsableFallback(
   cached: CachedTasks,
@@ -131,7 +140,9 @@ export function isCacheUsableFallback(
   gameMode: GameMode,
 ): boolean {
   if (cached.lang !== lang || cached.tasks.length < MIN_VALID_TASK_COUNT) return false;
-  if (cached.gameMode != null && cached.gameMode !== toApiGameMode(gameMode)) return false;
+  if (cached.gameMode != null && cached.gameMode !== gameMode) return false;
+  // Cachés antiguas sin gameMode solo sirven para Regular (nunca Seasonal).
+  if (cached.gameMode == null && gameMode !== 'regular') return false;
   return true;
 }
 

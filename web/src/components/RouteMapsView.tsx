@@ -137,6 +137,10 @@ export function RouteMapsView({
     src: string;
     label: string;
   } | null>(null);
+  const [imageModal, setImageModal] = useState<{
+    src: string;
+    label: string;
+  } | null>(null);
   const [editingLabels, setEditingLabels] = useState<Record<string, string>>({});
   const [showFixedPoints, setShowFixedPoints] = useState(true);
   const imageWrapRef = useRef<HTMLDivElement>(null);
@@ -226,7 +230,17 @@ export function RouteMapsView({
 
   useEffect(() => {
     setEditingLabels({});
+    setImageModal(null);
   }, [selectedMapKey]);
+
+  useEffect(() => {
+    if (!imageModal) return undefined;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setImageModal(null);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [imageModal]);
 
   useEffect(() => {
     if (isAdmin) return;
@@ -234,6 +248,11 @@ export function RouteMapsView({
       onChangeColor(DEFAULT_ROUTE_POINT_COLOR);
     }
   }, [isAdmin, selectedColor, onChangeColor]);
+
+  const openPointImageModal = useCallback((src: string, label: string) => {
+    setImageTooltip(null);
+    setImageModal({ src, label });
+  }, []);
 
   const colorInputValue = (ROUTE_POINT_COLORS as readonly string[]).includes(selectedColor)
     ? customColor
@@ -687,11 +706,21 @@ export function RouteMapsView({
                             </div>
                           )}
                           {point.imageUrl && (
-                            <img
-                              className="route-maps-image-thumb"
-                              src={point.imageUrl}
-                              alt=""
-                            />
+                            <button
+                              type="button"
+                              className="route-maps-image-thumb-btn"
+                              onClick={() => openPointImageModal(
+                                point.imageUrl!,
+                                point.label?.trim() || '',
+                              )}
+                              title={t.routesPointImageModal}
+                            >
+                              <img
+                                className="route-maps-image-thumb"
+                                src={point.imageUrl}
+                                alt=""
+                              />
+                            </button>
                           )}
                         </div>
                       ) : (
@@ -861,21 +890,31 @@ export function RouteMapsView({
                 } as CSSProperties}
                 title={
                   point.imageUrl
-                    ? (iconMarker ? t.adminPointImage : markerLabel)
+                    ? t.routesPointImageModal
                     : isAdmin
                       ? (iconMarker ? t.adminDeletePoint : (point.label?.trim() || t.adminDeletePoint))
                       : (iconMarker ? markerLabel : (point.label?.trim() || t.routesFixedSection))
                 }
                 aria-label={iconMarker ? markerLabel : (point.label?.trim() || t.routesPointLabel(index + 1))}
-                onMouseEnter={(e) => setPointHovered(point.id, {
-                  scrollList: true,
-                  imageUrl: point.imageUrl,
-                  label: iconMarker ? '' : markerLabel,
-                  anchorEl: e.currentTarget,
-                })}
+                onMouseEnter={(e) => {
+                  if (imageModal) return;
+                  setPointHovered(point.id, {
+                    scrollList: true,
+                    imageUrl: point.imageUrl,
+                    label: iconMarker ? '' : markerLabel,
+                    anchorEl: e.currentTarget,
+                  });
+                }}
                 onMouseLeave={() => setPointHovered(null)}
                 onClick={(e) => {
                   e.stopPropagation();
+                  if (point.imageUrl) {
+                    openPointImageModal(
+                      point.imageUrl,
+                      iconMarker ? '' : markerLabel,
+                    );
+                    return;
+                  }
                   if (isAdmin && onRemoveFixedPoint && !busy) {
                     onRemoveFixedPoint(point.id);
                   }
@@ -935,7 +974,7 @@ export function RouteMapsView({
         </div>
       </div>
 
-      {imageTooltip && (
+      {imageTooltip && !imageModal && (
         <div
           className="route-fixed-image-tooltip"
           role="tooltip"
@@ -948,6 +987,35 @@ export function RouteMapsView({
           {imageTooltip.label && (
             <span className="route-fixed-image-tooltip-label">{imageTooltip.label}</span>
           )}
+        </div>
+      )}
+
+      {imageModal && (
+        <div
+          className="route-point-image-modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label={imageModal.label || t.routesPointImageModal}
+          onClick={() => setImageModal(null)}
+        >
+          <div
+            className="route-point-image-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <header className="route-point-image-modal-header">
+              <h3>{imageModal.label || t.routesPointImageModal}</h3>
+              <button
+                type="button"
+                className="btn btn-ghost route-point-image-modal-close"
+                onClick={() => setImageModal(null)}
+              >
+                {t.close}
+              </button>
+            </header>
+            <div className="route-point-image-modal-body">
+              <img src={imageModal.src} alt={imageModal.label || t.routesPointImageModal} />
+            </div>
+          </div>
         </div>
       )}
     </div>

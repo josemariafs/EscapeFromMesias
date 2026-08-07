@@ -3,9 +3,12 @@ import type { DataSourceMode } from '../hooks/useDataSource';
 import {
   NO_SESSION_FOLDERS_ERROR,
   WIPE_START_ALL,
+  type LogProfileInfo,
   type TarkovLogSyncStatus,
   type WipeBreakpoint,
 } from '../hooks/useTarkovLogSync';
+import type { LogProfileGameMode } from '../utils/logProfileModes';
+import { shortProfileId } from '../utils/logProfileModes';
 import { isLogSyncSupported } from '../utils/tarkovLogsFs';
 import type { Translations } from '../i18n/translations';
 
@@ -25,6 +28,11 @@ interface DataSourceControlProps {
   wipeStartSelection: string | null;
   resolvedWipeStartSession: string | null;
   onChangeWipeStart: (selection: string | null) => void;
+  knownProfiles: LogProfileInfo[];
+  activeProfileId: string | null;
+  onAssignProfileMode: (profileId: string, mode: LogProfileGameMode | null) => void;
+  /** false en Firefox: hay que volver a elegir la carpeta para refrescar. */
+  canLivePoll: boolean;
   locale: string;
   t: Translations;
   onConnect: () => void;
@@ -48,6 +56,10 @@ export function DataSourceControl({
   wipeStartSelection,
   resolvedWipeStartSession,
   onChangeWipeStart,
+  knownProfiles,
+  activeProfileId,
+  onAssignProfileMode,
+  canLivePoll,
   locale,
   t,
   onConnect,
@@ -56,6 +68,8 @@ export function DataSourceControl({
 }: DataSourceControlProps) {
   const supported = isLogSyncSupported();
   const [wipeMenuOpen, setWipeMenuOpen] = useState(false);
+  const [profilesMenuOpen, setProfilesMenuOpen] = useState(false);
+  const hasUnassigned = knownProfiles.some((p) => p.mode == null);
 
   return (
     <div className="data-source-control">
@@ -122,6 +136,8 @@ export function DataSourceControl({
                   folderName,
                   t.logsStats(sessionCount, totalSessionCount, taskCount, wipeVersion),
                   taskCount === 0 ? t.logsNoEventsHint : null,
+                  !canLivePoll ? t.logsSnapshotHint : null,
+                  hasUnassigned ? t.logsProfileNeedsAssign : null,
                 ].filter(Boolean).join('\n')}
               >
                 {lastSyncedAt ? t.logsSyncedAt(lastSyncedAt.toLocaleTimeString(locale)) : folderName}
@@ -134,13 +150,87 @@ export function DataSourceControl({
                   ⚠ {unmatchedTaskIds.length}
                 </span>
               )}
+              {knownProfiles.length > 0 && (
+                <div className="wipe-start-picker">
+                  <button
+                    type="button"
+                    className={`btn-icon-ghost${hasUnassigned ? ' is-warn' : ''}`}
+                    title={t.logsProfilesTitle}
+                    aria-label={t.logsProfilesTitle}
+                    onClick={() => {
+                      setProfilesMenuOpen((open) => !open);
+                      setWipeMenuOpen(false);
+                    }}
+                  >
+                    <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
+                      <circle cx="8" cy="5.5" r="2.5" fill="none" stroke="currentColor" strokeWidth="1.3" />
+                      <path
+                        d="M3.5 13c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.3"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  </button>
+                  {profilesMenuOpen && (
+                    <>
+                      <div
+                        className="wipe-start-backdrop"
+                        onClick={() => setProfilesMenuOpen(false)}
+                      />
+                      <div className="wipe-start-menu log-profiles-menu">
+                        <div className="wipe-start-menu-title">{t.logsProfilesTitle}</div>
+                        <p className="log-profiles-hint">{t.logsProfilesHint}</p>
+                        {knownProfiles.map((profile) => (
+                          <div key={profile.profileId} className="log-profile-row">
+                            <div className="log-profile-meta">
+                              <strong title={profile.profileId}>
+                                {shortProfileId(profile.profileId)}
+                              </strong>
+                              <span>
+                                v{profile.lastVersion}
+                                {activeProfileId === profile.profileId
+                                  ? ` · ${t.logsProfileActive}`
+                                  : ''}
+                              </span>
+                            </div>
+                            <div className="log-profile-actions" role="group">
+                              <button
+                                type="button"
+                                className={`wipe-start-option log-profile-mode-btn${profile.mode === 'regular' ? ' active' : ''}`}
+                                onClick={() => onAssignProfileMode(profile.profileId, 'regular')}
+                              >
+                                {t.logsProfileRegular}
+                              </button>
+                              <button
+                                type="button"
+                                className={`wipe-start-option log-profile-mode-btn${profile.mode === 'seasonal' ? ' active' : ''}`}
+                                onClick={() => onAssignProfileMode(profile.profileId, 'seasonal')}
+                              >
+                                {t.logsProfileSeasonal}
+                              </button>
+                            </div>
+                            {profile.mode == null && (
+                              <span className="log-profile-unassigned">{t.logsProfileUnassigned}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
               <div className="wipe-start-picker">
                 <button
                   type="button"
                   className="btn-icon-ghost"
                   title={t.logsWipeStartTitle}
                   aria-label={t.logsWipeStartTitle}
-                  onClick={() => setWipeMenuOpen((open) => !open)}
+                  onClick={() => {
+                    setWipeMenuOpen((open) => !open);
+                    setProfilesMenuOpen(false);
+                  }}
                 >
                   <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">
                     <circle cx="8" cy="8.5" r="5.5" fill="none" stroke="currentColor" strokeWidth="1.3" />
@@ -173,8 +263,10 @@ export function DataSourceControl({
                         key={bp.session}
                         className={`wipe-start-option${wipeStartSelection === bp.session ? ' active' : ''}`}
                         onClick={() => { onChangeWipeStart(bp.session); setWipeMenuOpen(false); }}
+                        title={bp.profileId}
                       >
                         {t.logsWipeStartOption(new Date(bp.timestamp).toLocaleString(locale), bp.version)}
+                        {` · ${shortProfileId(bp.profileId)}`}
                         {resolvedWipeStartSession === bp.session && wipeStartSelection == null && (
                           <span className="wipe-start-auto-tag">{t.logsWipeStartAutoTag}</span>
                         )}
@@ -187,8 +279,8 @@ export function DataSourceControl({
               <button
                 type="button"
                 className="btn-icon-ghost"
-                title={t.logsChangeFolder}
-                aria-label={t.logsChangeFolder}
+                title={canLivePoll ? t.logsChangeFolder : t.logsRefreshFolder}
+                aria-label={canLivePoll ? t.logsChangeFolder : t.logsRefreshFolder}
                 onClick={onConnect}
               >
                 <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true">

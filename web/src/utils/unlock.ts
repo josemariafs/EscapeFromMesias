@@ -1,8 +1,15 @@
-import type { ItemRef, PlayerProgress, Task, TaskProgressState } from '../types';
+import type {
+  ItemRef,
+  PlayerProgress,
+  Task,
+  TaskProgressState,
+  TraderRequirement,
+} from '../types';
 
 /** Loyalty Level por defecto al crear un personaje (EFT 1.1: side quests ligadas a LL). */
 export const DEFAULT_TRADER_LOYALTY = 1;
 const DEFAULT_TRADER_REPUTATION = 0;
+const MAX_TRADER_LOYALTY = 4;
 
 function compareValue(actual: number, method: string, expected: number): boolean {
   switch (method) {
@@ -30,18 +37,111 @@ function isReputationRequirement(requirementType: string): boolean {
 export function getRequiredLoyaltyLevel(task: Task): number {
   let max = 0;
   for (const req of task.traderRequirements) {
-    if (isReputationRequirement(req.requirementType)) continue;
-    if (
-      req.compareMethod === '>='
-      || req.compareMethod === '>'
-      || req.compareMethod === '=='
-      || req.compareMethod === '='
-      || !req.compareMethod
-    ) {
-      max = Math.max(max, req.value);
-    }
+    const implied = minLoyaltyImpliedByRequirement(req);
+    if (implied != null) max = Math.max(max, implied);
   }
   return max;
+}
+
+/**
+ * LL mínimo que implica un requisito (null si no fija un suelo, p. ej. `<=`).
+ * Tener la misión activa/completada prueba que el jugador cumple al menos ese valor.
+ */
+function minLoyaltyImpliedByRequirement(req: TraderRequirement): number | null {
+  if (isReputationRequirement(req.requirementType)) return null;
+  const value = Number(req.value);
+  if (!Number.isFinite(value)) return null;
+
+  switch (req.compareMethod) {
+    case '>':
+      return Math.max(1, Math.min(MAX_TRADER_LOYALTY, Math.floor(value) + 1));
+    case '>=':
+    case '==':
+    case '=':
+    case '':
+    case undefined:
+      return Math.max(1, Math.min(MAX_TRADER_LOYALTY, Math.round(value)));
+    default:
+      return null;
+  }
+}
+
+/**
+ * Infiere el LL de cada trader a partir de misiones started/completed:
+ * el máximo requisito de LL de esas misiones es un suelo seguro del LL real.
+ */
+export function inferTraderLoyaltyLevels(
+  tasks: Task[],
+  taskStates: Record<string, TaskProgressState>,
+): Record<string, number> {
+  const levels: Record<string, number> = {};
+
+  for (const task of tasks) {
+    const state = taskStates[task.id];
+    if (state !== 'started' && state !== 'completed') continue;
+
+    for (const req of task.traderRequirements) {
+      const min = minLoyaltyImpliedByRequirement(req);
+      if (min == null) continue;
+      const traderId = req.trader.id;
+      levels[traderId] = Math.max(levels[traderId] ?? DEFAULT_TRADER_LOYALTY, min);
+    }
+  }
+
+  return levels;
+}
+
+/** Sube los LL guardados hasta el suelo inferido; nunca los baja. */
+export function raiseTraderLevelsToInferred(
+  current: Record<string, number>,
+  inferred: Record<string, number>,
+): { traderLevels: Record<string, number>; changed: boolean } {
+  const traderLevels = { ...current };
+  let changed = false;
+
+  for (const [traderId, level] of Object.entries(inferred)) {
+    const next = Math.max(1, Math.min(MAX_TRADER_LOYALTY, level));
+    const prev = traderLevels[traderId] ?? DEFAULT_TRADER_LOYALTY;
+    if (next > prev) {
+      traderLevels[traderId] = next;
+      changed = true;
+    }
+  }
+
+  return { traderLevels, changed };
+}
+
+const MAX_PLAYER_LEVEL = 79;
+
+/**
+ * Nivel de jugador mínimo inferido: el mayor `minPlayerLevel` entre misiones
+ * started/completed. 0 si ninguna impone nivel.
+ */
+export function inferPlayerLevel(
+  tasks: Task[],
+  taskStates: Record<string, TaskProgressState>,
+): number {
+  let max = 0;
+  for (const task of tasks) {
+    const state = taskStates[task.id];
+    if (state !== 'started' && state !== 'completed') continue;
+    const required = task.minPlayerLevel;
+    if (required == null || required <= 0) continue;
+    max = Math.max(max, required);
+  }
+  return Math.max(0, Math.min(MAX_PLAYER_LEVEL, max));
+}
+
+/** Sube el nivel de jugador hasta el suelo inferido; nunca lo baja. */
+export function raisePlayerLevelToInferred(
+  current: number,
+  inferred: number,
+): { playerLevel: number; changed: boolean } {
+  const floor = Math.max(0, Math.min(MAX_PLAYER_LEVEL, inferred));
+  if (floor <= 0 || floor <= current) {
+    return { playerLevel: current, changed: false };
+  }
+  return { playerLevel: floor, changed: true };
 }
 
 function requirementStatusMet(

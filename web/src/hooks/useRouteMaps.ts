@@ -1,17 +1,19 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   DEFAULT_ROUTE_POINT_COLOR,
   ROUTE_COLOR_LABELS_STORAGE_KEY,
   ROUTE_MAPS_STORAGE_KEY,
+  routeColorLabelsStorageKey,
+  routeMapsStorageKey,
   type RouteColorLabels,
+  type RouteEnvironment,
   type RouteMapsData,
   type RoutePoint,
 } from '../types/routes';
 
-function readStoredRoutes(): RouteMapsData {
+function parseRoutes(raw: string | null): RouteMapsData {
+  if (!raw) return {};
   try {
-    const raw = localStorage.getItem(ROUTE_MAPS_STORAGE_KEY);
-    if (!raw) return {};
     const parsed = JSON.parse(raw) as RouteMapsData;
     return parsed && typeof parsed === 'object' ? parsed : {};
   } catch {
@@ -19,10 +21,9 @@ function readStoredRoutes(): RouteMapsData {
   }
 }
 
-function readStoredColorLabels(): RouteColorLabels {
+function parseColorLabels(raw: string | null): RouteColorLabels {
+  if (!raw) return {};
   try {
-    const raw = localStorage.getItem(ROUTE_COLOR_LABELS_STORAGE_KEY);
-    if (!raw) return {};
     const parsed = JSON.parse(raw) as RouteColorLabels;
     return parsed && typeof parsed === 'object' ? parsed : {};
   } catch {
@@ -30,21 +31,66 @@ function readStoredColorLabels(): RouteColorLabels {
   }
 }
 
+/** Lee el bucket indicado; migra la clave legacy solo hacia `seasonal`. */
+function readStoredRoutes(environment: RouteEnvironment): RouteMapsData {
+  try {
+    const keyed = localStorage.getItem(routeMapsStorageKey(environment));
+    if (keyed != null) return parseRoutes(keyed);
+
+    if (environment === 'seasonal') {
+      const legacy = localStorage.getItem(ROUTE_MAPS_STORAGE_KEY);
+      const migrated = parseRoutes(legacy);
+      localStorage.setItem(routeMapsStorageKey('seasonal'), JSON.stringify(migrated));
+      return migrated;
+    }
+  } catch {
+    // ignore
+  }
+  return {};
+}
+
+function readStoredColorLabels(environment: RouteEnvironment): RouteColorLabels {
+  try {
+    const keyed = localStorage.getItem(routeColorLabelsStorageKey(environment));
+    if (keyed != null) return parseColorLabels(keyed);
+
+    if (environment === 'seasonal') {
+      const legacy = localStorage.getItem(ROUTE_COLOR_LABELS_STORAGE_KEY);
+      const migrated = parseColorLabels(legacy);
+      localStorage.setItem(routeColorLabelsStorageKey('seasonal'), JSON.stringify(migrated));
+      return migrated;
+    }
+  } catch {
+    // ignore
+  }
+  return {};
+}
+
 function newPointId(): string {
   return `rp_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
-export function useRouteMaps() {
-  const [routes, setRoutes] = useState<RouteMapsData>(readStoredRoutes);
-  const [colorLabels, setColorLabels] = useState<RouteColorLabels>(readStoredColorLabels);
+export function useRouteMaps(environment: RouteEnvironment) {
+  const [routes, setRoutes] = useState<RouteMapsData>(() => readStoredRoutes(environment));
+  const [colorLabels, setColorLabels] = useState<RouteColorLabels>(() =>
+    readStoredColorLabels(environment),
+  );
   const [selectedColor, setSelectedColor] = useState<string>(DEFAULT_ROUTE_POINT_COLOR);
+  const envRef = useRef(environment);
 
   useEffect(() => {
-    localStorage.setItem(ROUTE_MAPS_STORAGE_KEY, JSON.stringify(routes));
+    envRef.current = environment;
+    setRoutes(readStoredRoutes(environment));
+    setColorLabels(readStoredColorLabels(environment));
+    setSelectedColor(DEFAULT_ROUTE_POINT_COLOR);
+  }, [environment]);
+
+  useEffect(() => {
+    localStorage.setItem(routeMapsStorageKey(envRef.current), JSON.stringify(routes));
   }, [routes]);
 
   useEffect(() => {
-    localStorage.setItem(ROUTE_COLOR_LABELS_STORAGE_KEY, JSON.stringify(colorLabels));
+    localStorage.setItem(routeColorLabelsStorageKey(envRef.current), JSON.stringify(colorLabels));
   }, [colorLabels]);
 
   const getPoints = useCallback((mapKey: string): RoutePoint[] => {

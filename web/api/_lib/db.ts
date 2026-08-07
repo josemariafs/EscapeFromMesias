@@ -1,5 +1,10 @@
 import { createClient, type Client } from '@libsql/client';
 import {
+  DEFAULT_ROUTE_ENVIRONMENT,
+  isRouteEnvironment,
+  type RouteEnvironment,
+} from './environment.js';
+import {
   resolveMarkerType,
   type FixedMarkerType,
 } from './markers.js';
@@ -7,6 +12,7 @@ import {
 export interface FixedRoutePointRow {
   id: string;
   map_key: string;
+  environment: string | null;
   left_pct: number;
   top_pct: number;
   color: string;
@@ -20,6 +26,7 @@ export interface FixedRoutePointRow {
 export interface FixedRoutePointDto {
   id: string;
   mapKey: string;
+  environment: RouteEnvironment;
   left: number;
   top: number;
   color: string;
@@ -64,6 +71,7 @@ export async function ensureSchema(): Promise<void> {
   if (!schemaReady) {
     schemaReady = (async () => {
       const db = getDb();
+      // No indexar `environment` aquí: tablas antiguas aún no tienen la columna.
       await db.batch(
         [
           `CREATE TABLE IF NOT EXISTS fixed_route_points (
@@ -99,6 +107,23 @@ export async function ensureSchema(): Promise<void> {
         'marker_type',
         'ALTER TABLE fixed_route_points ADD COLUMN marker_type TEXT',
       );
+      // Nullable + backfill: más compatible con LibSQL/Turso que NOT NULL DEFAULT en ALTER.
+      await ensureColumn(
+        db,
+        'environment',
+        'ALTER TABLE fixed_route_points ADD COLUMN environment TEXT',
+      );
+      // Puntos previos sin entorno → seasonal (comportamiento histórico de Routes).
+      await db.execute({
+        sql: `UPDATE fixed_route_points
+              SET environment = ?
+              WHERE environment IS NULL OR TRIM(environment) = ''`,
+        args: [DEFAULT_ROUTE_ENVIRONMENT],
+      });
+      await db.execute(
+        `CREATE INDEX IF NOT EXISTS idx_fixed_routes_env_map
+          ON fixed_route_points(environment, map_key)`,
+      );
     })().catch((err) => {
       schemaReady = null;
       throw err;
@@ -107,10 +132,15 @@ export async function ensureSchema(): Promise<void> {
   await schemaReady;
 }
 
+export function resolveRowEnvironment(value: string | null | undefined): RouteEnvironment {
+  return isRouteEnvironment(value) ? value : DEFAULT_ROUTE_ENVIRONMENT;
+}
+
 export function rowToDto(row: FixedRoutePointRow): FixedRoutePointDto {
   return {
     id: row.id,
     mapKey: row.map_key,
+    environment: resolveRowEnvironment(row.environment),
     left: row.left_pct,
     top: row.top_pct,
     color: row.color,

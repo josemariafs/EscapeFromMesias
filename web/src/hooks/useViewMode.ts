@@ -1,26 +1,23 @@
-import { useCallback, useState } from 'react';
+export type ViewMode = 'table';
 
-export type ViewMode = 'normal' | 'compact' | 'table';
+const STORAGE_KEY = 'efg-view-mode';
 
-export const VIEW_MODE_STORAGE_KEY = 'efg-view-mode';
-
-function readStoredViewMode(): ViewMode {
-  const stored = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
-  return stored === 'compact' || stored === 'table' ? stored : 'normal';
-}
-
+/** Vista fija en tabla (única visualización disponible). */
 export function useViewMode() {
-  const [viewMode, setViewModeState] = useState<ViewMode>(readStoredViewMode);
-
-  const setViewMode = useCallback((mode: ViewMode) => {
-    setViewModeState(mode);
-    localStorage.setItem(VIEW_MODE_STORAGE_KEY, mode);
-  }, []);
+  try {
+    if (localStorage.getItem(STORAGE_KEY) !== 'table') {
+      localStorage.setItem(STORAGE_KEY, 'table');
+    }
+  } catch {
+    // ignore
+  }
 
   return {
-    viewMode,
-    setViewMode,
-    isCompact: viewMode === 'compact',
-    isTable: viewMode === 'table',
+    viewMode: 'table' as const,
+    setViewMode: (_mode: ViewMode) => {
+      // no-op: solo existe la vista tabla
+    },
+    isCompact: false,
+    isTable: true,
   };
 }

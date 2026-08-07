@@ -1,6 +1,21 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react';
 import type { CustomMapMarkerPin, CustomMapMarkers, Task } from '../types';
 import type { Translations } from '../i18n/translations';
+import {
+  isIconMarkerType,
+  markerTypeIconUrl,
+  type FixedMarkerType,
+  type FixedRoutePoint,
+  type RouteColorLabels,
+  type RoutePoint,
+} from '../types/routes';
 import { mapPercentToAreaPoint, useMapPanZoom } from '../hooks/useMapPanZoom';
 import {
   getAllMapMarkers,
@@ -14,6 +29,11 @@ interface MapViewerModalProps {
   mapTasks: Task[];
   completedObjectives: Record<string, string[]>;
   customMapMarkers: CustomMapMarkers;
+  /** Puntos personales del dibujador de rutas (mismo bucket que Routes). */
+  routePoints?: RoutePoint[];
+  /** Puntos fijos de admin (mismo bucket que Routes). */
+  fixedRoutePoints?: FixedRoutePoint[];
+  colorLabels?: RouteColorLabels;
   tarkovDevUrl: string;
   t: Translations;
   onClose: () => void;
@@ -37,6 +57,16 @@ function fitImageSize(
   };
 }
 
+function markerTypeTitle(markerType: FixedMarkerType | undefined, t: Translations): string {
+  if (markerType === 'kb') return t.adminMarkerTypeKb;
+  if (markerType === 'question') return t.adminMarkerTypeQuestion;
+  return t.adminMarkerTypeDefault;
+}
+
+function labelForColor(colorLabels: RouteColorLabels | undefined, color: string): string {
+  return colorLabels?.[color]?.trim() ?? '';
+}
+
 export function MapViewerModal({
   mapName,
   mapKey,
@@ -44,6 +74,9 @@ export function MapViewerModal({
   mapTasks,
   completedObjectives,
   customMapMarkers,
+  routePoints = [],
+  fixedRoutePoints = [],
+  colorLabels = {},
   tarkovDevUrl,
   t,
   onClose,
@@ -53,6 +86,7 @@ export function MapViewerModal({
   const [placingTaskId, setPlacingTaskId] = useState<string | null>(null);
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
   const [areaSize, setAreaSize] = useState({ width: 0, height: 0 });
+  const [imageModal, setImageModal] = useState<{ src: string; label: string } | null>(null);
   const imageWrapRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const {
@@ -82,11 +116,29 @@ export function MapViewerModal({
     [mapKey, mapTasks, completedObjectives, markerTaskIds],
   );
 
-  const hasLegend = markers.length > 0 || tasksWithoutMarkers.length > 0;
+  const hasRouteMarkers = fixedRoutePoints.length > 0 || routePoints.length > 0;
+  const hasLegend =
+    markers.length > 0 || tasksWithoutMarkers.length > 0 || hasRouteMarkers;
+  const canProject = imageSize.width > 0 && areaSize.width > 0;
 
   const placingTask = placingTaskId
     ? mapTasks.find((task) => task.id === placingTaskId) ?? null
     : null;
+
+  const projectMarker = useCallback((left: number, top: number) => {
+    if (!canProject) return null;
+    return mapPercentToAreaPoint(
+      left,
+      top,
+      imageSize.width,
+      imageSize.height,
+      areaSize.width,
+      areaSize.height,
+      zoom,
+      panX,
+      panY,
+    );
+  }, [areaSize.height, areaSize.width, canProject, imageSize.height, imageSize.width, panX, panY, zoom]);
 
   const updateImageSize = useCallback(() => {
     const area = mapAreaRef.current;
@@ -116,6 +168,10 @@ export function MapViewerModal({
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
+      if (imageModal) {
+        setImageModal(null);
+        return;
+      }
       if (placingTaskId) {
         setPlacingTaskId(null);
         return;
@@ -128,7 +184,7 @@ export function MapViewerModal({
       document.removeEventListener('keydown', onKeyDown);
       document.body.style.overflow = '';
     };
-  }, [onClose, placingTaskId]);
+  }, [imageModal, onClose, placingTaskId]);
 
   const handleMapClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!placingTaskId || !imageWrapRef.current) return;
@@ -211,20 +267,96 @@ export function MapViewerModal({
                 onLoad={updateImageSize}
               />
             </div>
-            {markers.length > 0 && imageSize.width > 0 && areaSize.width > 0 && (
-              <div className="map-modal-markers map-modal-markers--overlay" aria-hidden="true">
-                {markers.map((marker) => {
-                  const pos = mapPercentToAreaPoint(
-                    marker.left,
-                    marker.top,
-                    imageSize.width,
-                    imageSize.height,
-                    areaSize.width,
-                    areaSize.height,
-                    zoom,
-                    panX,
-                    panY,
+            {canProject && (markers.length > 0 || hasRouteMarkers) && (
+              <div className="map-modal-markers map-modal-markers--overlay">
+                {fixedRoutePoints.map((point, index) => {
+                  const pos = projectMarker(point.left, point.top);
+                  if (!pos) return null;
+                  const iconMarker = isIconMarkerType(point.markerType);
+                  const iconUrl = markerTypeIconUrl(point.markerType);
+                  const markerLabel = iconMarker
+                    ? markerTypeTitle(point.markerType, t)
+                    : (point.label?.trim() || String(index + 1));
+                  return (
+                    <button
+                      key={point.id}
+                      type="button"
+                      className={[
+                        'route-map-marker',
+                        'route-map-marker--fixed',
+                        iconMarker ? 'route-map-marker--icon' : '',
+                        point.markerType === 'question' ? 'route-map-marker--question' : '',
+                        point.markerType === 'kb' ? 'route-map-marker--kb' : '',
+                        point.imageUrl ? 'route-map-marker--has-image' : '',
+                      ].filter(Boolean).join(' ')}
+                      style={{
+                        left: pos.x,
+                        top: pos.y,
+                        '--route-marker-color': point.color,
+                        zIndex: 3,
+                      } as CSSProperties}
+                      title={
+                        point.imageUrl
+                          ? t.routesPointImageModal
+                          : (iconMarker ? markerLabel : (point.label?.trim() || t.routesFixedSection))
+                      }
+                      aria-label={iconMarker ? markerLabel : (point.label?.trim() || t.routesPointLabel(index + 1))}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (point.imageUrl) {
+                          setImageModal({
+                            src: point.imageUrl,
+                            label: iconMarker ? '' : markerLabel,
+                          });
+                        }
+                      }}
+                    >
+                      <span className="route-map-marker-body">
+                        {iconUrl ? (
+                          <img
+                            className="route-map-marker-icon"
+                            src={iconUrl}
+                            alt=""
+                            draggable={false}
+                          />
+                        ) : (
+                          <>
+                            <span className="route-map-marker-label">{markerLabel}</span>
+                            <span className="route-map-marker-pin" />
+                          </>
+                        )}
+                      </span>
+                    </button>
                   );
+                })}
+                {routePoints.map((point, index) => {
+                  const pos = projectMarker(point.left, point.top);
+                  if (!pos) return null;
+                  const playerName = labelForColor(colorLabels, point.color);
+                  const markerLabel = playerName || String(index + 1);
+                  return (
+                    <div
+                      key={point.id}
+                      className="route-map-marker"
+                      style={{
+                        left: pos.x,
+                        top: pos.y,
+                        '--route-marker-color': point.color,
+                        zIndex: 2,
+                      } as CSSProperties}
+                      title={playerName || t.routesPointLabel(index + 1)}
+                      aria-label={playerName || t.routesPointLabel(index + 1)}
+                    >
+                      <span className="route-map-marker-body">
+                        <span className="route-map-marker-label">{markerLabel}</span>
+                        <span className="route-map-marker-pin" />
+                      </span>
+                    </div>
+                  );
+                })}
+                {markers.map((marker) => {
+                  const pos = projectMarker(marker.left, marker.top);
+                  if (!pos) return null;
                   return (
                     <div
                       key={marker.id}
@@ -243,6 +375,19 @@ export function MapViewerModal({
           </div>
           {hasLegend && (
             <aside className="map-modal-legend">
+              {hasRouteMarkers && (
+                <div className="map-modal-legend-section">
+                  <h4>
+                    {fixedRoutePoints.length > 0
+                      ? t.routesFixedPoints(fixedRoutePoints.length)
+                      : t.routesPoints(routePoints.length)}
+                    {fixedRoutePoints.length > 0 && routePoints.length > 0
+                      ? ` · ${t.routesPoints(routePoints.length)}`
+                      : ''}
+                  </h4>
+                  <p className="map-modal-place-hint">{t.routesFixedHint}</p>
+                </div>
+              )}
               {markers.length > 0 && (
                 <div className="map-modal-legend-section">
                   <h4>{t.mapMarkersTitle(markers.length)}</h4>
@@ -302,6 +447,35 @@ export function MapViewerModal({
           )}
         </div>
       </div>
+
+      {imageModal && (
+        <div
+          className="route-point-image-modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label={imageModal.label || t.routesPointImageModal}
+          onClick={() => setImageModal(null)}
+        >
+          <div
+            className="route-point-image-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <header className="route-point-image-modal-header">
+              <h3>{imageModal.label || t.routesPointImageModal}</h3>
+              <button
+                type="button"
+                className="btn btn-ghost route-point-image-modal-close"
+                onClick={() => setImageModal(null)}
+              >
+                {t.close}
+              </button>
+            </header>
+            <div className="route-point-image-modal-body">
+              <img src={imageModal.src} alt={imageModal.label || t.routesPointImageModal} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

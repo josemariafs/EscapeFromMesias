@@ -1,11 +1,13 @@
-import type { FixedRoutePoint } from '../types/routes';
+import type { FixedRoutePoint, RouteEnvironment } from '../types/routes';
 
 export interface FixedRoutesResponse {
   points: FixedRoutePoint[];
+  environment?: RouteEnvironment;
 }
 
 export interface CreateFixedRoutePointInput {
   mapKey: string;
+  environment: RouteEnvironment;
   left: number;
   top: number;
   color: string;
@@ -16,6 +18,7 @@ export interface CreateFixedRoutePointInput {
 
 export interface UpdateFixedRoutePointInput {
   mapKey?: string;
+  environment?: RouteEnvironment;
   left?: number;
   top?: number;
   color?: string;
@@ -40,8 +43,11 @@ function authHeaders(token: string): HeadersInit {
   };
 }
 
-export async function fetchFixedRoutes(): Promise<FixedRoutePoint[]> {
-  const res = await fetch('/api/fixed-routes');
+export async function fetchFixedRoutes(
+  environment: RouteEnvironment,
+): Promise<FixedRoutePoint[]> {
+  const params = new URLSearchParams({ environment });
+  const res = await fetch(`/api/fixed-routes?${params.toString()}`);
   if (!res.ok) {
     throw new Error(await parseErrorMessage(res));
   }

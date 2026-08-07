@@ -28,10 +28,24 @@ export function markerTypeIconUrl(markerType?: FixedMarkerType | null): string |
   return null;
 }
 
+/**
+ * Bucket de mapas PVP:
+ * - `regular`: PVP Zone (marcadores solo en ese modo)
+ * - `seasonal`: temporada + pantalla Routes (compartidos)
+ */
+export type RouteEnvironment = 'regular' | 'seasonal';
+
+export const ROUTE_ENVIRONMENTS: RouteEnvironment[] = ['regular', 'seasonal'];
+
+export function isRouteEnvironment(value: unknown): value is RouteEnvironment {
+  return value === 'regular' || value === 'seasonal';
+}
+
 /** Punto fijo servido desde Turso (compartido por todos los usuarios). */
 export interface FixedRoutePoint extends RoutePoint {
   source: 'fixed';
   mapKey: string;
+  environment: RouteEnvironment;
   /** URL http(s) o data URL de imagen para tooltip en hover. */
   imageUrl?: string;
   /** Estilo del pin en el mapa. `kb` / `question` = icono especial sin etiqueta. */
@@ -52,6 +66,14 @@ export type RouteColorLabels = Record<string, string>;
 export const ROUTE_MAPS_STORAGE_KEY = 'efg-route-maps';
 export const ROUTE_COLOR_LABELS_STORAGE_KEY = 'efg-route-color-labels';
 export const ADMIN_TOKEN_STORAGE_KEY = 'efg-admin-token';
+
+export function routeMapsStorageKey(environment: RouteEnvironment): string {
+  return `${ROUTE_MAPS_STORAGE_KEY}:${environment}`;
+}
+
+export function routeColorLabelsStorageKey(environment: RouteEnvironment): string {
+  return `${ROUTE_COLOR_LABELS_STORAGE_KEY}:${environment}`;
+}
 
 /** Máximo de series/colores de jugador que puede usar el usuario. */
 export const MAX_ROUTE_POINT_COLORS = 5;

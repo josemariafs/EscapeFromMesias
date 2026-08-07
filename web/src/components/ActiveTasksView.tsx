@@ -1,7 +1,12 @@
 import { useState } from 'react';
 import type { CustomMapMarkers, CustomMapMarkerPin, Task, TaskProgressState } from '../types';
 import type { Translations } from '../i18n/translations';
-import { groupActiveTasksByMap } from '../utils/objectives';
+import type {
+  FixedRouteMapsData,
+  RouteColorLabels,
+  RouteMapsData,
+} from '../types/routes';
+import { groupActiveTasksByMap, groupTasksByMap } from '../utils/objectives';
 import {
   ANY_MAP_ID,
   getMapSvgUrl,
@@ -11,14 +16,21 @@ import { MapViewerModal } from './MapViewerModal';
 import { TaskCard } from './TaskCard';
 import { TaskTableSection } from './TaskTableView';
 
+export type TasksListMode = 'started' | 'completed';
+
 interface ActiveTasksViewProps {
   tasks: Task[];
   taskStates: Record<string, TaskProgressState>;
   completedObjectives: Record<string, string[]>;
   customMapMarkers: CustomMapMarkers;
+  routeMaps?: RouteMapsData;
+  fixedRouteMaps?: FixedRouteMapsData;
+  routeColorLabels?: RouteColorLabels;
   selectedId: string | null;
   t: Translations;
   isTable?: boolean;
+  /** `started` = Activas; `completed` = Completadas. */
+  listMode?: TasksListMode;
   onSelect: (id: string) => void;
   onStart: (id: string) => void;
   onComplete: (id: string) => void;
@@ -33,9 +45,13 @@ export function ActiveTasksView({
   taskStates,
   completedObjectives,
   customMapMarkers,
+  routeMaps = {},
+  fixedRouteMaps = {},
+  routeColorLabels = {},
   selectedId,
   t,
   isTable = false,
+  listMode = 'started',
   onSelect,
   onStart,
   onComplete,
@@ -50,8 +66,17 @@ export function ActiveTasksView({
     tasks: Task[];
   } | null>(null);
 
-  const activeTasks = tasks.filter((task) => taskStates[task.id] === 'started');
-  const groups = groupActiveTasksByMap(activeTasks, completedObjectives, t.anyMap);
+  const isCompletedList = listMode === 'completed';
+  const listedTasks = tasks.filter((task) =>
+    isCompletedList
+      ? taskStates[task.id] === 'completed'
+      : taskStates[task.id] === 'started',
+  );
+  const groups = isCompletedList
+    ? groupTasksByMap(listedTasks, t.anyMap)
+    : groupActiveTasksByMap(listedTasks, completedObjectives, t.anyMap);
+  const emptyLabel = isCompletedList ? t.noCompletedTasks : t.noActiveTasks;
+  const countLabel = isCompletedList ? t.completedByMap : t.activeByMap;
 
   const openMapViewer = (normalizedName: string, name: string, mapTasks: Task[]) => {
     const svgUrl = getMapSvgUrl(normalizedName);
@@ -62,12 +87,12 @@ export function ActiveTasksView({
     window.open(getTarkovDevMapUrl(normalizedName), '_blank', 'noopener,noreferrer');
   };
 
-  if (activeTasks.length === 0) {
-    return <p className="empty-list">{t.noActiveTasks}</p>;
+  if (listedTasks.length === 0) {
+    return <p className="empty-list">{emptyLabel}</p>;
   }
 
   if (groups.length === 0) {
-    return <p className="empty-list">{t.noActiveTasks}</p>;
+    return <p className="empty-list">{emptyLabel}</p>;
   }
 
   const openMapSvgUrl = openMap ? getMapSvgUrl(openMap.normalizedName) : null;
@@ -82,6 +107,9 @@ export function ActiveTasksView({
           mapTasks={openMap.tasks}
           completedObjectives={completedObjectives}
           customMapMarkers={customMapMarkers}
+          routePoints={routeMaps[openMap.normalizedName] ?? []}
+          fixedRoutePoints={fixedRouteMaps[openMap.normalizedName] ?? []}
+          colorLabels={routeColorLabels}
           tarkovDevUrl={getTarkovDevMapUrl(openMap.normalizedName)}
           t={t}
           onClose={() => setOpenMap(null)}
@@ -93,7 +121,7 @@ export function ActiveTasksView({
         <section key={map.normalizedName} className="map-section">
           <header className="map-section-header">
             <h2>{map.name}</h2>
-            <span className="map-count">{t.activeByMap(mapTasks.length)}</span>
+            <span className="map-count">{countLabel(mapTasks.length)}</span>
             {map.normalizedName !== ANY_MAP_ID && (
               <button
                 type="button"
