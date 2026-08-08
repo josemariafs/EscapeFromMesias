@@ -63,12 +63,14 @@ export function CrtViewTransition({
       <div className="crt-transition-scanlines" />
       <div className="crt-transition-roll" />
       <div className="crt-transition-vignette" />
-      <img
-        src={logoSrc}
-        alt=""
-        className="crt-transition-logo"
-        draggable={false}
-      />
+      <div className="crt-transition-logo-wrap">
+        <img
+          src={logoSrc}
+          alt=""
+          className="crt-transition-logo"
+          draggable={false}
+        />
+      </div>
     </div>
   );
 }
