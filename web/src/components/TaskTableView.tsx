@@ -15,6 +15,8 @@ interface TaskTableViewProps {
   onReset: (id: string) => void;
   /** IDs de misiones cuyo estado viene de un evento real en logs (modo Logs): no editables. */
   lockedIds?: Set<string>;
+  /** false en modo Logs: el progreso es automático. */
+  showActionsColumn?: boolean;
 }
 
 export function TaskTableView({
@@ -27,6 +29,7 @@ export function TaskTableView({
   onComplete,
   onReset,
   lockedIds,
+  showActionsColumn = true,
 }: TaskTableViewProps) {
   const [lockedExpanded, setLockedExpanded] = useState(false);
 
@@ -69,7 +72,17 @@ export function TaskTableView({
     return { started, available, completed, lockedFailed };
   }, [tasks, taskStates]);
 
-  const rowProps = { taskStates, selectedId, t, onSelect, onStart, onComplete, onReset, lockedIds };
+  const rowProps = {
+    taskStates,
+    selectedId,
+    t,
+    onSelect,
+    onStart,
+    onComplete,
+    onReset,
+    lockedIds,
+    showActionsColumn,
+  };
 
   return (
     <div className="task-table-view">
@@ -108,6 +121,7 @@ export interface TaskTableSectionProps {
   title?: string;
   state?: TaskProgressState;
   showMapColumn?: boolean;
+  showActionsColumn?: boolean;
   tasks: Task[];
   taskStates: Record<string, TaskProgressState>;
   selectedId: string | null;
@@ -137,6 +151,7 @@ export function TaskTableSection({
   title,
   state,
   showMapColumn = true,
+  showActionsColumn = true,
   tasks,
   taskStates,
   selectedId,
@@ -212,7 +227,7 @@ export function TaskTableSection({
                   </th>
                 )}
                 <th>{t.tableColItems}</th>
-                <th>{t.tableColActions}</th>
+                {showActionsColumn && <th>{t.tableColActions}</th>}
                 <th
                   className="task-table-col-trader task-table-sortable"
                   aria-sort={sortAriaValue('trader')}
@@ -231,6 +246,7 @@ export function TaskTableSection({
                   state={taskStates[task.id] ?? 'locked'}
                   selected={selectedId === task.id}
                   showMapColumn={showMapColumn}
+                  showActionsColumn={showActionsColumn}
                   t={t}
                   onSelect={() => onSelect(task.id)}
                   onStart={() => onStart(task.id)}
@@ -252,6 +268,7 @@ interface TaskTableRowProps {
   state: TaskProgressState;
   selected: boolean;
   showMapColumn?: boolean;
+  showActionsColumn?: boolean;
   t: Translations;
   onSelect: () => void;
   onStart: () => void;
@@ -265,6 +282,7 @@ function TaskTableRow({
   state,
   selected,
   showMapColumn = true,
+  showActionsColumn = true,
   t,
   onSelect,
   onStart,
@@ -332,62 +350,64 @@ function TaskTableRow({
           </div>
         )}
       </td>
-      <td className="task-table-cell-actions">
-        <div className={`task-table-actions-inner${locked ? ' log-locked' : ''}`}>
-          {state === 'available' && (
-            <button
-              type="button"
-              className="btn btn-start"
-              disabled={locked}
-              title={locked ? t.logLockedHint : undefined}
-              onClick={(e) => {
-                e.stopPropagation();
-                onStart();
-              }}
-            >
-              {t.start}
-            </button>
-          )}
-          {state === 'started' && (
-            <button
-              type="button"
-              className="btn btn-complete"
-              disabled={locked}
-              title={locked ? t.logLockedHint : undefined}
-              onClick={(e) => {
-                e.stopPropagation();
-                onComplete();
-              }}
-            >
-              {t.complete}
-            </button>
-          )}
-          {(state === 'started' || state === 'completed' || state === 'failed') && (
-            <button
-              type="button"
-              className="btn btn-reset btn-icon"
-              title={locked ? t.logLockedHint : t.reset}
-              aria-label={t.reset}
-              disabled={locked}
-              onClick={(e) => {
-                e.stopPropagation();
-                onReset();
-              }}
-            >
-              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-                <path
-                  d="M13.5 8a5.5 5.5 0 1 1-1.86-4.12M13.5 1.5v3.5H10"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-          )}
-        </div>
-      </td>
+      {showActionsColumn && (
+        <td className="task-table-cell-actions">
+          <div className={`task-table-actions-inner${locked ? ' log-locked' : ''}`}>
+            {state === 'available' && (
+              <button
+                type="button"
+                className="btn btn-start"
+                disabled={locked}
+                title={locked ? t.logLockedHint : undefined}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onStart();
+                }}
+              >
+                {t.start}
+              </button>
+            )}
+            {state === 'started' && (
+              <button
+                type="button"
+                className="btn btn-complete"
+                disabled={locked}
+                title={locked ? t.logLockedHint : undefined}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onComplete();
+                }}
+              >
+                {t.complete}
+              </button>
+            )}
+            {(state === 'started' || state === 'completed' || state === 'failed') && (
+              <button
+                type="button"
+                className="btn btn-reset btn-icon"
+                title={locked ? t.logLockedHint : t.reset}
+                aria-label={t.reset}
+                disabled={locked}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onReset();
+                }}
+              >
+                <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
+                  <path
+                    d="M13.5 8a5.5 5.5 0 1 1-1.86-4.12M13.5 1.5v3.5H10"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            )}
+          </div>
+        </td>
+      )}
       <td
         className={`task-table-cell-trader${traderImage ? ' has-trader-bg' : ''}`}
         style={traderCellStyle}

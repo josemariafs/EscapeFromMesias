@@ -1,20 +1,8 @@
 import { useEffect, useState } from 'react';
 import { fetchImpressions, registerVisit } from '../api/siteStats';
+import { readOrCreateVisitorId } from '../utils/visitorId';
 
-const VISITOR_ID_KEY = 'efg-visitor-id';
 const SESSION_COUNTED_KEY = 'efg-visit-counted';
-
-function readOrCreateVisitorId(): string {
-  try {
-    const existing = localStorage.getItem(VISITOR_ID_KEY);
-    if (existing && /^[a-zA-Z0-9_-]{8,80}$/.test(existing)) return existing;
-    const id = `v_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 12)}`;
-    localStorage.setItem(VISITOR_ID_KEY, id);
-    return id;
-  } catch {
-    return `v_tmp_${Date.now().toString(36)}`;
-  }
-}
 
 function wasCountedThisSession(): boolean {
   try {

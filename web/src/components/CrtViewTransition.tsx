@@ -6,10 +6,15 @@ interface CrtViewTransitionProps {
   active: boolean;
   /** Cambia en cada transición para reiniciar la animación CSS. */
   playId: number;
+  logoSrc?: string;
 }
 
 /** Overlay CRT de cambio de canal (0,7s) con logo parpadeante. */
-export function CrtViewTransition({ active, playId }: CrtViewTransitionProps) {
+export function CrtViewTransition({
+  active,
+  playId,
+  logoSrc = '/logo.png',
+}: CrtViewTransitionProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -59,7 +64,7 @@ export function CrtViewTransition({ active, playId }: CrtViewTransitionProps) {
       <div className="crt-transition-roll" />
       <div className="crt-transition-vignette" />
       <img
-        src="/logo.png"
+        src={logoSrc}
         alt=""
         className="crt-transition-logo"
         draggable={false}

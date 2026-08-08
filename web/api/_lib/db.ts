@@ -98,6 +98,8 @@ export async function ensureSchema(): Promise<void> {
             last_seen_at TEXT NOT NULL,
             visit_count INTEGER NOT NULL DEFAULT 1
           )`,
+          `CREATE INDEX IF NOT EXISTS idx_site_visitors_last_seen
+            ON site_visitors(last_seen_at)`,
         ],
         'write',
       );
@@ -124,6 +126,39 @@ export async function ensureSchema(): Promise<void> {
         `CREATE INDEX IF NOT EXISTS idx_fixed_routes_env_map
           ON fixed_route_points(environment, map_key)`,
       );
+
+      // Mapas con SVG rotado 90° CCW → adaptar left/top de puntos fijos una sola vez.
+      const mapRotations: { flag: string; mapKey: string }[] = [
+        { flag: 'gz_map_rotation_ccw90', mapKey: 'ground-zero' },
+        { flag: 'lh_map_rotation_ccw90', mapKey: 'lighthouse' },
+        { flag: 'sot_map_rotation_ccw90', mapKey: 'streets-of-tarkov' },
+      ];
+      for (const { flag, mapKey } of mapRotations) {
+        const rotFlag = await db.execute({
+          sql: `SELECT value FROM site_stats WHERE key = ?`,
+          args: [flag],
+        });
+        const alreadyRotated = rotFlag.rows.some((row) => {
+          const value = (row as { value?: unknown }).value;
+          return Number(value) === 1;
+        });
+        if (!alreadyRotated) {
+          const now = new Date().toISOString();
+          await db.execute({
+            sql: `UPDATE fixed_route_points
+                  SET left_pct = top_pct,
+                      top_pct = 100.0 - left_pct,
+                      updated_at = ?
+                  WHERE map_key = ?`,
+            args: [now, mapKey],
+          });
+          await db.execute({
+            sql: `INSERT INTO site_stats (key, value) VALUES (?, 1)
+                  ON CONFLICT(key) DO UPDATE SET value = 1`,
+            args: [flag],
+          });
+        }
+      }
     })().catch((err) => {
       schemaReady = null;
       throw err;

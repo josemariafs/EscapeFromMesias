@@ -1,7 +1,9 @@
 import { useCallback, useState, type FormEvent } from 'react';
 import { verifyAdminToken } from '../api/fixedRoutes';
 import { useFixedRouteMaps } from '../hooks/useFixedRouteMaps';
+import { useMapExtracts } from '../hooks/useMapExtracts';
 import { useLanguage } from '../i18n/useLanguage';
+import type { GameMode } from '../types';
 import {
   ADMIN_TOKEN_STORAGE_KEY,
   DEFAULT_FIXED_MARKER_TYPE,
@@ -21,9 +23,11 @@ function readStoredToken(): string {
 }
 
 export function AdminRoutesPage() {
-  const { t } = useLanguage();
+  const { lang, t } = useLanguage();
   const [environment, setEnvironment] = useState<RouteEnvironment>('seasonal');
   const fixed = useFixedRouteMaps(environment);
+  const extractGameMode: GameMode = environment === 'regular' ? 'regular' : 'seasonal';
+  const mapExtracts = useMapExtracts(lang, extractGameMode);
   const [token, setToken] = useState(readStoredToken);
   const [authed, setAuthed] = useState(() => Boolean(readStoredToken()));
   const [loginValue, setLoginValue] = useState('');
@@ -117,6 +121,16 @@ export function AdminRoutesPage() {
       setBusy(false);
     }
   }, [fixed, t.adminDeletePoint, t.adminLoginError, token]);
+
+  const handleMoveFixed = useCallback(async (pointId: string, left: number, top: number) => {
+    if (!token) return;
+    setActionError(null);
+    try {
+      await fixed.patchPoint(token, pointId, { left, top });
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : t.adminLoginError);
+    }
+  }, [fixed, t.adminLoginError, token]);
 
   const handleUpdateLabel = useCallback(async (pointId: string, label: string) => {
     if (!token) return;
@@ -258,6 +272,9 @@ export function AdminRoutesPage() {
           onSelectMap={setSelectedMapKey}
           points={[]}
           fixedPoints={fixedPoints}
+          mapExtracts={
+            selectedMapKey ? mapExtracts.extracts[selectedMapKey] ?? [] : []
+          }
           selectedColor={selectedColor}
           colorLabels={{}}
           onChangeColor={setSelectedColor}
@@ -271,6 +288,7 @@ export function AdminRoutesPage() {
           draftMarkerType={draftMarkerType}
           onChangeDraftMarkerType={setDraftMarkerType}
           onRemoveFixedPoint={(id) => { void handleRemoveFixed(id); }}
+          onMoveFixedPoint={(id, left, top) => { void handleMoveFixed(id, left, top); }}
           onUpdateFixedLabel={(id, label) => { void handleUpdateLabel(id, label); }}
           onUpdateFixedImage={(id, file) => { void handlePointImageFile(id, file); }}
           onUpdateFixedMarkerType={(id, markerType) => { void handleUpdateMarkerType(id, markerType); }}

@@ -66,18 +66,38 @@ export function useFixedRouteMaps(environment: RouteEnvironment) {
 
   const patchPoint = useCallback(
     async (token: string, id: string, input: UpdateFixedRoutePointInput) => {
-      const point = await updateFixedRoutePoint(token, id, input);
-      setPoints((prev) => {
-        // Respuestas antiguas sin `environment` se tratan como el bucket actual.
-        const pointEnv = point.environment ?? environment;
-        if (pointEnv !== environment) {
-          return prev.filter((p) => p.id !== id);
-        }
-        return prev.map((p) => (p.id === id ? { ...point, environment: pointEnv } : p));
-      });
-      return point;
+      // Actualización optimista (p. ej. al arrastrar) para que el mapa no espere al PATCH.
+      if (input.left != null || input.top != null) {
+        setPoints((prev) =>
+          prev.map((p) => (
+            p.id === id
+              ? {
+                  ...p,
+                  left: input.left ?? p.left,
+                  top: input.top ?? p.top,
+                }
+              : p
+          )),
+        );
+      }
+      try {
+        const point = await updateFixedRoutePoint(token, id, input);
+        setPoints((prev) => {
+          // Respuestas antiguas sin `environment` se tratan como el bucket actual.
+          const pointEnv = point.environment ?? environment;
+          if (pointEnv !== environment) {
+            return prev.filter((p) => p.id !== id);
+          }
+          return prev.map((p) => (p.id === id ? { ...point, environment: pointEnv } : p));
+        });
+        return point;
+      } catch (err) {
+        // Si falla el guardado, recargar para no dejar una posición falsa en UI.
+        void reload();
+        throw err;
+      }
     },
-    [environment],
+    [environment, reload],
   );
 
   const removePoint = useCallback(async (token: string, id: string) => {

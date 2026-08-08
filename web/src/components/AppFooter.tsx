@@ -1,20 +1,32 @@
 import type { ReactNode } from 'react';
 import { APP_VERSION, BUILD_TIME, formatBuildTime } from '../buildInfo';
+import { useOnlinePresence } from '../hooks/useOnlinePresence';
 import { useVisitCounter } from '../hooks/useVisitCounter';
 
 interface AppFooterProps {
   locale: string;
   notices?: ReactNode;
   formatVisits: (n: number) => string;
+  formatOnline: (n: number) => string;
 }
 
-export function AppFooter({ locale, notices, formatVisits }: AppFooterProps) {
+export function AppFooter({ locale, notices, formatVisits, formatOnline }: AppFooterProps) {
   const { impressions } = useVisitCounter();
+  const { online } = useOnlinePresence();
 
   return (
     <footer className={`app-footer${notices ? ' app-footer--with-notices' : ''}`}>
       {notices && <div className="app-footer-notices">{notices}</div>}
       <div className="app-footer-meta">
+        {online != null && (
+          <>
+            <span className="app-footer-online" title={formatOnline(online)}>
+              <span className="app-footer-online-dot" aria-hidden="true" />
+              {formatOnline(online)}
+            </span>
+            <span aria-hidden="true">·</span>
+          </>
+        )}
         {impressions != null && (
           <>
             <span className="app-footer-visits" title={formatVisits(impressions)}>

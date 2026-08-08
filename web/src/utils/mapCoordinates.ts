@@ -4,6 +4,8 @@ import mapProjections from '../data/mapProjections.json';
 export interface MapProjectionConfig {
   transform: [number, number, number, number];
   coordinateRotation: number;
+  /** Rotación visual del SVG respecto a la proyección (grados CCW, múltiplos de 90). */
+  displayRotation?: number;
   bounds: [[number, number], [number, number]];
   svgBounds: [[number, number], [number, number]] | null;
 }
@@ -44,6 +46,30 @@ function latLngToLayerPoint(
   };
 }
 
+/** Rota un porcentaje de mapa 90° en sentido antihorario (izquierda). */
+export function rotateMapPercentCCW90(
+  left: number,
+  top: number,
+): { left: number; top: number } {
+  return { left: top, top: 100 - left };
+}
+
+/** Aplica displayRotation (CCW, múltiplos de 90) a un porcentaje sobre la imagen. */
+export function applyDisplayRotation(
+  left: number,
+  top: number,
+  displayRotation = 0,
+): { left: number; top: number } {
+  let turns = Math.round((((displayRotation % 360) + 360) % 360) / 90) % 4;
+  let l = left;
+  let t = top;
+  while (turns > 0) {
+    ({ left: l, top: t } = rotateMapPercentCCW90(l, t));
+    turns -= 1;
+  }
+  return { left: l, top: t };
+}
+
 /** Convierte coordenadas del juego a porcentaje sobre la imagen del mapa. */
 export function gamePositionToPercent(
   position: MapPosition,
@@ -71,5 +97,5 @@ export function gamePositionToPercent(
 
   if (!Number.isFinite(left) || !Number.isFinite(top)) return null;
 
-  return { left, top };
+  return applyDisplayRotation(left, top, projection.displayRotation ?? 0);
 }

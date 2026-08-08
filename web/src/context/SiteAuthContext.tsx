@@ -6,11 +6,14 @@ import { LoginScreen } from '../components/LoginScreen';
 interface SiteAuthContextValue {
   kind: SiteAuthKind | null;
   canRevealDailyCode: boolean;
+  /** Logo Escape From Gorditos (token public o código semanal). */
+  useGorditosLogo: boolean;
 }
 
 const SiteAuthContext = createContext<SiteAuthContextValue>({
   kind: null,
   canRevealDailyCode: false,
+  useGorditosLogo: false,
 });
 
 export function useSiteAuthContext(): SiteAuthContextValue {
@@ -23,6 +26,7 @@ interface SiteAuthGateProps {
 
 export function SiteAuthGate({ children }: SiteAuthGateProps) {
   const { status, kind, canRevealDailyCode, error, failCount, submitting, login } = useSiteAuth();
+  const useGorditosLogo = kind === 'public' || kind === 'daily';
 
   if (status === 'checking') {
     return (
@@ -46,7 +50,7 @@ export function SiteAuthGate({ children }: SiteAuthGateProps) {
   }
 
   return (
-    <SiteAuthContext.Provider value={{ kind, canRevealDailyCode }}>
+    <SiteAuthContext.Provider value={{ kind, canRevealDailyCode, useGorditosLogo }}>
       {children}
     </SiteAuthContext.Provider>
   );

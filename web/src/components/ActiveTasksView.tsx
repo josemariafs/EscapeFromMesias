@@ -6,6 +6,7 @@ import type {
   RouteColorLabels,
   RouteMapsData,
 } from '../types/routes';
+import type { MapExtractsData } from '../utils/mapExtracts';
 import { groupActiveTasksByMap, groupTasksByMap } from '../utils/objectives';
 import {
   ANY_MAP_ID,
@@ -25,6 +26,7 @@ interface ActiveTasksViewProps {
   customMapMarkers: CustomMapMarkers;
   routeMaps?: RouteMapsData;
   fixedRouteMaps?: FixedRouteMapsData;
+  mapExtracts?: MapExtractsData;
   routeColorLabels?: RouteColorLabels;
   selectedId: string | null;
   t: Translations;
@@ -38,6 +40,8 @@ interface ActiveTasksViewProps {
   onSetCustomMapMarker: (mapKey: string, taskId: string, pin: CustomMapMarkerPin) => void;
   onClearCustomMapMarker: (mapKey: string, taskId: string) => void;
   lockedIds?: Set<string>;
+  /** false en modo Logs: el progreso es automático. */
+  showActionsColumn?: boolean;
 }
 
 export function ActiveTasksView({
@@ -47,6 +51,7 @@ export function ActiveTasksView({
   customMapMarkers,
   routeMaps = {},
   fixedRouteMaps = {},
+  mapExtracts = {},
   routeColorLabels = {},
   selectedId,
   t,
@@ -59,6 +64,7 @@ export function ActiveTasksView({
   onSetCustomMapMarker,
   onClearCustomMapMarker,
   lockedIds,
+  showActionsColumn = true,
 }: ActiveTasksViewProps) {
   const [openMap, setOpenMap] = useState<{
     normalizedName: string;
@@ -109,6 +115,7 @@ export function ActiveTasksView({
           customMapMarkers={customMapMarkers}
           routePoints={routeMaps[openMap.normalizedName] ?? []}
           fixedRoutePoints={fixedRouteMaps[openMap.normalizedName] ?? []}
+          mapExtracts={mapExtracts[openMap.normalizedName] ?? []}
           colorLabels={routeColorLabels}
           tarkovDevUrl={getTarkovDevMapUrl(openMap.normalizedName)}
           t={t}
@@ -138,6 +145,7 @@ export function ActiveTasksView({
               taskStates={taskStates}
               selectedId={selectedId}
               showMapColumn={false}
+              showActionsColumn={showActionsColumn}
               t={t}
               onSelect={onSelect}
               onStart={onStart}

@@ -1,11 +1,14 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
   type MouseEvent,
+  type PointerEvent as ReactPointerEvent,
 } from 'react';
+import { flushSync } from 'react-dom';
 import type { Translations } from '../i18n/translations';
 import {
   DEFAULT_FIXED_MARKER_TYPE,
@@ -22,8 +25,27 @@ import {
   type RouteMapsData,
   type RoutePoint,
 } from '../types/routes';
-import { mapPercentToAreaPoint, useMapPanZoom } from '../hooks/useMapPanZoom';
+import { areaPointToMapPercent, mapPercentToAreaPoint, useMapPanZoom } from '../hooks/useMapPanZoom';
+import {
+  fixedMarkerLayerId,
+  isExtractLayerVisible,
+  useFixedLayerVisibility,
+} from '../hooks/useFixedLayerVisibility';
+import { getMapZoneAnnotations, mapZoneAnnotationStyle } from '../utils/mapAnnotations';
+import {
+  extractFactionLabel,
+  extractIconUrl,
+  extractMarkerColor,
+  type MapExtractMarker,
+} from '../utils/mapExtracts';
 import { getMapSvgUrl, ROUTE_MAPS } from '../utils/maps';
+import { FixedLayerToggles } from './FixedLayerToggles';
+import {
+  MapFloatingTooltip,
+  type MapFloatingTooltipData,
+} from './MapFloatingTooltip';
+
+const MARKER_DRAG_THRESHOLD_SQ = 25; // 5px
 
 export type RouteMapsViewMode = 'user' | 'admin';
 
@@ -40,12 +62,15 @@ interface RouteMapsViewProps {
   onSelectMap: (mapKey: string | null) => void;
   points: RoutePoint[];
   fixedPoints?: FixedRoutePoint[];
+  /** Extracciones PMC/SCAV del mapa seleccionado (automáticas). */
+  mapExtracts?: MapExtractMarker[];
   selectedColor: string;
   colorLabels: RouteColorLabels;
   onChangeColor: (color: string) => void;
   onChangeColorLabel?: (color: string, name: string) => void;
   onAddPoint: (left: number, top: number) => void;
   onRemovePoint: (pointId: string) => void;
+  onMovePoint?: (pointId: string, left: number, top: number) => void;
   onUndoLast?: () => void;
   onClearMap?: () => void;
   mode?: RouteMapsViewMode;
@@ -57,6 +82,7 @@ interface RouteMapsViewProps {
   draftMarkerType?: FixedMarkerType;
   onChangeDraftMarkerType?: (markerType: FixedMarkerType) => void;
   onRemoveFixedPoint?: (pointId: string) => void;
+  onMoveFixedPoint?: (pointId: string, left: number, top: number) => void;
   onUpdateFixedLabel?: (pointId: string, label: string) => void;
   onUpdateFixedImage?: (pointId: string, file: File | null) => void;
   onUpdateFixedMarkerType?: (pointId: string, markerType: FixedMarkerType) => void;
@@ -95,12 +121,14 @@ export function RouteMapsView({
   onSelectMap,
   points,
   fixedPoints = [],
+  mapExtracts = [],
   selectedColor,
   colorLabels,
   onChangeColor,
   onChangeColorLabel,
   onAddPoint,
   onRemovePoint,
+  onMovePoint,
   onUndoLast,
   onClearMap,
   mode = 'user',
@@ -112,6 +140,7 @@ export function RouteMapsView({
   draftMarkerType = DEFAULT_FIXED_MARKER_TYPE,
   onChangeDraftMarkerType,
   onRemoveFixedPoint,
+  onMoveFixedPoint,
   onUpdateFixedLabel,
   onUpdateFixedImage,
   onUpdateFixedMarkerType,
@@ -141,13 +170,51 @@ export function RouteMapsView({
     src: string;
     label: string;
   } | null>(null);
+  const [extractTooltip, setExtractTooltip] = useState<
+    (MapFloatingTooltipData & { id: string }) | null
+  >(null);
   const [editingLabels, setEditingLabels] = useState<Record<string, string>>({});
-  const [showFixedPoints, setShowFixedPoints] = useState(true);
+  const { visibility: fixedLayerVisibility, toggleLayer: toggleFixedLayer } =
+    useFixedLayerVisibility();
+  /** Lista de fijos colapsada por defecto (los ojos por tipo controlan el mapa). */
+  const [fixedAccordionOpen, setFixedAccordionOpen] = useState(false);
+
+  const visibleFixedPoints = useMemo(
+    () =>
+      fixedPoints.filter((point) => fixedLayerVisibility[fixedMarkerLayerId(point.markerType)]),
+    [fixedPoints, fixedLayerVisibility],
+  );
+
+  const visibleExtracts = useMemo(
+    () =>
+      mapExtracts.filter((extract) =>
+        isExtractLayerVisible(extract.faction, fixedLayerVisibility),
+      ),
+    [mapExtracts, fixedLayerVisibility],
+  );
+
+  const fixedTotalCount = fixedPoints.length + mapExtracts.length;
+  const anyFixedLayerVisible =
+    visibleFixedPoints.length > 0 || visibleExtracts.length > 0;
+  const [dragState, setDragState] = useState<{
+    id: string;
+    kind: 'personal' | 'fixed';
+    left: number;
+    top: number;
+  } | null>(null);
+  /** Posición mostrada tras soltar hasta que `points`/`fixedPoints` reflejen el guardado. */
+  const [positionOverrides, setPositionOverrides] = useState<
+    Record<string, { left: number; top: number }>
+  >({});
   const imageWrapRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const pointListItemRefs = useRef<Map<string, HTMLLIElement>>(new Map());
   const draftImageInputRef = useRef<HTMLInputElement>(null);
   const pointImageInputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
+  const dragStartClientRef = useRef<{ x: number; y: number } | null>(null);
+  const dragMovedRef = useRef(false);
+  const dragStateRef = useRef(dragState);
+  dragStateRef.current = dragState;
   const {
     containerRef: mapAreaRef,
     setContainerRef: setMapAreaRef,
@@ -174,6 +241,139 @@ export function RouteMapsView({
       panY,
     );
   }, [areaSize.height, areaSize.width, imageSize.height, imageSize.width, panX, panY, zoom]);
+
+  const clientToMapPercent = useCallback((clientX: number, clientY: number) => {
+    const area = mapAreaRef.current;
+    if (!area || imageSize.width <= 0 || areaSize.width <= 0) return null;
+    const rect = area.getBoundingClientRect();
+    return areaPointToMapPercent(
+      clientX - rect.left,
+      clientY - rect.top,
+      imageSize.width,
+      imageSize.height,
+      areaSize.width,
+      areaSize.height,
+      zoom,
+      panX,
+      panY,
+    );
+  }, [areaSize.height, areaSize.width, imageSize.height, imageSize.width, mapAreaRef, panX, panY, zoom]);
+
+  const beginMarkerDrag = useCallback((
+    event: ReactPointerEvent<HTMLButtonElement>,
+    id: string,
+    kind: 'personal' | 'fixed',
+    left: number,
+    top: number,
+  ) => {
+    if (busy) return;
+    if (kind === 'personal' && (!onMovePoint || isAdmin)) return;
+    if (kind === 'fixed' && (!onMoveFixedPoint || !isAdmin)) return;
+
+    event.stopPropagation();
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragMovedRef.current = false;
+    dragStartClientRef.current = { x: event.clientX, y: event.clientY };
+    const next = { id, kind, left, top };
+    dragStateRef.current = next;
+    setDragState(next);
+  }, [busy, isAdmin, onMoveFixedPoint, onMovePoint]);
+
+  const onMarkerPointerMove = useCallback((event: ReactPointerEvent<HTMLButtonElement>) => {
+    const current = dragStateRef.current;
+    if (!current) return;
+    const start = dragStartClientRef.current;
+    if (start) {
+      const dx = event.clientX - start.x;
+      const dy = event.clientY - start.y;
+      if (dx * dx + dy * dy >= MARKER_DRAG_THRESHOLD_SQ) {
+        dragMovedRef.current = true;
+      }
+    }
+    if (!dragMovedRef.current) return;
+    const pct = clientToMapPercent(event.clientX, event.clientY);
+    if (!pct) return;
+    const next = { ...current, left: pct.left, top: pct.top };
+    dragStateRef.current = next;
+    setDragState(next);
+  }, [clientToMapPercent]);
+
+  const endMarkerDrag = useCallback((event: ReactPointerEvent<HTMLButtonElement>) => {
+    const current = dragStateRef.current;
+    if (!current) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    const moved = dragMovedRef.current;
+    // Última posición del puntero al soltar (por si el último move no se aplicó).
+    const pct = moved ? clientToMapPercent(event.clientX, event.clientY) : null;
+    const final = pct
+      ? { ...current, left: pct.left, top: pct.top }
+      : current;
+    dragStartClientRef.current = null;
+    if (!moved) {
+      setDragState(null);
+      dragStateRef.current = null;
+      return;
+    }
+
+    // Mantener la posición visual mientras el padre aplica el guardado.
+    setPositionOverrides((prev) => ({
+      ...prev,
+      [final.id]: { left: final.left, top: final.top },
+    }));
+    flushSync(() => {
+      if (final.kind === 'personal' && onMovePoint) {
+        onMovePoint(final.id, final.left, final.top);
+      } else if (final.kind === 'fixed' && onMoveFixedPoint) {
+        onMoveFixedPoint(final.id, final.left, final.top);
+      }
+    });
+    setDragState(null);
+    dragStateRef.current = null;
+  }, [clientToMapPercent, onMoveFixedPoint, onMovePoint]);
+
+  const consumeDragClick = useCallback(() => {
+    if (!dragMovedRef.current) return false;
+    dragMovedRef.current = false;
+    return true;
+  }, []);
+
+  const resolvePointPosition = useCallback((point: { id: string; left: number; top: number }) => {
+    if (dragState?.id === point.id) {
+      return { left: dragState.left, top: dragState.top };
+    }
+    const override = positionOverrides[point.id];
+    if (override) return override;
+    return { left: point.left, top: point.top };
+  }, [dragState, positionOverrides]);
+
+  // Quitar overrides cuando los props ya traen la posición guardada.
+  useEffect(() => {
+    setPositionOverrides((prev) => {
+      const ids = Object.keys(prev);
+      if (ids.length === 0) return prev;
+      let changed = false;
+      const next = { ...prev };
+      for (const id of ids) {
+        const point =
+          points.find((p) => p.id === id)
+          ?? fixedPoints.find((p) => p.id === id);
+        if (!point) {
+          delete next[id];
+          changed = true;
+          continue;
+        }
+        const o = prev[id];
+        if (Math.abs(point.left - o.left) < 0.001 && Math.abs(point.top - o.top) < 0.001) {
+          delete next[id];
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [fixedPoints, points]);
 
   const setPointHovered = useCallback((
     pointId: string | null,
@@ -499,271 +699,6 @@ export function RouteMapsView({
           </section>
         )}
 
-        <section className={`route-maps-points${!isAdmin && !showFixedPoints ? ' is-hidden-layer' : ''}`}>
-          <div className="route-maps-points-header">
-            <h3>
-              {isAdmin
-                ? t.routesFixedPoints(fixedPoints.length)
-                : t.routesFixedSection}
-            </h3>
-            {!isAdmin && (
-              <button
-                type="button"
-                className={`btn-icon-ghost route-maps-visibility-toggle${showFixedPoints ? '' : ' is-off'}`}
-                aria-label={showFixedPoints ? t.routesHideFixedPoints : t.routesShowFixedPoints}
-                aria-pressed={showFixedPoints}
-                title={showFixedPoints ? t.routesHideFixedPoints : t.routesShowFixedPoints}
-                onClick={() => setShowFixedPoints((prev) => !prev)}
-              >
-                {showFixedPoints ? (
-                  <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-                    <path
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"
-                    />
-                    <circle
-                      cx="12"
-                      cy="12"
-                      r="3"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                    />
-                  </svg>
-                ) : (
-                  <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-                    <path
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"
-                    />
-                    <line
-                      x1="1"
-                      y1="1"
-                      x2="23"
-                      y2="23"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                )}
-              </button>
-            )}
-          </div>
-          {!isAdmin && showFixedPoints && (
-            <p className="route-maps-layer-hint">{t.routesFixedHint}</p>
-          )}
-          {showFixedPoints && (
-            fixedLoading ? (
-              <p className="route-maps-empty">{t.routesFixedLoading}</p>
-            ) : fixedPoints.length === 0 ? (
-              <p className="route-maps-empty">{t.routesNoFixedPoints}</p>
-            ) : (
-              <ol className="route-maps-point-list">
-                {fixedPoints.map((point, index) => {
-                  const isHovered = hoveredPointId === point.id;
-                  const iconMarker = isIconMarkerType(point.markerType);
-                  const iconUrl = markerTypeIconUrl(point.markerType);
-                  const labelValue = editingLabels[point.id] ?? point.label ?? '';
-                  const pointLabel = iconMarker
-                    ? markerTypeTitle(point.markerType, t)
-                    : (point.label?.trim() || t.routesPointLabel(index + 1));
-                  return (
-                    <li
-                      key={point.id}
-                      ref={(el) => {
-                        if (el) pointListItemRefs.current.set(point.id, el);
-                        else pointListItemRefs.current.delete(point.id);
-                      }}
-                      className={[
-                        'route-maps-point-item--fixed',
-                        iconMarker ? 'route-maps-point-item--icon' : '',
-                        isHovered ? 'route-maps-point-item--hovered' : '',
-                      ].filter(Boolean).join(' ') || undefined}
-                      onMouseEnter={(e) => setPointHovered(point.id, {
-                        imageUrl: point.imageUrl,
-                        label: iconMarker ? '' : pointLabel,
-                        anchorEl: e.currentTarget,
-                      })}
-                      onMouseLeave={() => setPointHovered(null)}
-                    >
-                      {iconUrl ? (
-                        <img
-                          className="route-point-icon-thumb"
-                          src={iconUrl}
-                          alt=""
-                          aria-hidden
-                        />
-                      ) : (
-                        <span
-                          className="route-point-dot route-point-dot--fixed"
-                          style={{ background: point.color }}
-                          aria-hidden
-                        />
-                      )}
-                      {isAdmin && onUpdateFixedLabel ? (
-                        <div className="route-maps-fixed-edit">
-                          {onUpdateFixedMarkerType && (
-                            <div className="route-maps-marker-type-options">
-                              <button
-                                type="button"
-                                className={`route-maps-marker-type-btn${point.markerType !== 'kb' && point.markerType !== 'question' ? ' active' : ''}`}
-                                aria-pressed={!iconMarker}
-                                disabled={busy}
-                                onClick={() => onUpdateFixedMarkerType(point.id, 'default')}
-                              >
-                                {t.adminMarkerTypeDefault}
-                              </button>
-                              <button
-                                type="button"
-                                className={`route-maps-marker-type-btn route-maps-marker-type-btn--icon${point.markerType === 'kb' ? ' active' : ''}`}
-                                aria-pressed={point.markerType === 'kb'}
-                                disabled={busy}
-                                onClick={() => onUpdateFixedMarkerType(point.id, 'kb')}
-                              >
-                                <img src={KB_MARKER_ICON_URL} alt="" aria-hidden />
-                                {t.adminMarkerTypeKb}
-                              </button>
-                              <button
-                                type="button"
-                                className={`route-maps-marker-type-btn route-maps-marker-type-btn--icon${point.markerType === 'question' ? ' active' : ''}`}
-                                aria-pressed={point.markerType === 'question'}
-                                disabled={busy}
-                                onClick={() => onUpdateFixedMarkerType(point.id, 'question')}
-                              >
-                                <img src={QUESTION_MARKER_ICON_URL} alt="" aria-hidden />
-                                {t.adminMarkerTypeQuestion}
-                              </button>
-                            </div>
-                          )}
-                          {!iconMarker && (
-                            <>
-                              <input
-                                type="text"
-                                className="route-color-name-input"
-                                value={labelValue}
-                                placeholder={t.routesPointLabel(index + 1)}
-                                maxLength={80}
-                                onChange={(e) => {
-                                  setEditingLabels((prev) => ({
-                                    ...prev,
-                                    [point.id]: e.target.value,
-                                  }));
-                                }}
-                              />
-                              <button
-                                type="button"
-                                className="btn btn-reset"
-                                disabled={busy || labelValue.trim() === (point.label ?? '')}
-                                onClick={() => onUpdateFixedLabel(point.id, labelValue.trim())}
-                              >
-                                {t.adminSaveLabel}
-                              </button>
-                            </>
-                          )}
-                          {onUpdateFixedImage && (
-                            <div className="route-maps-image-actions">
-                              <input
-                                ref={(el) => {
-                                  if (el) pointImageInputRefs.current.set(point.id, el);
-                                  else pointImageInputRefs.current.delete(point.id);
-                                }}
-                                type="file"
-                                accept="image/*"
-                                hidden
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0] ?? null;
-                                  onUpdateFixedImage(point.id, file);
-                                  e.target.value = '';
-                                }}
-                              />
-                              <button
-                                type="button"
-                                className="btn btn-reset"
-                                disabled={busy}
-                                onClick={() => pointImageInputRefs.current.get(point.id)?.click()}
-                              >
-                                {point.imageUrl ? t.adminPointImageUpload : t.adminPointImage}
-                              </button>
-                              {point.imageUrl && (
-                                <button
-                                  type="button"
-                                  className="btn btn-wipe"
-                                  disabled={busy}
-                                  onClick={() => onUpdateFixedImage(point.id, null)}
-                                >
-                                  {t.adminPointImageClear}
-                                </button>
-                              )}
-                            </div>
-                          )}
-                          {point.imageUrl && (
-                            <button
-                              type="button"
-                              className="route-maps-image-thumb-btn"
-                              onClick={() => openPointImageModal(
-                                point.imageUrl!,
-                                point.label?.trim() || '',
-                              )}
-                              title={t.routesPointImageModal}
-                            >
-                              <img
-                                className="route-maps-image-thumb"
-                                src={point.imageUrl}
-                                alt=""
-                              />
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="route-maps-point-label">
-                          {pointLabel}
-                          {point.imageUrl && (
-                            <span className="route-maps-has-image" aria-hidden title={t.adminPointImage}>
-                              <svg viewBox="0 0 16 16" width="12" height="12">
-                                <rect
-                                  x="1.5"
-                                  y="3.5"
-                                  width="13"
-                                  height="9"
-                                  rx="1.5"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="1.4"
-                                />
-                                <circle cx="8" cy="8" r="2.2" fill="none" stroke="currentColor" strokeWidth="1.4" />
-                              </svg>
-                            </span>
-                          )}
-                        </span>
-                      )}
-                      {isAdmin && onRemoveFixedPoint && (
-                        <button
-                          type="button"
-                          className="btn-icon-close"
-                          aria-label={t.adminDeletePoint}
-                          disabled={busy}
-                          onClick={() => onRemoveFixedPoint(point.id)}
-                        >
-                          ×
-                        </button>
-                      )}
-                    </li>
-                  );
-                })}
-              </ol>
-            )
-          )}
-        </section>
-
         {!isAdmin && (
           <section className="route-maps-points">
             <div className="route-maps-points-header">
@@ -834,6 +769,288 @@ export function RouteMapsView({
             )}
           </section>
         )}
+
+        <section
+          className={[
+            'route-maps-points',
+            'route-maps-points--fixed-accordion',
+            !anyFixedLayerVisible && fixedTotalCount > 0 ? 'is-hidden-layer' : '',
+            fixedAccordionOpen ? 'is-open' : 'is-collapsed',
+          ].filter(Boolean).join(' ')}
+        >
+          <div className="route-maps-points-header route-maps-accordion-header">
+            <button
+              type="button"
+              className="route-maps-accordion-trigger"
+              aria-expanded={fixedAccordionOpen}
+              onClick={() => setFixedAccordionOpen((open) => !open)}
+            >
+              <span className="route-maps-accordion-chevron" aria-hidden>
+                {fixedAccordionOpen ? '▾' : '▸'}
+              </span>
+              <h3>
+                {isAdmin
+                  ? t.routesFixedPoints(fixedTotalCount)
+                  : `${t.routesFixedSection}${fixedTotalCount > 0 ? ` (${fixedTotalCount})` : ''}`}
+              </h3>
+            </button>
+          </div>
+          <FixedLayerToggles
+            fixedPoints={fixedPoints}
+            extracts={mapExtracts}
+            visibility={fixedLayerVisibility}
+            onToggle={toggleFixedLayer}
+            t={t}
+          />
+          {fixedAccordionOpen && (
+            <div className="route-maps-accordion-body">
+              {!isAdmin && (
+                <p className="route-maps-layer-hint">{t.routesFixedHint}</p>
+              )}
+              {fixedLoading ? (
+                  <p className="route-maps-empty">{t.routesFixedLoading}</p>
+                ) : fixedTotalCount === 0 ? (
+                  <p className="route-maps-empty">{t.routesNoFixedPoints}</p>
+                ) : (
+                  <ol className="route-maps-point-list">
+                    {mapExtracts.map((extract) => {
+                      const isHovered = hoveredPointId === extract.id;
+                      const hidden = !isExtractLayerVisible(extract.faction, fixedLayerVisibility);
+                      const factionLabel = extractFactionLabel(extract.faction, {
+                        pmc: t.routesExtractPmc,
+                        scav: t.routesExtractScav,
+                        shared: t.routesExtractShared,
+                      });
+                      return (
+                        <li
+                          key={extract.id}
+                          ref={(el) => {
+                            if (el) pointListItemRefs.current.set(extract.id, el);
+                            else pointListItemRefs.current.delete(extract.id);
+                          }}
+                          className={[
+                            'route-maps-point-item--fixed',
+                            'route-maps-point-item--icon',
+                            'route-maps-point-item--extract',
+                            hidden ? 'is-layer-hidden' : '',
+                            isHovered ? 'route-maps-point-item--hovered' : '',
+                          ].filter(Boolean).join(' ') || undefined}
+                          onMouseEnter={(e) => setPointHovered(extract.id, {
+                            scrollList: false,
+                            label: extract.name,
+                            anchorEl: e.currentTarget,
+                          })}
+                          onMouseLeave={() => setPointHovered(null)}
+                        >
+                          <img
+                            className="route-point-icon-thumb"
+                            src={extractIconUrl(extract.faction)}
+                            alt=""
+                            draggable={false}
+                          />
+                          <div className="route-maps-point-meta">
+                            <strong>{extract.name}</strong>
+                            <span className="route-maps-point-extract-faction">{factionLabel}</span>
+                          </div>
+                        </li>
+                      );
+                    })}
+                    {(isAdmin ? fixedPoints : visibleFixedPoints).map((point, index) => {
+                      const isHovered = hoveredPointId === point.id;
+                      const iconMarker = isIconMarkerType(point.markerType);
+                      const iconUrl = markerTypeIconUrl(point.markerType);
+                      const labelValue = editingLabels[point.id] ?? point.label ?? '';
+                      const pointLabel = iconMarker
+                        ? markerTypeTitle(point.markerType, t)
+                        : (point.label?.trim() || t.routesPointLabel(index + 1));
+                      return (
+                        <li
+                          key={point.id}
+                          ref={(el) => {
+                            if (el) pointListItemRefs.current.set(point.id, el);
+                            else pointListItemRefs.current.delete(point.id);
+                          }}
+                          className={[
+                            'route-maps-point-item--fixed',
+                            iconMarker ? 'route-maps-point-item--icon' : '',
+                            isHovered ? 'route-maps-point-item--hovered' : '',
+                          ].filter(Boolean).join(' ') || undefined}
+                          onMouseEnter={(e) => setPointHovered(point.id, {
+                            imageUrl: point.imageUrl,
+                            label: pointLabel,
+                            anchorEl: e.currentTarget,
+                          })}
+                          onMouseLeave={() => setPointHovered(null)}
+                        >
+                          {iconUrl ? (
+                            <img
+                              className="route-point-icon-thumb"
+                              src={iconUrl}
+                              alt=""
+                              aria-hidden
+                            />
+                          ) : (
+                            <span
+                              className="route-point-dot route-point-dot--fixed"
+                              style={{ background: point.color }}
+                              aria-hidden
+                            />
+                          )}
+                          {isAdmin && onUpdateFixedLabel ? (
+                            <div className="route-maps-fixed-edit">
+                              {onUpdateFixedMarkerType && (
+                                <div className="route-maps-marker-type-options">
+                                  <button
+                                    type="button"
+                                    className={`route-maps-marker-type-btn${point.markerType !== 'kb' && point.markerType !== 'question' ? ' active' : ''}`}
+                                    aria-pressed={!iconMarker}
+                                    disabled={busy}
+                                    onClick={() => onUpdateFixedMarkerType(point.id, 'default')}
+                                  >
+                                    {t.adminMarkerTypeDefault}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={`route-maps-marker-type-btn route-maps-marker-type-btn--icon${point.markerType === 'kb' ? ' active' : ''}`}
+                                    aria-pressed={point.markerType === 'kb'}
+                                    disabled={busy}
+                                    onClick={() => onUpdateFixedMarkerType(point.id, 'kb')}
+                                  >
+                                    <img src={KB_MARKER_ICON_URL} alt="" aria-hidden />
+                                    {t.adminMarkerTypeKb}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={`route-maps-marker-type-btn route-maps-marker-type-btn--icon${point.markerType === 'question' ? ' active' : ''}`}
+                                    aria-pressed={point.markerType === 'question'}
+                                    disabled={busy}
+                                    onClick={() => onUpdateFixedMarkerType(point.id, 'question')}
+                                  >
+                                    <img src={QUESTION_MARKER_ICON_URL} alt="" aria-hidden />
+                                    {t.adminMarkerTypeQuestion}
+                                  </button>
+                                </div>
+                              )}
+                              {!iconMarker && (
+                                <>
+                                  <input
+                                    type="text"
+                                    className="route-color-name-input"
+                                    value={labelValue}
+                                    placeholder={t.routesPointLabel(index + 1)}
+                                    maxLength={80}
+                                    onChange={(e) => {
+                                      setEditingLabels((prev) => ({
+                                        ...prev,
+                                        [point.id]: e.target.value,
+                                      }));
+                                    }}
+                                  />
+                                  <button
+                                    type="button"
+                                    className="btn btn-reset"
+                                    disabled={busy || labelValue.trim() === (point.label ?? '')}
+                                    onClick={() => onUpdateFixedLabel(point.id, labelValue.trim())}
+                                  >
+                                    {t.adminSaveLabel}
+                                  </button>
+                                </>
+                              )}
+                              {onUpdateFixedImage && (
+                                <div className="route-maps-image-actions">
+                                  <input
+                                    ref={(el) => {
+                                      if (el) pointImageInputRefs.current.set(point.id, el);
+                                      else pointImageInputRefs.current.delete(point.id);
+                                    }}
+                                    type="file"
+                                    accept="image/*"
+                                    hidden
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0] ?? null;
+                                      onUpdateFixedImage(point.id, file);
+                                      e.target.value = '';
+                                    }}
+                                  />
+                                  <button
+                                    type="button"
+                                    className="btn btn-reset"
+                                    disabled={busy}
+                                    onClick={() => pointImageInputRefs.current.get(point.id)?.click()}
+                                  >
+                                    {point.imageUrl ? t.adminPointImageUpload : t.adminPointImage}
+                                  </button>
+                                  {point.imageUrl && (
+                                    <button
+                                      type="button"
+                                      className="btn btn-wipe"
+                                      disabled={busy}
+                                      onClick={() => onUpdateFixedImage(point.id, null)}
+                                    >
+                                      {t.adminPointImageClear}
+                                    </button>
+                                  )}
+                                </div>
+                              )}
+                              {point.imageUrl && (
+                                <button
+                                  type="button"
+                                  className="route-maps-image-thumb-btn"
+                                  onClick={() => openPointImageModal(
+                                    point.imageUrl!,
+                                    point.label?.trim() || '',
+                                  )}
+                                  title={t.routesPointImageModal}
+                                >
+                                  <img
+                                    className="route-maps-image-thumb"
+                                    src={point.imageUrl}
+                                    alt=""
+                                  />
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="route-maps-point-label">
+                              {pointLabel}
+                              {point.imageUrl && (
+                                <span className="route-maps-has-image" aria-hidden title={t.adminPointImage}>
+                                  <svg viewBox="0 0 16 16" width="12" height="12">
+                                    <rect
+                                      x="1.5"
+                                      y="3.5"
+                                      width="13"
+                                      height="9"
+                                      rx="1.5"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="1.4"
+                                    />
+                                    <circle cx="8" cy="8" r="2.2" fill="none" stroke="currentColor" strokeWidth="1.4" />
+                                  </svg>
+                                </span>
+                              )}
+                            </span>
+                          )}
+                          {isAdmin && onRemoveFixedPoint && (
+                            <button
+                              type="button"
+                              className="btn-icon-close"
+                              aria-label={t.adminDeletePoint}
+                              disabled={busy}
+                              onClick={() => onRemoveFixedPoint(point.id)}
+                            >
+                              ×
+                            </button>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ol>
+                )}
+            </div>
+          )}
+        </section>
       </aside>
 
       <div
@@ -841,27 +1058,117 @@ export function RouteMapsView({
         ref={setMapAreaRef}
         {...panHandlers}
       >
-        <div
-          className="map-modal-image-wrap"
-          ref={imageWrapRef}
-          style={{
-            ...(imageSize.width > 0 ? { width: imageSize.width, height: imageSize.height } : undefined),
-            ...contentStyle,
-          }}
-          onClick={handleMapClick}
-        >
-          <img
-            ref={imageRef}
-            className="map-modal-image"
-            src={mapUrl}
-            alt={selectedMap.name}
-            onLoad={updateImageSize}
-            draggable={false}
-          />
+        <div className="map-modal-map-viewport">
+          <div
+            className="map-modal-image-wrap"
+            ref={imageWrapRef}
+            style={{
+              ...(imageSize.width > 0 ? { width: imageSize.width, height: imageSize.height } : undefined),
+              ...contentStyle,
+            }}
+            onClick={handleMapClick}
+          >
+            <img
+              ref={imageRef}
+              className="map-modal-image"
+              src={mapUrl}
+              alt={selectedMap.name}
+              onLoad={updateImageSize}
+              draggable={false}
+            />
+            {/* Encima del SVG (mismo wrap, después del img) para no quedar tapado. */}
+            {getMapZoneAnnotations(selectedMap.key).map((zone) => (
+              <div
+                key={zone.id}
+                className="map-zone-annotation"
+                style={mapZoneAnnotationStyle(zone)}
+                aria-label={zone.label}
+              >
+                <span className="map-zone-annotation-label">{zone.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
         <div className="map-modal-markers map-modal-markers--overlay">
-          {(isAdmin || showFixedPoints) && fixedPoints.map((point, index) => {
-            const pos = projectMarker(point.left, point.top);
+          {visibleExtracts.map((extract) => {
+            const pos = projectMarker(extract.left, extract.top);
+            if (!pos) return null;
+            const isHovered =
+              hoveredPointId === extract.id || extractTooltip?.id === extract.id;
+            const factionLabel = extractFactionLabel(extract.faction, {
+              pmc: t.routesExtractPmc,
+              scav: t.routesExtractScav,
+              shared: t.routesExtractShared,
+            });
+            const accent = extractMarkerColor(extract.faction);
+            const iconSrc = extractIconUrl(extract.faction);
+            return (
+              <button
+                key={extract.id}
+                type="button"
+                className={[
+                  'route-map-marker',
+                  'route-map-marker--fixed',
+                  'route-map-marker--icon',
+                  'route-map-marker--extract',
+                  extract.faction === 'scav'
+                    ? 'route-map-marker--extract-scav'
+                    : extract.faction === 'shared'
+                      ? 'route-map-marker--extract-shared'
+                      : 'route-map-marker--extract-pmc',
+                  isHovered ? 'route-map-marker--hovered' : '',
+                ].filter(Boolean).join(' ')}
+                style={{
+                  left: pos.x,
+                  top: pos.y,
+                  '--route-marker-color': accent,
+                  zIndex: isHovered ? 4 : 3,
+                } as CSSProperties}
+                aria-label={`${extract.name} (${factionLabel})`}
+                onMouseEnter={(e) => {
+                  if (imageModal || dragState) return;
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setPointHovered(extract.id, {
+                    scrollList: true,
+                    label: extract.name,
+                    anchorEl: e.currentTarget,
+                  });
+                  setExtractTooltip({
+                    id: extract.id,
+                    x: rect.left + rect.width / 2,
+                    y: rect.top,
+                    title: extract.name,
+                    subtitle: factionLabel,
+                    description: t.routesExtractTooltipHint,
+                    iconSrc,
+                    iconAlt: factionLabel,
+                    accent,
+                  });
+                }}
+                onMouseLeave={() => {
+                  if (dragState) return;
+                  setPointHovered(null);
+                  setExtractTooltip(null);
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <span className="route-map-marker-body">
+                  <span className="route-map-marker-label route-map-marker-label--extract">
+                    {extract.name}
+                  </span>
+                  <img
+                    className="route-map-marker-icon"
+                    src={extractIconUrl(extract.faction)}
+                    alt=""
+                    draggable={false}
+                  />
+                </span>
+              </button>
+            );
+          })}
+          {visibleFixedPoints.map((point, index) => {
+            const { left: displayLeft, top: displayTop } = resolvePointPosition(point);
+            const pos = projectMarker(displayLeft, displayTop);
             if (!pos) return null;
             const iconMarker = isIconMarkerType(point.markerType);
             const iconUrl = markerTypeIconUrl(point.markerType);
@@ -869,6 +1176,8 @@ export function RouteMapsView({
               ? markerTypeTitle(point.markerType, t)
               : (point.label?.trim() || String(index + 1));
             const isHovered = hoveredPointId === point.id;
+            const canDragFixed = isAdmin && Boolean(onMoveFixedPoint) && !busy;
+            const isDragging = dragState?.id === point.id;
             return (
               <button
                 key={point.id}
@@ -881,12 +1190,14 @@ export function RouteMapsView({
                   point.markerType === 'kb' ? 'route-map-marker--kb' : '',
                   isHovered ? 'route-map-marker--hovered' : '',
                   point.imageUrl ? 'route-map-marker--has-image' : '',
+                  canDragFixed ? 'route-map-marker--draggable' : '',
+                  isDragging ? 'route-map-marker--dragging' : '',
                 ].filter(Boolean).join(' ')}
                 style={{
                   left: pos.x,
                   top: pos.y,
                   '--route-marker-color': point.color,
-                  zIndex: isHovered ? 4 : 3,
+                  zIndex: isDragging ? 6 : isHovered ? 4 : 3,
                 } as CSSProperties}
                 title={
                   point.imageUrl
@@ -897,17 +1208,28 @@ export function RouteMapsView({
                 }
                 aria-label={iconMarker ? markerLabel : (point.label?.trim() || t.routesPointLabel(index + 1))}
                 onMouseEnter={(e) => {
-                  if (imageModal) return;
+                  if (imageModal || dragState) return;
                   setPointHovered(point.id, {
                     scrollList: true,
                     imageUrl: point.imageUrl,
-                    label: iconMarker ? '' : markerLabel,
+                    label: markerLabel,
                     anchorEl: e.currentTarget,
                   });
                 }}
-                onMouseLeave={() => setPointHovered(null)}
+                onMouseLeave={() => {
+                  if (dragState) return;
+                  setPointHovered(null);
+                }}
+                onPointerDown={(e) => {
+                  if (!canDragFixed) return;
+                  beginMarkerDrag(e, point.id, 'fixed', displayLeft, displayTop);
+                }}
+                onPointerMove={onMarkerPointerMove}
+                onPointerUp={endMarkerDrag}
+                onPointerCancel={endMarkerDrag}
                 onClick={(e) => {
                   e.stopPropagation();
+                  if (consumeDragClick()) return;
                   if (point.imageUrl) {
                     openPointImageModal(
                       point.imageUrl,
@@ -939,28 +1261,50 @@ export function RouteMapsView({
             );
           })}
           {!isAdmin && points.map((point, index) => {
-            const pos = projectMarker(point.left, point.top);
+            const { left: displayLeft, top: displayTop } = resolvePointPosition(point);
+            const pos = projectMarker(displayLeft, displayTop);
             if (!pos) return null;
             const playerName = labelForColor(colorLabels, point.color);
             const markerLabel = playerName || String(index + 1);
             const isHovered = hoveredPointId === point.id;
+            const canDragPersonal = Boolean(onMovePoint) && !busy;
+            const isDragging = dragState?.id === point.id;
             return (
               <button
                 key={point.id}
                 type="button"
-                className={`route-map-marker${isHovered ? ' route-map-marker--hovered' : ''}`}
+                className={[
+                  'route-map-marker',
+                  isHovered ? 'route-map-marker--hovered' : '',
+                  canDragPersonal ? 'route-map-marker--draggable' : '',
+                  isDragging ? 'route-map-marker--dragging' : '',
+                ].filter(Boolean).join(' ')}
                 style={{
                   left: pos.x,
                   top: pos.y,
                   '--route-marker-color': point.color,
-                  zIndex: isHovered ? 3 : 2,
+                  zIndex: isDragging ? 5 : isHovered ? 3 : 2,
                 } as CSSProperties}
                 title={playerName ? `${playerName} — ${t.routesRemovePoint}` : t.routesRemovePoint}
                 aria-label={playerName || t.routesPointLabel(index + 1)}
-                onMouseEnter={() => setPointHovered(point.id, { scrollList: true })}
-                onMouseLeave={() => setPointHovered(null)}
+                onMouseEnter={() => {
+                  if (dragState) return;
+                  setPointHovered(point.id, { scrollList: true });
+                }}
+                onMouseLeave={() => {
+                  if (dragState) return;
+                  setPointHovered(null);
+                }}
+                onPointerDown={(e) => {
+                  if (!canDragPersonal) return;
+                  beginMarkerDrag(e, point.id, 'personal', displayLeft, displayTop);
+                }}
+                onPointerMove={onMarkerPointerMove}
+                onPointerUp={endMarkerDrag}
+                onPointerCancel={endMarkerDrag}
                 onClick={(e) => {
                   e.stopPropagation();
+                  if (consumeDragClick()) return;
                   onRemovePoint(point.id);
                 }}
               >
@@ -974,9 +1318,14 @@ export function RouteMapsView({
         </div>
       </div>
 
+      <MapFloatingTooltip tooltip={extractTooltip} />
+
       {imageTooltip && !imageModal && (
         <div
-          className="route-fixed-image-tooltip"
+          className={[
+            'route-fixed-image-tooltip',
+            imageTooltip.y < 180 ? 'is-below' : '',
+          ].filter(Boolean).join(' ')}
           role="tooltip"
           style={{
             left: imageTooltip.x,

@@ -3,6 +3,7 @@ import { ActiveTasksView } from './components/ActiveTasksView';
 import { AppFooter } from './components/AppFooter';
 import { DataSourceControl } from './components/DataSourceControl';
 import { CrtViewTransition } from './components/CrtViewTransition';
+import { HeaderAccessCode } from './components/HeaderAccessCode';
 import { HomeUsageScreen, type HomeUsageChoice } from './components/HomeUsageScreen';
 import { useSiteAuthContext } from './context/SiteAuthContext';
 import { useCrtViewTransition } from './hooks/useCrtViewTransition';
@@ -22,6 +23,7 @@ import { useViewMode } from './hooks/useViewMode';
 import { useProgress } from './hooks/useProgress';
 import { useLogsOverrides } from './hooks/useLogsOverrides';
 import { useFixedRouteMaps } from './hooks/useFixedRouteMaps';
+import { useMapExtracts } from './hooks/useMapExtracts';
 import { useRouteMaps } from './hooks/useRouteMaps';
 import { useStoryProgress } from './hooks/useStoryProgress';
 import { useTarkovLogSync } from './hooks/useTarkovLogSync';
@@ -42,7 +44,8 @@ export default function App() {
   const { isTable: isTableView } = useViewMode();
   const { gameMode, setGameMode } = useGameMode();
   const { dataSource, setDataSource, isLogsMode } = useDataSource();
-  const { canRevealDailyCode } = useSiteAuthContext();
+  const { canRevealDailyCode, useGorditosLogo } = useSiteAuthContext();
+  const brandLogoSrc = useGorditosLogo ? '/gorditos-logo.png' : '/logo.png';
   const { active: crtActive, playId: crtPlayId, transitionTo } = useCrtViewTransition();
   const [appUsage, setAppUsage] = useState<AppUsage>('home');
   /** Routes y Seasonal comparten mapas; PVP Zone (regular) tiene los suyos. */
@@ -85,10 +88,12 @@ export default function App() {
     getPoints,
     addPoint,
     removePoint,
+    movePoint,
     undoLast,
     clearMap,
   } = useRouteMaps(routeEnvironment);
   const fixedRoutes = useFixedRouteMaps(routeEnvironment);
+  const mapExtracts = useMapExtracts(lang, gameMode);
 
   // En modo Logs, el estado de las misiones se deriva de los eventos leídos de los logs de
   // Tarkov; no debe heredar ni mezclarse con el progreso manual guardado en localStorage
@@ -206,6 +211,15 @@ export default function App() {
     return Object.keys(logSync.taskStatusMap).filter((id) => !tasksById.has(id));
   }, [isLogsMode, logSync.taskStatusMap, tasksById]);
 
+  const unmatchedLogTaskStates = useMemo(() => {
+    const out: Record<string, string> = {};
+    for (const id of unmatchedLogTaskIds) {
+      const state = logSync.taskStatusMap[id];
+      if (state) out[id] = state;
+    }
+    return out;
+  }, [unmatchedLogTaskIds, logSync.taskStatusMap]);
+
   const filteredTasks = useMemo(() => {
     const q = search.trim().toLowerCase();
     const filtered = sideTasks.filter((task) => {
@@ -318,11 +332,11 @@ export default function App() {
 
   return (
     <div className={`app${isHome ? ' app--home' : ''}${isLogsLocked ? ' logs-locked' : ''}`}>
-      <CrtViewTransition active={crtActive} playId={crtPlayId} />
+      <CrtViewTransition active={crtActive} playId={crtPlayId} logoSrc={brandLogoSrc} />
       {!isHome && (
       <header className="app-header">
         <div className="header-grid">
-          <div className="header-logo">
+          <div className={`header-logo${canRevealDailyCode ? ' header-logo--with-access' : ''}`}>
             <button
               type="button"
               className="header-logo-btn"
@@ -330,8 +344,13 @@ export default function App() {
               title={t.homeBack}
               aria-label={t.homeBack}
             >
-              <img src="/logo.png" alt={t.appTitle} className="brand-logo" />
+              <img
+                src={brandLogoSrc}
+                alt={t.appTitle}
+                className={`brand-logo${useGorditosLogo ? ' brand-logo--gorditos' : ''}`}
+              />
             </button>
+            <HeaderAccessCode enabled={canRevealDailyCode} />
           </div>
 
           <div className="header-tabs">
@@ -452,6 +471,7 @@ export default function App() {
                     taskCount={Object.keys(logSync.taskStatusMap).length}
                     wipeVersion={logSync.wipeVersion}
                     unmatchedTaskIds={unmatchedLogTaskIds}
+                    unmatchedTaskStates={unmatchedLogTaskStates}
                     breakpoints={logSync.breakpoints}
                     wipeStartSelection={logSync.wipeStartSelection}
                     resolvedWipeStartSession={logSync.resolvedWipeStartSession}
@@ -515,6 +535,7 @@ export default function App() {
             t={getTranslations('en')}
             onChoose={handleHomeChoice}
             canRevealDailyCode={canRevealDailyCode}
+            logoSrc={brandLogoSrc}
           />
         ) : isRoutesUsage ? (
           <RouteMapsView
@@ -524,6 +545,11 @@ export default function App() {
             onSelectMap={setSelectedRouteMapKey}
             points={routePoints}
             fixedPoints={fixedRoutePoints}
+            mapExtracts={
+              selectedRouteMapKey
+                ? mapExtracts.extracts[selectedRouteMapKey] ?? []
+                : []
+            }
             selectedColor={selectedColor}
             colorLabels={colorLabels}
             onChangeColor={setSelectedColor}
@@ -533,6 +559,9 @@ export default function App() {
             }}
             onRemovePoint={(pointId) => {
               if (selectedRouteMapKey) removePoint(selectedRouteMapKey, pointId);
+            }}
+            onMovePoint={(pointId, left, top) => {
+              if (selectedRouteMapKey) movePoint(selectedRouteMapKey, pointId, left, top);
             }}
             onUndoLast={() => {
               if (selectedRouteMapKey) undoLast(selectedRouteMapKey);
@@ -594,6 +623,7 @@ export default function App() {
               customMapMarkers={progress.customMapMarkers ?? {}}
               routeMaps={routes}
               fixedRouteMaps={fixedRoutes.routes}
+              mapExtracts={mapExtracts.extracts}
               routeColorLabels={colorLabels}
               selectedId={selectedId}
               t={t}
@@ -606,6 +636,7 @@ export default function App() {
               onSetCustomMapMarker={setCustomMapMarker}
               onClearCustomMapMarker={clearCustomMapMarker}
               lockedIds={logLockedIds}
+              showActionsColumn={!isLogsMode}
             />
           ) : isStoryTab ? (
             <StoryView
@@ -639,6 +670,7 @@ export default function App() {
               onComplete={guardedCompleteTask}
               onReset={guardedResetTask}
               lockedIds={logLockedIds}
+              showActionsColumn={!isLogsMode}
             />
           ) : filteredTasks.length === 0 ? (
             <p className="empty-list">{t.noTasksFilter}</p>
@@ -721,6 +753,7 @@ export default function App() {
         <AppFooter
           locale={locale}
           formatVisits={t.footerVisits}
+          formatOnline={t.footerOnline}
           notices={(usingStaleCache || isLogsLocked) ? (
             <>
               {usingStaleCache && (

@@ -41,6 +41,13 @@ export const ROUTE_MAPS: { key: string; name: string }[] = [
  */
 const LOCAL_MAP_SVG: Partial<Record<string, string>> = {
   interchange: '/maps/Interchange.svg',
+  /** Ground Zero rotado 90° a la izquierda. */
+  'ground-zero': '/maps/GroundZero.svg?v=gz-rot-1',
+  /** Lighthouse rotado 90° a la izquierda. */
+  lighthouse: '/maps/Lighthouse.svg?v=lh-rot-1',
+  /** Streets of Tarkov rotado 90° a la izquierda. */
+  'streets-of-tarkov': '/maps/StreetsOfTarkov.svg?v=sot-rot-1',
+  reserve: '/maps/Reserve.svg?v=reserve-1',
 };
 
 export function getMapSvgUrl(normalizedName: string): string | null {

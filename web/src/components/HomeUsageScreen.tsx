@@ -8,6 +8,7 @@ interface HomeUsageScreenProps {
   t: Translations;
   onChoose: (choice: HomeUsageChoice) => void;
   canRevealDailyCode?: boolean;
+  logoSrc?: string;
 }
 
 function IconRoutes() {
@@ -91,13 +92,19 @@ export function HomeUsageScreen({
   t,
   onChoose,
   canRevealDailyCode = false,
+  logoSrc = '/logo.png',
 }: HomeUsageScreenProps) {
   const [dailyOpen, setDailyOpen] = useState(false);
+  const isGorditosLogo = logoSrc.includes('gorditos');
 
   return (
     <div className="home-usage">
       <div className="home-usage-hero">
-        <img src="/logo.png" alt={t.appTitle} className="home-usage-logo" />
+        <img
+          src={logoSrc}
+          alt={t.appTitle}
+          className={`home-usage-logo${isGorditosLogo ? ' home-usage-logo--gorditos' : ''}`}
+        />
       </div>
 
       <div className="home-usage-strip" role="list">

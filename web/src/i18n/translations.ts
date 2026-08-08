@@ -51,6 +51,7 @@ export interface Translations {
   wipeAll: string;
   confirmWipeAll: string;
   footerVisits: (n: number) => string;
+  footerOnline: (n: number) => string;
   noTasksFilter: string;
   noActiveTasks: string;
   noCompletedTasks: string;
@@ -85,6 +86,14 @@ export interface Translations {
   routesFixedLoadError: string;
   routesHideFixedPoints: string;
   routesShowFixedPoints: string;
+  routesFixedLayers: string;
+  routesExtractPmc: string;
+  routesExtractScav: string;
+  routesExtractShared: string;
+  routesExtractSection: string;
+  routesExtractTooltipHint: string;
+  routesHideLayer: (name: string) => string;
+  routesShowLayer: (name: string) => string;
   adminRoutesTitle: string;
   adminRoutesHint: string;
   routeEnvironmentRegular: string;
@@ -200,6 +209,10 @@ export interface Translations {
   logStateNotDetectedEditable: string;
   logLockedHint: string;
   logsUnmatchedIds: (n: number) => string;
+  logsUnmatchedTitle: (n: number) => string;
+  logsUnmatchedBody: string;
+  logsUnmatchedOk: string;
+  logsUnmatchedStatus: (completed: number, started: number, failed: number) => string;
   logsWipeStartTitle: string;
   logsWipeStartAuto: string;
   logsWipeStartAll: string;
@@ -279,6 +292,8 @@ export const translations: Record<Lang, Translations> = {
     confirmWipeAll:
       'Se borrarán todos los datos guardados en el navegador (progreso de misiones, campaña Story, idioma, etc.). Esta acción no se puede deshacer.\n\n¿Continuar?',
     footerVisits: (n) => `${n.toLocaleString('es-ES')} visita${n === 1 ? '' : 's'} única${n === 1 ? '' : 's'}`,
+    footerOnline: (n) =>
+      `${n.toLocaleString('es-ES')} usuario${n === 1 ? '' : 's'} online`,
     noTasksFilter: 'No hay misiones con estos filtros.',
     noActiveTasks: 'No tienes misiones en curso.',
     noCompletedTasks: 'No tienes misiones completadas.',
@@ -294,7 +309,7 @@ export const translations: Record<Lang, Translations> = {
       'Dibuja puntos de ruta sobre cualquier mapa de Tarkov. Independiente de las misiones: solo para planear recorridos.',
     routesOpenMap: 'Abrir mapa',
     routesBackToMaps: 'Todos los mapas',
-    routesDrawHint: 'Elige un color y haz clic en el mapa para añadir puntos. Clic en un punto para eliminarlo.',
+    routesDrawHint: 'Elige un color y haz clic en el mapa para añadir puntos. Arrastra un pin para moverlo; clic para eliminarlo. Los puntos fijos no se pueden mover.',
     routesPointColor: 'Color del jugador',
     routesCustomColor: 'Personalizado',
     routesPlayerNamePlaceholder: 'Nombre del jugador',
@@ -314,6 +329,14 @@ export const translations: Record<Lang, Translations> = {
     routesFixedLoadError: 'No se pudieron cargar los puntos fijos.',
     routesHideFixedPoints: 'Ocultar puntos fijos',
     routesShowFixedPoints: 'Mostrar puntos fijos',
+    routesFixedLayers: 'Capas de puntos fijos',
+    routesExtractPmc: 'Extracción PMC',
+    routesExtractScav: 'Extracción SCAV',
+    routesExtractShared: 'Extracción compartida',
+    routesExtractSection: 'Extracciones',
+    routesExtractTooltipHint: 'Punto de extracción del mapa',
+    routesHideLayer: (name) => `Ocultar ${name}`,
+    routesShowLayer: (name) => `Mostrar ${name}`,
     adminRoutesTitle: 'Admin · Puntos fijos de rutas',
     adminRoutesHint: 'Crea y edita puntos compartidos. Se guardan en el servidor (Turso).',
     routeEnvironmentRegular: 'PVP Zone',
@@ -325,7 +348,7 @@ export const translations: Record<Lang, Translations> = {
     adminLogin: 'Entrar',
     adminLogout: 'Salir',
     adminLoginError: 'Token incorrecto o API no disponible.',
-    adminDrawHint: 'Elige un color y haz clic en el mapa para crear un punto fijo. Clic en un punto para eliminarlo.',
+    adminDrawHint: 'Elige un color y haz clic en el mapa para crear un punto fijo. Arrastra un pin para moverlo; clic para eliminarlo.',
     adminPointLabel: 'Etiqueta',
     adminPointLabelPlaceholder: 'Nombre del punto (opcional)',
     adminPointImage: 'Imagen',
@@ -336,9 +359,9 @@ export const translations: Record<Lang, Translations> = {
     routesPointImageModal: 'Imagen del punto',
     adminMarkerType: 'Tipo de marcador',
     adminMarkerTypeDefault: 'Normal',
-    adminMarkerTypeKb: 'KB especial',
+    adminMarkerTypeKb: 'KB Documents',
     adminMarkerTypeKbHint: 'Pin KB sin texto. El hover sigue mostrando la imagen.',
-    adminMarkerTypeQuestion: 'Interrogación',
+    adminMarkerTypeQuestion: 'KB Doc sin confirmar',
     adminMarkerTypeQuestionHint: 'Pin ? sin texto. El hover sigue mostrando la imagen.',
     adminSaveLabel: 'Guardar etiqueta',
     adminWorking: 'Guardando…',
@@ -453,7 +476,20 @@ export const translations: Record<Lang, Translations> = {
     logStateDetected: (state) => `Detectado en logs: ${state}`,
     logStateNotDetectedEditable: 'No detectado en los logs (misión anterior a las sesiones guardadas). Puedes marcarla manualmente; si el juego registra un evento real, tendrá prioridad.',
     logLockedHint: 'Detectado en los logs: el estado lo controla el juego, no editable.',
-    logsUnmatchedIds: (n) => `${n} ID(s) de misión sin coincidencia`,
+    logsUnmatchedIds: (n) => `${n} misión(es) de logs fuera de la lista`,
+    logsUnmatchedTitle: (n) =>
+      `${n} misión${n === 1 ? '' : 'es'} de tus logs no ${n === 1 ? 'aparece' : 'aparecen'} aquí`,
+    logsUnmatchedBody:
+      'El juego las ha registrado, pero aún no están en la base de misiones de esta web '
+      + '(por ejemplo, misiones nuevas, de otro modo o aún no indexadas).',
+    logsUnmatchedOk: 'No afecta al resto: las misiones que sí coinciden se siguen sincronizando con normalidad.',
+    logsUnmatchedStatus: (completed, started, failed) => {
+      const parts: string[] = [];
+      if (completed > 0) parts.push(`${completed} completada${completed === 1 ? '' : 's'}`);
+      if (started > 0) parts.push(`${started} en curso`);
+      if (failed > 0) parts.push(`${failed} fallada${failed === 1 ? '' : 's'}`);
+      return parts.length > 0 ? `En tus logs: ${parts.join(' · ')}` : '';
+    },
     logsWipeStartTitle: 'Inicio de temporada',
     logsWipeStartAuto: 'Automático (última versión detectada)',
     logsWipeStartAll: 'Usar todo el historial (sin filtrar)',
@@ -539,6 +575,8 @@ export const translations: Record<Lang, Translations> = {
     confirmWipeAll:
       'All data stored in the browser will be deleted (quest progress, Story campaign, language, etc.). This cannot be undone.\n\nContinue?',
     footerVisits: (n) => `${n.toLocaleString('en-US')} unique visit${n === 1 ? '' : 's'}`,
+    footerOnline: (n) =>
+      `${n.toLocaleString('en-US')} user${n === 1 ? '' : 's'} online`,
     noTasksFilter: 'No quests match these filters.',
     noActiveTasks: 'You have no quests in progress.',
     noCompletedTasks: 'You have no completed quests.',
@@ -554,7 +592,7 @@ export const translations: Record<Lang, Translations> = {
       'Draw route points on any Tarkov map. Separate from quests — just for planning your runs.',
     routesOpenMap: 'Open map',
     routesBackToMaps: 'All maps',
-    routesDrawHint: 'Pick a color and click the map to add points. Click a point to remove it.',
+    routesDrawHint: 'Pick a color and click the map to add points. Drag a pin to move it; click to remove it. Fixed points cannot be moved.',
     routesPointColor: 'Player color',
     routesCustomColor: 'Custom',
     routesPlayerNamePlaceholder: 'Player name',
@@ -574,6 +612,14 @@ export const translations: Record<Lang, Translations> = {
     routesFixedLoadError: 'Could not load fixed points.',
     routesHideFixedPoints: 'Hide fixed points',
     routesShowFixedPoints: 'Show fixed points',
+    routesFixedLayers: 'Fixed point layers',
+    routesExtractPmc: 'PMC extract',
+    routesExtractScav: 'SCAV extract',
+    routesExtractShared: 'Shared extract',
+    routesExtractSection: 'Extracts',
+    routesExtractTooltipHint: 'Map extraction point',
+    routesHideLayer: (name) => `Hide ${name}`,
+    routesShowLayer: (name) => `Show ${name}`,
     adminRoutesTitle: 'Admin · Fixed route points',
     adminRoutesHint: 'Create and edit shared points. Stored on the server (Turso).',
     routeEnvironmentRegular: 'PVP Zone',
@@ -585,7 +631,7 @@ export const translations: Record<Lang, Translations> = {
     adminLogin: 'Sign in',
     adminLogout: 'Sign out',
     adminLoginError: 'Invalid token or API unavailable.',
-    adminDrawHint: 'Pick a color and click the map to create a fixed point. Click a point to remove it.',
+    adminDrawHint: 'Pick a color and click the map to create a fixed point. Drag a pin to move it; click to remove it.',
     adminPointLabel: 'Label',
     adminPointLabelPlaceholder: 'Point name (optional)',
     adminPointImage: 'Image',
@@ -596,9 +642,9 @@ export const translations: Record<Lang, Translations> = {
     routesPointImageModal: 'Point image',
     adminMarkerType: 'Marker type',
     adminMarkerTypeDefault: 'Normal',
-    adminMarkerTypeKb: 'KB special',
+    adminMarkerTypeKb: 'KB Documents',
     adminMarkerTypeKbHint: 'KB pin with no text. Hover still shows the image.',
-    adminMarkerTypeQuestion: 'Question mark',
+    adminMarkerTypeQuestion: 'Unconfirmed KB Doc',
     adminMarkerTypeQuestionHint: '? pin with no text. Hover still shows the image.',
     adminSaveLabel: 'Save label',
     adminWorking: 'Saving…',
@@ -713,7 +759,20 @@ export const translations: Record<Lang, Translations> = {
     logStateDetected: (state) => `Detected in logs: ${state}`,
     logStateNotDetectedEditable: 'Not detected in logs (task predates the saved sessions). You can mark it manually; a real in-game event will always take priority.',
     logLockedHint: 'Detected in logs: state is controlled by the game, not editable.',
-    logsUnmatchedIds: (n) => `${n} unmatched quest ID(s)`,
+    logsUnmatchedIds: (n) => `${n} log quest(s) not in the list`,
+    logsUnmatchedTitle: (n) =>
+      `${n} quest${n === 1 ? '' : 's'} from your logs ${n === 1 ? 'is' : 'are'} missing here`,
+    logsUnmatchedBody:
+      'The game recorded them, but they are not in this site’s quest database yet '
+      + '(for example new quests, another game mode, or not indexed yet).',
+    logsUnmatchedOk: 'No worries: matching quests keep syncing normally.',
+    logsUnmatchedStatus: (completed, started, failed) => {
+      const parts: string[] = [];
+      if (completed > 0) parts.push(`${completed} completed`);
+      if (started > 0) parts.push(`${started} in progress`);
+      if (failed > 0) parts.push(`${failed} failed`);
+      return parts.length > 0 ? `In your logs: ${parts.join(' · ')}` : '';
+    },
     logsWipeStartTitle: 'Wipe start point',
     logsWipeStartAuto: 'Automatic (latest detected version)',
     logsWipeStartAll: 'Use full history (no filtering)',

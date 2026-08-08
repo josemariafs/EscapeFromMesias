@@ -6,6 +6,7 @@ import {
   useState,
   type CSSProperties,
 } from 'react';
+import { createPortal } from 'react-dom';
 import type { CustomMapMarkerPin, CustomMapMarkers, Task } from '../types';
 import type { Translations } from '../i18n/translations';
 import {
@@ -18,9 +19,27 @@ import {
 } from '../types/routes';
 import { mapPercentToAreaPoint, useMapPanZoom } from '../hooks/useMapPanZoom';
 import {
+  fixedMarkerLayerId,
+  isExtractLayerVisible,
+  useFixedLayerVisibility,
+} from '../hooks/useFixedLayerVisibility';
+import { getMapZoneAnnotations, mapZoneAnnotationStyle } from '../utils/mapAnnotations';
+import {
+  extractFactionLabel,
+  extractIconUrl,
+  extractMarkerColor,
+  type MapExtractMarker,
+} from '../utils/mapExtracts';
+import {
   getAllMapMarkers,
   getTasksWithoutMapMarkers,
 } from '../utils/mapMarkers';
+import { getTraderImagePath } from '../utils/traderImages';
+import { FixedLayerToggles } from './FixedLayerToggles';
+import {
+  MapFloatingTooltip,
+  type MapFloatingTooltipData,
+} from './MapFloatingTooltip';
 
 interface MapViewerModalProps {
   mapName: string;
@@ -33,6 +52,8 @@ interface MapViewerModalProps {
   routePoints?: RoutePoint[];
   /** Puntos fijos de admin (mismo bucket que Routes). */
   fixedRoutePoints?: FixedRoutePoint[];
+  /** Extracciones PMC/SCAV automáticas del mapa. */
+  mapExtracts?: MapExtractMarker[];
   colorLabels?: RouteColorLabels;
   tarkovDevUrl: string;
   t: Translations;
@@ -76,6 +97,7 @@ export function MapViewerModal({
   customMapMarkers,
   routePoints = [],
   fixedRoutePoints = [],
+  mapExtracts = [],
   colorLabels = {},
   tarkovDevUrl,
   t,
@@ -83,10 +105,36 @@ export function MapViewerModal({
   onSetCustomMapMarker,
   onClearCustomMapMarker,
 }: MapViewerModalProps) {
+  const { visibility: fixedLayerVisibility, toggleLayer: toggleFixedLayer } =
+    useFixedLayerVisibility();
+  const visibleFixedPoints = useMemo(
+    () =>
+      fixedRoutePoints.filter(
+        (point) => fixedLayerVisibility[fixedMarkerLayerId(point.markerType)],
+      ),
+    [fixedRoutePoints, fixedLayerVisibility],
+  );
+  const visibleExtracts = useMemo(
+    () =>
+      mapExtracts.filter((extract) =>
+        isExtractLayerVisible(extract.faction, fixedLayerVisibility),
+      ),
+    [mapExtracts, fixedLayerVisibility],
+  );
   const [placingTaskId, setPlacingTaskId] = useState<string | null>(null);
+  const [mapTooltip, setMapTooltip] = useState<(MapFloatingTooltipData & { id: string }) | null>(
+    null,
+  );
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
   const [areaSize, setAreaSize] = useState({ width: 0, height: 0 });
   const [imageModal, setImageModal] = useState<{ src: string; label: string } | null>(null);
+  const [imageTooltip, setImageTooltip] = useState<{
+    pointId: string;
+    x: number;
+    y: number;
+    src: string;
+    label: string;
+  } | null>(null);
   const imageWrapRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const {
@@ -106,6 +154,47 @@ export function MapViewerModal({
     [mapKey, mapTasks, completedObjectives, customMapMarkers],
   );
 
+  /** Agrupa por misión; una descripción por objetivo (varios puntos del mapa pueden compartirla). */
+  const legendEntries = useMemo(() => {
+    const byTask = new Map<
+      string,
+      {
+        taskId: string;
+        taskName: string;
+        custom: boolean;
+        descriptions: string[];
+      }
+    >();
+    const seenObjective = new Set<string>();
+
+    for (const marker of markers) {
+      const objectiveKey = `${marker.taskId}:${marker.objectiveId}`;
+      if (seenObjective.has(objectiveKey)) continue;
+      seenObjective.add(objectiveKey);
+
+      const description = marker.custom
+        ? null
+        : marker.objectiveDescription.trim();
+      let entry = byTask.get(marker.taskId);
+      if (!entry) {
+        entry = {
+          taskId: marker.taskId,
+          taskName: marker.taskName,
+          custom: Boolean(marker.custom),
+          descriptions: [],
+        };
+        byTask.set(marker.taskId, entry);
+      }
+      if (marker.custom) {
+        entry.custom = true;
+      } else if (description && !entry.descriptions.includes(description)) {
+        entry.descriptions.push(description);
+      }
+    }
+
+    return [...byTask.values()];
+  }, [markers]);
+
   const markerTaskIds = useMemo(
     () => new Set(markers.map((m) => m.taskId)),
     [markers],
@@ -116,7 +205,12 @@ export function MapViewerModal({
     [mapKey, mapTasks, completedObjectives, markerTaskIds],
   );
 
-  const hasRouteMarkers = fixedRoutePoints.length > 0 || routePoints.length > 0;
+  const hasRouteMarkers =
+    visibleFixedPoints.length > 0 ||
+    visibleExtracts.length > 0 ||
+    routePoints.length > 0 ||
+    fixedRoutePoints.length > 0 ||
+    mapExtracts.length > 0;
   const hasLegend =
     markers.length > 0 || tasksWithoutMarkers.length > 0 || hasRouteMarkers;
   const canProject = imageSize.width > 0 && areaSize.width > 0;
@@ -246,30 +340,107 @@ export function MapViewerModal({
             className={`map-modal-map-area${placingTaskId ? ' map-modal-map-area--placing' : ''}${zoom > 1 ? ' map-modal-map-area--zoomed' : ''}${isPanning ? ' is-panning' : ''}`}
             {...panHandlers}
           >
-            <div
-              ref={imageWrapRef}
-              className="map-modal-image-wrap"
-              style={{
-                width: imageSize.width > 0 ? `${imageSize.width}px` : undefined,
-                height: imageSize.height > 0 ? `${imageSize.height}px` : undefined,
-                ...contentStyle,
-              }}
-              onClick={placingTaskId ? handleMapClick : undefined}
-              role={placingTaskId ? 'button' : undefined}
-              tabIndex={placingTaskId ? 0 : undefined}
-              aria-label={placingTaskId ? t.mapPlaceBanner(placingTask?.name ?? '') : undefined}
-            >
-              <img
-                ref={imageRef}
-                src={mapUrl}
-                alt={mapName}
-                className="map-modal-image"
-                onLoad={updateImageSize}
-              />
+            <div className="map-modal-map-viewport">
+              <div
+                ref={imageWrapRef}
+                className="map-modal-image-wrap"
+                style={{
+                  width: imageSize.width > 0 ? `${imageSize.width}px` : undefined,
+                  height: imageSize.height > 0 ? `${imageSize.height}px` : undefined,
+                  ...contentStyle,
+                }}
+                onClick={placingTaskId ? handleMapClick : undefined}
+                role={placingTaskId ? 'button' : undefined}
+                tabIndex={placingTaskId ? 0 : undefined}
+                aria-label={placingTaskId ? t.mapPlaceBanner(placingTask?.name ?? '') : undefined}
+              >
+                <img
+                  ref={imageRef}
+                  src={mapUrl}
+                  alt={mapName}
+                  className="map-modal-image"
+                  onLoad={updateImageSize}
+                />
+                {getMapZoneAnnotations(mapKey).map((zone) => (
+                  <div
+                    key={zone.id}
+                    className="map-zone-annotation"
+                    style={mapZoneAnnotationStyle(zone)}
+                    aria-label={zone.label}
+                  >
+                    <span className="map-zone-annotation-label">{zone.label}</span>
+                  </div>
+                ))}
+              </div>
             </div>
             {canProject && (markers.length > 0 || hasRouteMarkers) && (
               <div className="map-modal-markers map-modal-markers--overlay">
-                {fixedRoutePoints.map((point, index) => {
+                {visibleExtracts.map((extract) => {
+                  const pos = projectMarker(extract.left, extract.top);
+                  if (!pos) return null;
+                  const factionLabel = extractFactionLabel(extract.faction, {
+                    pmc: t.routesExtractPmc,
+                    scav: t.routesExtractScav,
+                    shared: t.routesExtractShared,
+                  });
+                  const accent = extractMarkerColor(extract.faction);
+                  const iconSrc = extractIconUrl(extract.faction);
+                  const isHovered = mapTooltip?.id === extract.id;
+                  return (
+                    <button
+                      key={extract.id}
+                      type="button"
+                      className={[
+                        'route-map-marker',
+                        'route-map-marker--fixed',
+                        'route-map-marker--icon',
+                        'route-map-marker--extract',
+                        extract.faction === 'scav'
+                          ? 'route-map-marker--extract-scav'
+                          : extract.faction === 'shared'
+                            ? 'route-map-marker--extract-shared'
+                            : 'route-map-marker--extract-pmc',
+                        isHovered ? 'route-map-marker--hovered' : '',
+                      ].filter(Boolean).join(' ')}
+                      style={{
+                        left: pos.x,
+                        top: pos.y,
+                        '--route-marker-color': accent,
+                        zIndex: isHovered ? 4 : 3,
+                      } as CSSProperties}
+                      aria-label={`${extract.name} (${factionLabel})`}
+                      onMouseEnter={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setMapTooltip({
+                          id: extract.id,
+                          x: rect.left + rect.width / 2,
+                          y: rect.top,
+                          title: extract.name,
+                          subtitle: factionLabel,
+                          description: t.routesExtractTooltipHint,
+                          iconSrc,
+                          iconAlt: factionLabel,
+                          accent,
+                        });
+                      }}
+                      onMouseLeave={() => setMapTooltip(null)}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <span className="route-map-marker-body">
+                        <span className="route-map-marker-label route-map-marker-label--extract">
+                          {extract.name}
+                        </span>
+                        <img
+                          className="route-map-marker-icon"
+                          src={iconSrc}
+                          alt=""
+                          draggable={false}
+                        />
+                      </span>
+                    </button>
+                  );
+                })}
+                {visibleFixedPoints.map((point, index) => {
                   const pos = projectMarker(point.left, point.top);
                   if (!pos) return null;
                   const iconMarker = isIconMarkerType(point.markerType);
@@ -277,6 +448,7 @@ export function MapViewerModal({
                   const markerLabel = iconMarker
                     ? markerTypeTitle(point.markerType, t)
                     : (point.label?.trim() || String(index + 1));
+                  const isHovered = imageTooltip?.pointId === point.id;
                   return (
                     <button
                       key={point.id}
@@ -288,25 +460,39 @@ export function MapViewerModal({
                         point.markerType === 'question' ? 'route-map-marker--question' : '',
                         point.markerType === 'kb' ? 'route-map-marker--kb' : '',
                         point.imageUrl ? 'route-map-marker--has-image' : '',
+                        isHovered ? 'route-map-marker--hovered' : '',
                       ].filter(Boolean).join(' ')}
                       style={{
                         left: pos.x,
                         top: pos.y,
                         '--route-marker-color': point.color,
-                        zIndex: 3,
+                        zIndex: isHovered ? 4 : 3,
                       } as CSSProperties}
                       title={
                         point.imageUrl
-                          ? t.routesPointImageModal
+                          ? undefined
                           : (iconMarker ? markerLabel : (point.label?.trim() || t.routesFixedSection))
                       }
                       aria-label={iconMarker ? markerLabel : (point.label?.trim() || t.routesPointLabel(index + 1))}
+                      onMouseEnter={(e) => {
+                        if (!point.imageUrl || imageModal) return;
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setImageTooltip({
+                          pointId: point.id,
+                          x: rect.left + rect.width / 2,
+                          y: rect.top,
+                          src: point.imageUrl,
+                          label: markerLabel,
+                        });
+                      }}
+                      onMouseLeave={() => setImageTooltip(null)}
                       onClick={(e) => {
                         e.stopPropagation();
                         if (point.imageUrl) {
+                          setImageTooltip(null);
                           setImageModal({
                             src: point.imageUrl,
-                            label: iconMarker ? '' : markerLabel,
+                            label: markerLabel,
                           });
                         }
                       }}
@@ -357,12 +543,34 @@ export function MapViewerModal({
                 {markers.map((marker) => {
                   const pos = projectMarker(marker.left, marker.top);
                   if (!pos) return null;
+                  const description = marker.custom
+                    ? t.mapMarkerManual
+                    : marker.objectiveDescription;
+                  const traderImage = getTraderImagePath(marker.trader);
+                  const isHovered = mapTooltip?.id === marker.id;
                   return (
                     <div
                       key={marker.id}
-                      className={`map-quest-marker${marker.custom ? ' map-quest-marker--custom' : ''}`}
-                      style={{ left: pos.x, top: pos.y }}
-                      title={`${marker.taskName}\n${marker.custom ? t.mapMarkerManual : marker.objectiveDescription}`}
+                      className={[
+                        'map-quest-marker',
+                        marker.custom ? 'map-quest-marker--custom' : '',
+                        isHovered ? 'is-hovered' : '',
+                      ].filter(Boolean).join(' ')}
+                      style={{ left: pos.x, top: pos.y, zIndex: isHovered ? 8 : undefined }}
+                      onMouseEnter={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setMapTooltip({
+                          id: marker.id,
+                          x: rect.left + rect.width / 2,
+                          y: rect.top,
+                          title: marker.taskName,
+                          subtitle: marker.trader.name,
+                          description,
+                          iconSrc: traderImage,
+                          iconAlt: marker.trader.name,
+                        });
+                      }}
+                      onMouseLeave={() => setMapTooltip(null)}
                       onClick={(e) => e.stopPropagation()}
                     >
                       <span className="map-quest-marker-pin" />
@@ -375,37 +583,50 @@ export function MapViewerModal({
           </div>
           {hasLegend && (
             <aside className="map-modal-legend">
-              {hasRouteMarkers && (
+              {(fixedRoutePoints.length > 0 || mapExtracts.length > 0 || routePoints.length > 0) && (
                 <div className="map-modal-legend-section">
                   <h4>
-                    {fixedRoutePoints.length > 0
-                      ? t.routesFixedPoints(fixedRoutePoints.length)
+                    {fixedRoutePoints.length + mapExtracts.length > 0
+                      ? t.routesFixedPoints(fixedRoutePoints.length + mapExtracts.length)
                       : t.routesPoints(routePoints.length)}
-                    {fixedRoutePoints.length > 0 && routePoints.length > 0
+                    {fixedRoutePoints.length + mapExtracts.length > 0 && routePoints.length > 0
                       ? ` · ${t.routesPoints(routePoints.length)}`
                       : ''}
                   </h4>
+                  <FixedLayerToggles
+                    fixedPoints={fixedRoutePoints}
+                    extracts={mapExtracts}
+                    visibility={fixedLayerVisibility}
+                    onToggle={toggleFixedLayer}
+                    t={t}
+                  />
                   <p className="map-modal-place-hint">{t.routesFixedHint}</p>
                 </div>
               )}
-              {markers.length > 0 && (
+              {legendEntries.length > 0 && (
                 <div className="map-modal-legend-section">
                   <h4>{t.mapMarkersTitle(markers.length)}</h4>
                   <ul className="map-modal-legend-list">
-                    {markers.map((marker) => (
-                      <li key={marker.id}>
+                    {legendEntries.map((entry) => (
+                      <li key={entry.taskId} className="map-modal-legend-item">
                         <div className="map-modal-legend-row">
-                          <div>
-                            <strong>{marker.taskName}</strong>
-                            <span>
-                              {marker.custom ? t.mapMarkerManual : marker.objectiveDescription}
-                            </span>
+                          <div className="map-modal-legend-text">
+                            <strong className="map-modal-legend-name">{entry.taskName}</strong>
+                            {entry.custom && entry.descriptions.length === 0 ? (
+                              <span className="map-modal-legend-desc">{t.mapMarkerManual}</span>
+                            ) : (
+                              entry.descriptions.map((description) => (
+                                <span key={description} className="map-modal-legend-desc">
+                                  {description}
+                                </span>
+                              ))
+                            )}
                           </div>
-                          {marker.custom && (
+                          {entry.custom && (
                             <button
                               type="button"
                               className="btn btn-ghost map-marker-clear"
-                              onClick={() => onClearCustomMapMarker(mapKey, marker.taskId)}
+                              onClick={() => onClearCustomMapMarker(mapKey, entry.taskId)}
                               title={t.mapClearCustomMarker}
                             >
                               ×
@@ -476,6 +697,27 @@ export function MapViewerModal({
           </div>
         </div>
       )}
+
+      <MapFloatingTooltip tooltip={mapTooltip} />
+
+      {imageTooltip &&
+        !imageModal &&
+        createPortal(
+          <div
+            className={[
+              'route-fixed-image-tooltip',
+              imageTooltip.y < 180 ? 'is-below' : '',
+            ].filter(Boolean).join(' ')}
+            role="tooltip"
+            style={{ left: imageTooltip.x, top: imageTooltip.y }}
+          >
+            <img src={imageTooltip.src} alt={imageTooltip.label} />
+            {imageTooltip.label && (
+              <span className="route-fixed-image-tooltip-label">{imageTooltip.label}</span>
+            )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }

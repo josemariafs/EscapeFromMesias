@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { DataSourceMode } from '../hooks/useDataSource';
 import {
   NO_SESSION_FOLDERS_ERROR,
@@ -7,6 +7,7 @@ import {
   type TarkovLogSyncStatus,
   type WipeBreakpoint,
 } from '../hooks/useTarkovLogSync';
+import type { TaskProgressState } from '../types';
 import type { LogProfileGameMode } from '../utils/logProfileModes';
 import { shortProfileId } from '../utils/logProfileModes';
 import { isLogSyncSupported } from '../utils/tarkovLogsFs';
@@ -24,6 +25,8 @@ interface DataSourceControlProps {
   taskCount: number;
   wipeVersion: string | null;
   unmatchedTaskIds: string[];
+  /** Estado en logs de esas misiones (solo las no emparejadas). */
+  unmatchedTaskStates?: Record<string, TaskProgressState | string>;
   breakpoints: WipeBreakpoint[];
   wipeStartSelection: string | null;
   resolvedWipeStartSession: string | null;
@@ -52,6 +55,7 @@ export function DataSourceControl({
   taskCount,
   wipeVersion,
   unmatchedTaskIds,
+  unmatchedTaskStates = {},
   breakpoints,
   wipeStartSelection,
   resolvedWipeStartSession,
@@ -69,7 +73,21 @@ export function DataSourceControl({
   const supported = isLogSyncSupported();
   const [wipeMenuOpen, setWipeMenuOpen] = useState(false);
   const [profilesMenuOpen, setProfilesMenuOpen] = useState(false);
+  const [unmatchedTipOpen, setUnmatchedTipOpen] = useState(false);
   const hasUnassigned = knownProfiles.some((p) => p.mode == null);
+
+  const unmatchedStatusLine = useMemo(() => {
+    let completed = 0;
+    let started = 0;
+    let failed = 0;
+    for (const id of unmatchedTaskIds) {
+      const state = unmatchedTaskStates[id];
+      if (state === 'completed') completed += 1;
+      else if (state === 'started') started += 1;
+      else if (state === 'failed') failed += 1;
+    }
+    return t.logsUnmatchedStatus(completed, started, failed);
+  }, [unmatchedTaskIds, unmatchedTaskStates, t]);
 
   return (
     <div className="data-source-control">
@@ -144,10 +162,29 @@ export function DataSourceControl({
               </span>
               {unmatchedTaskIds.length > 0 && (
                 <span
-                  className="log-sync-stats log-sync-stats--warn"
-                  title={`${t.logsUnmatchedIds(unmatchedTaskIds.length)}:\n${unmatchedTaskIds.slice(0, 15).join('\n')}`}
+                  className="log-sync-unmatched"
+                  onMouseEnter={() => setUnmatchedTipOpen(true)}
+                  onMouseLeave={() => setUnmatchedTipOpen(false)}
+                  onFocus={() => setUnmatchedTipOpen(true)}
+                  onBlur={() => setUnmatchedTipOpen(false)}
+                  tabIndex={0}
+                  aria-label={t.logsUnmatchedTitle(unmatchedTaskIds.length)}
                 >
-                  ⚠ {unmatchedTaskIds.length}
+                  <span className="log-sync-stats log-sync-stats--warn">
+                    ⚠ {unmatchedTaskIds.length}
+                  </span>
+                  {unmatchedTipOpen && (
+                    <div className="log-sync-unmatched-tip" role="tooltip">
+                      <strong className="log-sync-unmatched-tip-title">
+                        {t.logsUnmatchedTitle(unmatchedTaskIds.length)}
+                      </strong>
+                      <p className="log-sync-unmatched-tip-body">{t.logsUnmatchedBody}</p>
+                      {unmatchedStatusLine && (
+                        <p className="log-sync-unmatched-tip-status">{unmatchedStatusLine}</p>
+                      )}
+                      <p className="log-sync-unmatched-tip-ok">{t.logsUnmatchedOk}</p>
+                    </div>
+                  )}
                 </span>
               )}
               {knownProfiles.length > 0 && (

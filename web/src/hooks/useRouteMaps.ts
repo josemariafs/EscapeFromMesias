@@ -139,6 +139,24 @@ export function useRouteMaps(environment: RouteEnvironment) {
     });
   }, []);
 
+  const movePoint = useCallback((mapKey: string, pointId: string, left: number, top: number) => {
+    const nextLeft = Math.min(100, Math.max(0, left));
+    const nextTop = Math.min(100, Math.max(0, top));
+    setRoutes((prev) => {
+      const current = prev[mapKey];
+      if (!current) return prev;
+      let changed = false;
+      const nextPoints = current.map((p) => {
+        if (p.id !== pointId) return p;
+        if (p.left === nextLeft && p.top === nextTop) return p;
+        changed = true;
+        return { ...p, left: nextLeft, top: nextTop };
+      });
+      if (!changed) return prev;
+      return { ...prev, [mapKey]: nextPoints };
+    });
+  }, []);
+
   const undoLast = useCallback((mapKey: string) => {
     setRoutes((prev) => {
       const current = prev[mapKey];
@@ -172,6 +190,7 @@ export function useRouteMaps(environment: RouteEnvironment) {
     getPoints,
     addPoint,
     removePoint,
+    movePoint,
     undoLast,
     clearMap,
   };

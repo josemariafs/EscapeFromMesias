@@ -216,3 +216,26 @@ export function mapPercentToAreaPoint(
     y: areaHeight / 2 + panY + relY * zoom,
   };
 }
+
+/** Inversa de `mapPercentToAreaPoint`: px del área → % del mapa (0–100). */
+export function areaPointToMapPercent(
+  x: number,
+  y: number,
+  imageWidth: number,
+  imageHeight: number,
+  areaWidth: number,
+  areaHeight: number,
+  zoom: number,
+  panX: number,
+  panY: number,
+): { left: number; top: number } | null {
+  if (imageWidth <= 0 || imageHeight <= 0 || zoom === 0) return null;
+  const relX = (x - areaWidth / 2 - panX) / zoom;
+  const relY = (y - areaHeight / 2 - panY) / zoom;
+  const left = ((relX + imageWidth / 2) / imageWidth) * 100;
+  const top = ((relY + imageHeight / 2) / imageHeight) * 100;
+  return {
+    left: Math.min(100, Math.max(0, left)),
+    top: Math.min(100, Math.max(0, top)),
+  };
+}

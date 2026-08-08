@@ -1,4 +1,4 @@
-import type { CustomMapMarkers, Task } from '../types';
+import type { CustomMapMarkers, Task, Trader } from '../types';
 import { getMapGroupKey } from './maps';
 import {
   getCompletedObjectiveSet,
@@ -12,6 +12,7 @@ export interface MapQuestMarker {
   taskName: string;
   objectiveId: string;
   objectiveDescription: string;
+  trader: Trader;
   left: number;
   top: number;
   custom?: boolean;
@@ -55,6 +56,7 @@ export function getMapQuestMarkers(
           taskName: task.name,
           objectiveId: objective.id,
           objectiveDescription: objective.description,
+          trader: task.trader,
           left: percent.left,
           top: percent.top,
         });
@@ -98,6 +100,7 @@ export function getCustomMapMarkers(
       taskName: task.name,
       objectiveId: 'custom',
       objectiveDescription: '',
+      trader: task.trader,
       left: pin.left,
       top: pin.top,
       custom: true,
