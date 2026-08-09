@@ -1,5 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 import type { VercelRequest } from '@vercel/node';
+import { resolveSiteSession } from './siteAccess.js';
 
 export {
   createSiteSessionToken,
@@ -36,7 +37,12 @@ export function isAuthorized(req: VercelRequest): boolean {
   const match = /^Bearer\s+(.+)$/i.exec(header.trim());
   if (!match) return false;
 
-  return safeEqualStrings(match[1], expected);
+  const bearer = match[1];
+  if (safeEqualStrings(bearer, expected)) return true;
+
+  // Sesión de la app iniciada con ADMIN_TOKEN (HMAC), sin re-pedir la clave.
+  const site = resolveSiteSession(bearer);
+  return site.ok && site.kind === 'admin';
 }
 
 export function unauthorizedBody() {

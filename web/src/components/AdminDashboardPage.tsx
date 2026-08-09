@@ -49,6 +49,7 @@ const ACCESS_KIND_LABELS: Record<string, string> = {
   private: 'Clave privada',
   daily: 'Código semanal',
   legacy: 'Clave legacy',
+  admin: 'Admin',
   unknown: 'Sin clasificar',
 };
 
@@ -151,12 +152,17 @@ function VisitsChart({
   const max = Math.max(1, ...values);
   const barGap = 3;
   const barW = Math.max(3, (innerW - barGap * (series.length - 1)) / series.length);
+  const [hover, setHover] = useState<{
+    day: AdminDailyVisitRow;
+    xPct: number;
+    yPct: number;
+  } | null>(null);
 
   const points = series.map((day, index) => {
     const value = metric === 'visits' ? day.visits : day.uniqueVisitors;
     const x = padL + index * (barW + barGap) + barW / 2;
     const y = padT + innerH - (value / max) * innerH;
-    return { x, y, value, day };
+    return { x, y, value, day, index };
   });
 
   const linePath = points
@@ -166,60 +172,109 @@ function VisitsChart({
   const labelEvery = series.length > 20 ? 5 : series.length > 12 ? 3 : 2;
 
   return (
-    <svg
-      className="admin-chart"
-      viewBox={`0 0 ${width} ${height}`}
-      role="img"
-      aria-label={`Gráfico de ${metric === 'visits' ? 'visitas' : 'únicos'} diarios`}
-    >
-      {[0.25, 0.5, 0.75, 1].map((f) => {
-        const y = padT + innerH * (1 - f);
-        return (
-          <g key={f}>
-            <line x1={padL} y1={y} x2={padL + innerW} y2={y} className="admin-chart-grid" />
-            <text x={padL - 6} y={y + 3} className="admin-chart-tick" textAnchor="end">
-              {Math.round(max * f)}
-            </text>
-          </g>
-        );
-      })}
-      <line
-        x1={padL}
-        y1={padT + innerH}
-        x2={padL + innerW}
-        y2={padT + innerH}
-        className="admin-chart-axis"
-      />
-      {points.map((p, index) => {
-        const h = (p.value / max) * innerH;
-        return (
-          <g key={p.day.dayKey}>
-            <title>
-              {p.day.dayKey}: {p.day.visits} visitas · {p.day.uniqueVisitors} únicos
-            </title>
-            <rect
-              className={`admin-chart-bar admin-chart-bar--${metric}`}
-              x={padL + index * (barW + barGap)}
-              y={padT + innerH - h}
-              width={barW}
-              height={Math.max(p.value > 0 ? 2 : 0, h)}
-              rx={2}
-            />
-            {index % labelEvery === 0 || index === series.length - 1 ? (
-              <text
-                x={p.x}
-                y={height - 8}
-                className="admin-chart-label"
-                textAnchor="middle"
-              >
-                {p.day.dayKey.slice(5)}
+    <div className="admin-chart-wrap" onMouseLeave={() => setHover(null)}>
+      <svg
+        className="admin-chart"
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-label={`Gráfico de ${metric === 'visits' ? 'visitas' : 'únicos'} diarios`}
+      >
+        {[0.25, 0.5, 0.75, 1].map((f) => {
+          const y = padT + innerH * (1 - f);
+          return (
+            <g key={f}>
+              <line x1={padL} y1={y} x2={padL + innerW} y2={y} className="admin-chart-grid" />
+              <text x={padL - 6} y={y + 3} className="admin-chart-tick" textAnchor="end">
+                {Math.round(max * f)}
               </text>
-            ) : null}
-          </g>
-        );
-      })}
-      <path d={linePath} className="admin-chart-line" fill="none" />
-    </svg>
+            </g>
+          );
+        })}
+        <line
+          x1={padL}
+          y1={padT + innerH}
+          x2={padL + innerW}
+          y2={padT + innerH}
+          className="admin-chart-axis"
+        />
+        {points.map((p) => {
+          const h = (p.value / max) * innerH;
+          const active = hover?.day.dayKey === p.day.dayKey;
+          return (
+            <g key={p.day.dayKey}>
+              <rect
+                className={`admin-chart-bar admin-chart-bar--${metric}${active ? ' is-active' : ''}`}
+                x={padL + p.index * (barW + barGap)}
+                y={padT + innerH - h}
+                width={barW}
+                height={Math.max(p.value > 0 ? 2 : 0, h)}
+                rx={2}
+                onMouseEnter={() => {
+                  setHover({
+                    day: p.day,
+                    xPct: (p.x / width) * 100,
+                    yPct: (Math.max(padT, p.y) / height) * 100,
+                  });
+                }}
+              />
+              {/* Hit area más amplia para barras bajas / cero */}
+              <rect
+                className="admin-chart-hit"
+                x={padL + p.index * (barW + barGap) - 1}
+                y={padT}
+                width={barW + 2}
+                height={innerH}
+                onMouseEnter={() => {
+                  setHover({
+                    day: p.day,
+                    xPct: (p.x / width) * 100,
+                    yPct: (Math.max(padT, p.y) / height) * 100,
+                  });
+                }}
+              />
+              {p.index % labelEvery === 0 || p.index === series.length - 1 ? (
+                <text
+                  x={p.x}
+                  y={height - 8}
+                  className="admin-chart-label"
+                  textAnchor="middle"
+                >
+                  {p.day.dayKey.slice(5)}
+                </text>
+              ) : null}
+            </g>
+          );
+        })}
+        <path d={linePath} className="admin-chart-line" fill="none" />
+        {hover ? (
+          <circle
+            className="admin-chart-focus"
+            cx={(hover.xPct / 100) * width}
+            cy={(hover.yPct / 100) * height}
+            r={4}
+          />
+        ) : null}
+      </svg>
+      {hover ? (
+        <div
+          className={`admin-chart-tooltip${hover.xPct > 70 ? ' is-left' : ''}`}
+          style={{ left: `${hover.xPct}%`, top: `${Math.max(8, hover.yPct - 6)}%` }}
+          role="tooltip"
+        >
+          <p className="admin-chart-tooltip-date">{hover.day.dayKey}</p>
+          <dl className="admin-chart-tooltip-stats">
+            <div>
+              <dt>Visitas</dt>
+              <dd>{hover.day.visits}</dd>
+            </div>
+            <div>
+              <dt>Únicos</dt>
+              <dd>{hover.day.uniqueVisitors}</dd>
+            </div>
+          </dl>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -266,11 +321,21 @@ function SnapshotCards({ snapshots }: { snapshots: AdminSnapshotRow[] }) {
             <dl className="admin-snapshot-meta">
               <div>
                 <dt>Comprobado</dt>
-                <dd title={formatWhen(primary?.fetchedAt)}>{formatRelative(primary?.fetchedAt)}</dd>
+                <dd
+                  {...(primary?.fetchedAt
+                    ? { 'data-admin-tip': formatWhen(primary.fetchedAt) }
+                    : {})}
+                >
+                  {formatRelative(primary?.fetchedAt)}
+                </dd>
               </div>
               <div>
                 <dt>Cambió</dt>
-                <dd title={formatWhen(primary?.changedAt)}>
+                <dd
+                  {...(primary?.changedAt
+                    ? { 'data-admin-tip': formatWhen(primary.changedAt) }
+                    : {})}
+                >
                   {formatRelative(primary?.changedAt ?? null)}
                 </dd>
               </div>
@@ -414,16 +479,21 @@ export function AdminDashboardPage() {
   return (
     <div className="admin-page">
       <header className="admin-toolbar">
-        <div className="admin-toolbar-title">
-          <p className="admin-eyebrow">Escape From Gorditos</p>
-          <h1>Panel de administración</h1>
-          <p className="admin-muted">
-            Zona horaria {s?.timezone ?? 'Europe/Madrid'}
-            {loading ? ' · actualizando…' : ''}
-          </p>
+        <div className="admin-toolbar-main">
+          <a className="admin-brand" href="/" title="Escape From Gorditos">
+            <img src="/logo.png" alt="Escape From Gorditos" className="admin-brand-logo" />
+          </a>
+          <div className="admin-toolbar-title">
+            <p className="admin-eyebrow">Admin</p>
+            <h1>Panel de administración</h1>
+          </div>
         </div>
+        <nav className="admin-toolbar-nav" aria-label="Admin">
+          <a className="admin-toolbar-nav-link" href="/admin/routes">
+            Rutas fijas
+          </a>
+        </nav>
         <div className="admin-toolbar-actions">
-          <a className="btn" href="/admin/routes">Rutas fijas</a>
           <button
             type="button"
             className="btn"
@@ -443,7 +513,6 @@ export function AdminDashboardPage() {
           >
             {syncBusy ? 'Sincronizando…' : 'Forzar sync'}
           </button>
-          <button type="button" className="btn btn-reset" onClick={logout}>Salir</button>
         </div>
       </header>
 
@@ -493,7 +562,12 @@ export function AdminDashboardPage() {
                 </span>
               ) : '—'}
             </strong>
-            <span className="admin-stat-foot" title={formatWhen(s?.lastSync?.lastSuccessAt)}>
+            <span
+              className="admin-stat-foot"
+              {...(s?.lastSync?.lastSuccessAt
+                ? { 'data-admin-tip': formatWhen(s.lastSync.lastSuccessAt) }
+                : {})}
+            >
               {s?.lastSync
                 ? `${s.lastSync.dayKey} · ${formatRelative(s.lastSync.lastSuccessAt)}`
                 : 'sin ejecuciones'}
@@ -539,13 +613,21 @@ export function AdminDashboardPage() {
             <ul className="admin-health-list">
               <li>
                 <span>Último cambio de dataset</span>
-                <strong title={formatWhen(s?.lastDatasetChangeAt)}>
+                <strong
+                  {...(s?.lastDatasetChangeAt
+                    ? { 'data-admin-tip': formatWhen(s.lastDatasetChangeAt) }
+                    : {})}
+                >
                   {formatRelative(s?.lastDatasetChangeAt ?? null)}
                 </strong>
               </li>
               <li>
                 <span>Snapshot más antiguo comprobado</span>
-                <strong title={formatWhen(s?.oldestFetchedAt)}>
+                <strong
+                  {...(s?.oldestFetchedAt
+                    ? { 'data-admin-tip': formatWhen(s.oldestFetchedAt) }
+                    : {})}
+                >
                   {formatRelative(s?.oldestFetchedAt ?? null)}
                 </strong>
               </li>
@@ -629,6 +711,7 @@ export function AdminDashboardPage() {
                     <option value="private">Clave privada</option>
                     <option value="daily">Código semanal</option>
                     <option value="legacy">Clave legacy</option>
+                    <option value="admin">Admin</option>
                     <option value="unknown">Sin clasificar</option>
                   </select>
                 </label>
@@ -639,6 +722,7 @@ export function AdminDashboardPage() {
                       || row.accessKind === 'private'
                       || row.accessKind === 'daily'
                       || row.accessKind === 'legacy'
+                      || row.accessKind === 'admin'
                       || row.accessKind === 'unknown'
                         ? row.accessKind
                         : null;

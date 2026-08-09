@@ -8,7 +8,6 @@
     "dev:full": "npx vercel dev --listen 3000",
     "build": "node scripts/resolve-app-version.mjs && tsc -b && vite build",
     "version:resolve": "node scripts/resolve-app-version.mjs",
-    "tasks:seasonal-fallback": "npx tsx scripts/generate-seasonal-fallback.ts",
     "lint": "eslint .",
     "preview": "vite preview"
   },

@@ -64,7 +64,7 @@ export async function readDailyStats(days = 30): Promise<
     args: [from],
   });
   return result.rows.map((row) => {
-    const r = row as { day_key: string; visits: number; unique_visitors: number };
+    const r = row as unknown as { day_key: string; visits: number; unique_visitors: number };
     return {
       dayKey: String(r.day_key),
       visits: Number(r.visits) || 0,

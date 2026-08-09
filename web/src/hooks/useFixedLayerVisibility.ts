@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import type { FixedMarkerType } from '../types/routes';
+import { isKeyDocumentMarkerType, type FixedMarkerType } from '../types/routes';
 import type { ExtractFaction } from '../utils/mapExtracts';
 
 export type FixedLayerId = 'default' | 'kb' | 'question' | 'extract-pmc' | 'extract-scav';
@@ -40,7 +40,7 @@ function readStored(): FixedLayerVisibility {
 }
 
 export function fixedMarkerLayerId(markerType?: FixedMarkerType | null): FixedLayerId {
-  if (markerType === 'kb') return 'kb';
+  if (isKeyDocumentMarkerType(markerType)) return 'kb';
   if (markerType === 'question') return 'question';
   return 'default';
 }

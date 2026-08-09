@@ -45,7 +45,7 @@ function layersPresent(
 
   const all: LayerMeta[] = [
     { id: 'default', iconUrl: DEFAULT_PIN_ICON_URL, title: t.adminMarkerTypeDefault },
-    { id: 'kb', iconUrl: KB_MARKER_ICON_URL, title: t.adminMarkerTypeKb },
+    { id: 'kb', iconUrl: KB_MARKER_ICON_URL, title: t.adminMarkerTypeKeyDocument },
     { id: 'question', iconUrl: QUESTION_MARKER_ICON_URL, title: t.adminMarkerTypeQuestion },
     { id: 'extract-pmc', iconUrl: EXTRACT_PMC_ICON_URL, title: t.routesExtractPmc },
     { id: 'extract-scav', iconUrl: EXTRACT_SCAV_ICON_URL, title: t.routesExtractScav },

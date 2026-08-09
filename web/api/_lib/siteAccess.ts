@@ -1,10 +1,11 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
-export type SiteAuthKind = 'public' | 'private' | 'daily' | 'legacy';
+export type SiteAuthKind = 'public' | 'private' | 'daily' | 'legacy' | 'admin';
 
 const SITE_SESSION_PAYLOAD = 'efg-site-access-v1';
 /** Prefijo distinto al diario antiguo para invalidar códigos previos. */
 const WEEKLY_CODE_PAYLOAD = 'efg-weekly-code-v1';
+const ADMIN_SESSION_PREFIX = 'admin:';
 const MADRID_TZ = 'Europe/Madrid';
 const WEEK_ROLLOVER_HOUR = 5;
 
@@ -129,8 +130,21 @@ export function getPermanentAccessEntries(): Array<{ kind: SiteAuthKind; passwor
   return entries;
 }
 
+function getAdminAccessPassword(): string | null {
+  const token = process.env.ADMIN_TOKEN?.trim();
+  return token || null;
+}
+
+function adminSessionMaterial(password: string): string {
+  return `${ADMIN_SESSION_PREFIX}${password}`;
+}
+
 export function hasSiteAccessPasswords(): boolean {
-  return getPermanentAccessEntries().length > 0 || Boolean(getWeeklyCodeSecret());
+  return (
+    getPermanentAccessEntries().length > 0
+    || Boolean(getWeeklyCodeSecret())
+    || Boolean(getAdminAccessPassword())
+  );
 }
 
 export interface SiteSessionOk {
@@ -149,22 +163,30 @@ export function resolveSiteLogin(
   now = new Date(),
 ): SiteSessionOk | SiteSessionFail {
   if (password == null) return { ok: false };
+  const candidate = password.trim();
+  if (!candidate) return { ok: false };
 
   let matched: { kind: SiteAuthKind; material: string } | null = null;
 
   for (const entry of getPermanentAccessEntries()) {
-    if (safeEqualStrings(password, entry.password)) {
+    if (safeEqualStrings(candidate, entry.password)) {
       matched = { kind: entry.kind, material: entry.password };
     }
   }
 
   const weekKey = getSpanishAuthWeekKey(now);
   const weekly = getWeeklyAccessCode(now);
-  if (weekly && safeEqualStrings(password, weekly)) {
+  if (weekly && safeEqualStrings(candidate, weekly)) {
     // Si coincide con un permanente por azar, prevalece el permanente (matched ya set).
     if (!matched) {
       matched = { kind: 'daily', material: weeklySessionMaterial(weekKey, weekly) };
     }
+  }
+
+  const adminPassword = getAdminAccessPassword();
+  if (adminPassword && safeEqualStrings(candidate, adminPassword)) {
+    // ADMIN_TOKEN prevalece si coincide con otra clave.
+    matched = { kind: 'admin', material: adminSessionMaterial(adminPassword) };
   }
 
   if (!matched) return { ok: false };
@@ -197,6 +219,14 @@ export function resolveSiteSession(
     const expected = createSiteSessionToken(weeklySessionMaterial(weekKey, weekly));
     if (safeEqualStrings(token, expected)) {
       matched = { ok: true, kind: 'daily', token: expected };
+    }
+  }
+
+  const adminPassword = getAdminAccessPassword();
+  if (adminPassword) {
+    const expected = createSiteSessionToken(adminSessionMaterial(adminPassword));
+    if (safeEqualStrings(token, expected)) {
+      matched = { ok: true, kind: 'admin', token: expected };
     }
   }
 

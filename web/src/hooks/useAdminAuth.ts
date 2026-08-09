@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { getStoredSiteKind, getStoredSiteSession } from '../api/siteAuth';
 import { verifyAdminToken } from '../api/fixedRoutes';
 import { ADMIN_TOKEN_STORAGE_KEY } from '../types/routes';
 
@@ -26,6 +27,24 @@ function clearToken(): void {
   }
 }
 
+/** Token bridge: clave admin en bruto o sesión de sitio kind=admin. */
+function readBridgeCandidates(): string[] {
+  const out: string[] = [];
+  const stored = readStoredToken().trim();
+  if (stored) out.push(stored);
+
+  try {
+    if (getStoredSiteKind() === 'admin') {
+      const site = getStoredSiteSession()?.trim() ?? '';
+      if (site && !out.includes(site)) out.push(site);
+    }
+  } catch {
+    /* ignore */
+  }
+
+  return out;
+}
+
 export type AdminAuthStatus = 'checking' | 'locked' | 'unlocked';
 
 export function useAdminAuth() {
@@ -39,8 +58,8 @@ export function useAdminAuth() {
     let cancelled = false;
 
     async function restore() {
-      const stored = readStoredToken();
-      if (!stored) {
+      const candidates = readBridgeCandidates();
+      if (candidates.length === 0) {
         if (!cancelled) {
           setToken('');
           setStatus('locked');
@@ -48,18 +67,24 @@ export function useAdminAuth() {
         return;
       }
 
-      try {
-        await verifyAdminToken(stored);
-        if (!cancelled) {
-          setToken(stored);
-          setStatus('unlocked');
+      for (const candidate of candidates) {
+        try {
+          await verifyAdminToken(candidate);
+          if (!cancelled) {
+            persistToken(candidate);
+            setToken(candidate);
+            setStatus('unlocked');
+          }
+          return;
+        } catch {
+          // probar siguiente candidato
         }
-      } catch {
-        clearToken();
-        if (!cancelled) {
-          setToken('');
-          setStatus('locked');
-        }
+      }
+
+      clearToken();
+      if (!cancelled) {
+        setToken('');
+        setStatus('locked');
       }
     }
 

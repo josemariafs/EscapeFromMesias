@@ -12,9 +12,11 @@ export interface Translations {
   homeCardRoutes: string;
   homeCardPvp: string;
   homeCardSeasonal: string;
+  homeCardAdmin: string;
   homeCardTagRoutes: string;
   homeCardTagRegular: string;
   homeCardTagSeasonal: string;
+  homeCardTagAdmin: string;
   homeBack: string;
   subtitle: (n: number) => string;
   loading: string;
@@ -52,6 +54,24 @@ export interface Translations {
   confirmWipeAll: string;
   footerVisits: (n: number) => string;
   footerOnline: (n: number) => string;
+  feedbackButton: string;
+  feedbackTitle: string;
+  feedbackFieldTitle: string;
+  feedbackFieldTitlePlaceholder: string;
+  feedbackFieldMessage: string;
+  feedbackFieldMessagePlaceholder: string;
+  feedbackAttachments: string;
+  feedbackAttachmentsHint: string;
+  feedbackUpload: string;
+  feedbackRemoveImage: string;
+  feedbackImageError: string;
+  feedbackRequired: string;
+  feedbackSend: string;
+  feedbackSending: string;
+  feedbackSendError: string;
+  feedbackSuccess: string;
+  feedbackCancel: string;
+  feedbackClose: string;
   noTasksFilter: string;
   noActiveTasks: string;
   noCompletedTasks: string;
@@ -87,13 +107,12 @@ export interface Translations {
   routesHideFixedPoints: string;
   routesShowFixedPoints: string;
   routesFixedLayers: string;
+  routesShowLayer: (name: string) => string;
+  routesHideLayer: (name: string) => string;
   routesExtractPmc: string;
   routesExtractScav: string;
   routesExtractShared: string;
-  routesExtractSection: string;
   routesExtractTooltipHint: string;
-  routesHideLayer: (name: string) => string;
-  routesShowLayer: (name: string) => string;
   adminRoutesTitle: string;
   adminRoutesHint: string;
   routeEnvironmentRegular: string;
@@ -104,6 +123,7 @@ export interface Translations {
   adminTokenPlaceholder: string;
   adminLogin: string;
   adminLogout: string;
+  adminBackToDashboard: string;
   adminLoginError: string;
   adminDrawHint: string;
   adminPointLabel: string;
@@ -116,8 +136,9 @@ export interface Translations {
   routesPointImageModal: string;
   adminMarkerType: string;
   adminMarkerTypeDefault: string;
-  adminMarkerTypeKb: string;
-  adminMarkerTypeKbHint: string;
+  adminMarkerTypeKeyDocument: string;
+  adminMarkerTypeKeyDocumentHint: string;
+  adminKeyDocumentLabelPlaceholder: string;
   adminMarkerTypeQuestion: string;
   adminMarkerTypeQuestionHint: string;
   adminSaveLabel: string;
@@ -132,6 +153,8 @@ export interface Translations {
   storyApiTasksTitle: string;
   storyLightkeeperTitle: string;
   language: string;
+  /** Enlace al panel /admin (solo sesión ADMIN_TOKEN). */
+  openAdminPanel: string;
   viewMode: string;
   viewModeNormal: string;
   viewModeCompact: string;
@@ -209,10 +232,10 @@ export interface Translations {
   logStateNotDetectedEditable: string;
   logLockedHint: string;
   logsUnmatchedIds: (n: number) => string;
+  logsUnmatchedStatus: (completed: number, started: number, failed: number) => string;
   logsUnmatchedTitle: (n: number) => string;
   logsUnmatchedBody: string;
   logsUnmatchedOk: string;
-  logsUnmatchedStatus: (completed: number, started: number, failed: number) => string;
   logsWipeStartTitle: string;
   logsWipeStartAuto: string;
   logsWipeStartAll: string;
@@ -237,9 +260,11 @@ export const translations: Record<Lang, Translations> = {
     homeCardRoutes: 'Routes Zone',
     homeCardPvp: 'PvP Zone',
     homeCardSeasonal: 'PvP Season',
+    homeCardAdmin: 'Admin',
     homeCardTagRoutes: 'MAPS',
     homeCardTagRegular: 'REGULAR',
     homeCardTagSeasonal: 'SEASONAL',
+    homeCardTagAdmin: 'PANEL',
     homeBack: 'Inicio',
     subtitle: (n) => `Tracker de misiones · ${n} quests · datos de tarkov.dev`,
     loading: 'Cargando misiones desde tarkov.dev…',
@@ -252,7 +277,7 @@ export const translations: Record<Lang, Translations> = {
       + 'ni de tus misiones: con una lista tan incompleta, ninguna misión detectada en los logs (ni en modo Local) '
       + 'puede emparejarse correctamente, así que no se muestra nada. Reintenta en un momento.',
     staleCacheNotice:
-      'No se pudo leer el snapshot del servidor: mostrando misiones offline del modo actual.',
+      'Ni GraphQL ni json.tarkov.dev respondieron: mostrando misiones offline empaquetadas.',
     staleCacheNoticeDetail: (detail) => `Detalle: ${detail}`,
     searchPlaceholder: 'Buscar misión o comerciante…',
     allTraders: 'Todos los comerciantes',
@@ -271,10 +296,9 @@ export const translations: Record<Lang, Translations> = {
       seasonal: 'Seasonal',
     },
     gameModeHint: {
-      regular: 'Personaje permanente de la zona PvP (dataset json.tarkov.dev/regular)',
+      regular: 'Personaje permanente de la zona PvP',
       pve: 'Personaje permanente de la zona PvE',
-      seasonal:
-        'Kord Breach / PVP Seasonal (dataset json.tarkov.dev/pvp-season; progreso independiente)',
+      seasonal: 'Personaje de temporada (progreso independiente; se resetea con cada temporada)',
     },
     settings: 'Ajustes',
     traderLevels: 'Loyalty Level de comerciantes',
@@ -293,8 +317,25 @@ export const translations: Record<Lang, Translations> = {
     confirmWipeAll:
       'Se borrarán todos los datos guardados en el navegador (progreso de misiones, campaña Story, idioma, etc.). Esta acción no se puede deshacer.\n\n¿Continuar?',
     footerVisits: (n) => `${n.toLocaleString('es-ES')} visita${n === 1 ? '' : 's'} única${n === 1 ? '' : 's'}`,
-    footerOnline: (n) =>
-      `${n.toLocaleString('es-ES')} usuario${n === 1 ? '' : 's'} online`,
+    footerOnline: (n) => `${n.toLocaleString('es-ES')} en línea`,
+    feedbackButton: 'Reportar/Feedback',
+    feedbackTitle: 'Reportar / Feedback',
+    feedbackFieldTitle: 'Título',
+    feedbackFieldTitlePlaceholder: 'Resumen breve',
+    feedbackFieldMessage: 'Mensaje',
+    feedbackFieldMessagePlaceholder: 'Describe el problema o la idea…',
+    feedbackAttachments: 'Capturas',
+    feedbackAttachmentsHint: 'Pega una captura (Ctrl+V) o sube imágenes desde tu ordenador.',
+    feedbackUpload: 'Subir imagen',
+    feedbackRemoveImage: 'Quitar imagen',
+    feedbackImageError: 'No se pudo procesar la imagen.',
+    feedbackRequired: 'Título y mensaje son obligatorios.',
+    feedbackSend: 'Enviar',
+    feedbackSending: 'Enviando…',
+    feedbackSendError: 'No se pudo enviar. Inténtalo de nuevo.',
+    feedbackSuccess: 'Gracias. Tu mensaje se ha enviado.',
+    feedbackCancel: 'Cancelar',
+    feedbackClose: 'Cerrar',
     noTasksFilter: 'No hay misiones con estos filtros.',
     noActiveTasks: 'No tienes misiones en curso.',
     noCompletedTasks: 'No tienes misiones completadas.',
@@ -310,7 +351,7 @@ export const translations: Record<Lang, Translations> = {
       'Dibuja puntos de ruta sobre cualquier mapa de Tarkov. Independiente de las misiones: solo para planear recorridos.',
     routesOpenMap: 'Abrir mapa',
     routesBackToMaps: 'Todos los mapas',
-    routesDrawHint: 'Elige un color y haz clic en el mapa para añadir puntos. Arrastra un pin para moverlo; clic para eliminarlo. Los puntos fijos no se pueden mover.',
+    routesDrawHint: 'Elige un color y haz clic en el mapa para añadir puntos. Arrastra un pin para moverlo; clic para eliminarlo.',
     routesPointColor: 'Color del jugador',
     routesCustomColor: 'Personalizado',
     routesPlayerNamePlaceholder: 'Nombre del jugador',
@@ -330,14 +371,13 @@ export const translations: Record<Lang, Translations> = {
     routesFixedLoadError: 'No se pudieron cargar los puntos fijos.',
     routesHideFixedPoints: 'Ocultar puntos fijos',
     routesShowFixedPoints: 'Mostrar puntos fijos',
-    routesFixedLayers: 'Capas de puntos fijos',
-    routesExtractPmc: 'Extracción PMC',
-    routesExtractScav: 'Extracción SCAV',
-    routesExtractShared: 'Extracción compartida',
-    routesExtractSection: 'Extracciones',
-    routesExtractTooltipHint: 'Punto de extracción del mapa',
-    routesHideLayer: (name) => `Ocultar ${name}`,
+    routesFixedLayers: 'Capas del mapa',
     routesShowLayer: (name) => `Mostrar ${name}`,
+    routesHideLayer: (name) => `Ocultar ${name}`,
+    routesExtractPmc: 'Extractos PMC',
+    routesExtractScav: 'Extractos Scav',
+    routesExtractShared: 'Extracto compartido',
+    routesExtractTooltipHint: 'Salida del mapa',
     adminRoutesTitle: 'Admin · Puntos fijos de rutas',
     adminRoutesHint: 'Crea y edita puntos compartidos. Se guardan en el servidor (Turso).',
     routeEnvironmentRegular: 'PVP Zone',
@@ -348,6 +388,7 @@ export const translations: Record<Lang, Translations> = {
     adminTokenPlaceholder: 'ADMIN_TOKEN',
     adminLogin: 'Entrar',
     adminLogout: 'Salir',
+    adminBackToDashboard: 'Panel admin',
     adminLoginError: 'Token incorrecto o API no disponible.',
     adminDrawHint: 'Elige un color y haz clic en el mapa para crear un punto fijo. Arrastra un pin para moverlo; clic para eliminarlo.',
     adminPointLabel: 'Etiqueta',
@@ -360,9 +401,11 @@ export const translations: Record<Lang, Translations> = {
     routesPointImageModal: 'Imagen del punto',
     adminMarkerType: 'Tipo de marcador',
     adminMarkerTypeDefault: 'Normal',
-    adminMarkerTypeKb: 'KB Documents',
-    adminMarkerTypeKbHint: 'Pin KB sin texto. El hover sigue mostrando la imagen.',
-    adminMarkerTypeQuestion: 'KB Doc sin confirmar',
+    adminMarkerTypeKeyDocument: 'Key Document',
+    adminMarkerTypeKeyDocumentHint:
+      'Pin KB con label opcional. El texto se muestra encima de la imagen al pasar el ratón o al abrirla.',
+    adminKeyDocumentLabelPlaceholder: '212 ROOM',
+    adminMarkerTypeQuestion: 'Interrogación',
     adminMarkerTypeQuestionHint: 'Pin ? sin texto. El hover sigue mostrando la imagen.',
     adminSaveLabel: 'Guardar etiqueta',
     adminWorking: 'Guardando…',
@@ -380,6 +423,7 @@ export const translations: Record<Lang, Translations> = {
     storyApiTasksTitle: 'Misiones de tarkov.dev (Lightkeeper / Labyrinth)',
     storyLightkeeperTitle: 'Lightkeeper (tarkov.dev)',
     language: 'Idioma',
+    openAdminPanel: 'Admin',
     viewMode: 'Vista',
     viewModeNormal: 'Normal',
     viewModeCompact: 'Compacto',
@@ -477,20 +521,19 @@ export const translations: Record<Lang, Translations> = {
     logStateDetected: (state) => `Detectado en logs: ${state}`,
     logStateNotDetectedEditable: 'No detectado en los logs (misión anterior a las sesiones guardadas). Puedes marcarla manualmente; si el juego registra un evento real, tendrá prioridad.',
     logLockedHint: 'Detectado en los logs: el estado lo controla el juego, no editable.',
-    logsUnmatchedIds: (n) => `${n} misión(es) de logs fuera de la lista`,
-    logsUnmatchedTitle: (n) =>
-      `${n} misión${n === 1 ? '' : 'es'} de tus logs no ${n === 1 ? 'aparece' : 'aparecen'} aquí`,
-    logsUnmatchedBody:
-      'El juego las ha registrado, pero aún no están en la base de misiones de esta web '
-      + '(por ejemplo, misiones nuevas, de otro modo o aún no indexadas).',
-    logsUnmatchedOk: 'No afecta al resto: las misiones que sí coinciden se siguen sincronizando con normalidad.',
+    logsUnmatchedIds: (n) => `${n} ID(s) de misión sin coincidencia`,
     logsUnmatchedStatus: (completed, started, failed) => {
       const parts: string[] = [];
       if (completed > 0) parts.push(`${completed} completada${completed === 1 ? '' : 's'}`);
       if (started > 0) parts.push(`${started} en curso`);
-      if (failed > 0) parts.push(`${failed} fallada${failed === 1 ? '' : 's'}`);
-      return parts.length > 0 ? `En tus logs: ${parts.join(' · ')}` : '';
+      if (failed > 0) parts.push(`${failed} fallida${failed === 1 ? '' : 's'}`);
+      return parts.length > 0 ? parts.join(' · ') : 'Sin estado conocido';
     },
+    logsUnmatchedTitle: (n) =>
+      `${n} misión(es) en los logs sin coincidencia en la lista actual`,
+    logsUnmatchedBody:
+      'Aparecen en tus logs pero no en las misiones cargadas (modo de juego distinto, lista incompleta o IDs desconocidos).',
+    logsUnmatchedOk: 'No afecta a las misiones que sí se han emparejado correctamente.',
     logsWipeStartTitle: 'Inicio de temporada',
     logsWipeStartAuto: 'Automático (última versión detectada)',
     logsWipeStartAll: 'Usar todo el historial (sin filtrar)',
@@ -521,9 +564,11 @@ export const translations: Record<Lang, Translations> = {
     homeCardRoutes: 'Routes Zone',
     homeCardPvp: 'PvP Zone',
     homeCardSeasonal: 'PvP Season',
+    homeCardAdmin: 'Admin',
     homeCardTagRoutes: 'MAPS',
     homeCardTagRegular: 'REGULAR',
     homeCardTagSeasonal: 'SEASONAL',
+    homeCardTagAdmin: 'PANEL',
     homeBack: 'Home',
     subtitle: (n) => `Quest tracker · ${n} quests · data from tarkov.dev`,
     loading: 'Loading quests from tarkov.dev…',
@@ -536,7 +581,7 @@ export const translations: Record<Lang, Translations> = {
       + 'reader or your quests: with such an incomplete list, no quest detected in the logs (or in Local mode) '
       + 'can be matched correctly, so nothing shows up. Please retry in a moment.',
     staleCacheNotice:
-      'Could not read the server snapshot: showing offline quests for the current mode.',
+      'Neither GraphQL nor json.tarkov.dev responded: showing bundled offline quests.',
     staleCacheNoticeDetail: (detail) => `Detail: ${detail}`,
     searchPlaceholder: 'Search quest or trader…',
     allTraders: 'All traders',
@@ -555,10 +600,9 @@ export const translations: Record<Lang, Translations> = {
       seasonal: 'Seasonal',
     },
     gameModeHint: {
-      regular: 'Permanent PvP zone character (json.tarkov.dev/regular dataset)',
-      pve: 'Permanent PvE zone character',
-      seasonal:
-        'Kord Breach / PVP Seasonal (json.tarkov.dev/pvp-season dataset; independent progress)',
+      regular: 'Permanent PvP Zone character',
+      pve: 'Permanent PvE Zone character',
+      seasonal: 'Seasonal character (independent progress; resets each season)',
     },
     settings: 'Settings',
     traderLevels: 'Trader loyalty levels',
@@ -577,8 +621,25 @@ export const translations: Record<Lang, Translations> = {
     confirmWipeAll:
       'All data stored in the browser will be deleted (quest progress, Story campaign, language, etc.). This cannot be undone.\n\nContinue?',
     footerVisits: (n) => `${n.toLocaleString('en-US')} unique visit${n === 1 ? '' : 's'}`,
-    footerOnline: (n) =>
-      `${n.toLocaleString('en-US')} user${n === 1 ? '' : 's'} online`,
+    footerOnline: (n) => `${n.toLocaleString('en-US')} online`,
+    feedbackButton: 'Report/Feedback',
+    feedbackTitle: 'Report / Feedback',
+    feedbackFieldTitle: 'Title',
+    feedbackFieldTitlePlaceholder: 'Short summary',
+    feedbackFieldMessage: 'Message',
+    feedbackFieldMessagePlaceholder: 'Describe the issue or idea…',
+    feedbackAttachments: 'Screenshots',
+    feedbackAttachmentsHint: 'Paste a screenshot (Ctrl+V) or upload images from your computer.',
+    feedbackUpload: 'Upload image',
+    feedbackRemoveImage: 'Remove image',
+    feedbackImageError: 'Could not process the image.',
+    feedbackRequired: 'Title and message are required.',
+    feedbackSend: 'Send',
+    feedbackSending: 'Sending…',
+    feedbackSendError: 'Could not send. Please try again.',
+    feedbackSuccess: 'Thanks. Your message was sent.',
+    feedbackCancel: 'Cancel',
+    feedbackClose: 'Close',
     noTasksFilter: 'No quests match these filters.',
     noActiveTasks: 'You have no quests in progress.',
     noCompletedTasks: 'You have no completed quests.',
@@ -594,7 +655,7 @@ export const translations: Record<Lang, Translations> = {
       'Draw route points on any Tarkov map. Separate from quests — just for planning your runs.',
     routesOpenMap: 'Open map',
     routesBackToMaps: 'All maps',
-    routesDrawHint: 'Pick a color and click the map to add points. Drag a pin to move it; click to remove it. Fixed points cannot be moved.',
+    routesDrawHint: 'Pick a color and click the map to add points. Drag a pin to move it; click to remove it.',
     routesPointColor: 'Player color',
     routesCustomColor: 'Custom',
     routesPlayerNamePlaceholder: 'Player name',
@@ -614,14 +675,13 @@ export const translations: Record<Lang, Translations> = {
     routesFixedLoadError: 'Could not load fixed points.',
     routesHideFixedPoints: 'Hide fixed points',
     routesShowFixedPoints: 'Show fixed points',
-    routesFixedLayers: 'Fixed point layers',
-    routesExtractPmc: 'PMC extract',
-    routesExtractScav: 'SCAV extract',
-    routesExtractShared: 'Shared extract',
-    routesExtractSection: 'Extracts',
-    routesExtractTooltipHint: 'Map extraction point',
-    routesHideLayer: (name) => `Hide ${name}`,
+    routesFixedLayers: 'Map layers',
     routesShowLayer: (name) => `Show ${name}`,
+    routesHideLayer: (name) => `Hide ${name}`,
+    routesExtractPmc: 'PMC extracts',
+    routesExtractScav: 'Scav extracts',
+    routesExtractShared: 'Shared extract',
+    routesExtractTooltipHint: 'Map extract',
     adminRoutesTitle: 'Admin · Fixed route points',
     adminRoutesHint: 'Create and edit shared points. Stored on the server (Turso).',
     routeEnvironmentRegular: 'PVP Zone',
@@ -632,6 +692,7 @@ export const translations: Record<Lang, Translations> = {
     adminTokenPlaceholder: 'ADMIN_TOKEN',
     adminLogin: 'Sign in',
     adminLogout: 'Sign out',
+    adminBackToDashboard: 'Admin panel',
     adminLoginError: 'Invalid token or API unavailable.',
     adminDrawHint: 'Pick a color and click the map to create a fixed point. Drag a pin to move it; click to remove it.',
     adminPointLabel: 'Label',
@@ -644,9 +705,11 @@ export const translations: Record<Lang, Translations> = {
     routesPointImageModal: 'Point image',
     adminMarkerType: 'Marker type',
     adminMarkerTypeDefault: 'Normal',
-    adminMarkerTypeKb: 'KB Documents',
-    adminMarkerTypeKbHint: 'KB pin with no text. Hover still shows the image.',
-    adminMarkerTypeQuestion: 'Unconfirmed KB Doc',
+    adminMarkerTypeKeyDocument: 'Key Document',
+    adminMarkerTypeKeyDocumentHint:
+      'KB pin with an optional label. The text appears above the image on hover and in the full view.',
+    adminKeyDocumentLabelPlaceholder: '212 ROOM',
+    adminMarkerTypeQuestion: 'Question mark',
     adminMarkerTypeQuestionHint: '? pin with no text. Hover still shows the image.',
     adminSaveLabel: 'Save label',
     adminWorking: 'Saving…',
@@ -664,6 +727,7 @@ export const translations: Record<Lang, Translations> = {
     storyApiTasksTitle: 'tarkov.dev quests (Lightkeeper / Labyrinth)',
     storyLightkeeperTitle: 'Lightkeeper (tarkov.dev)',
     language: 'Language',
+    openAdminPanel: 'Admin',
     viewMode: 'View',
     viewModeNormal: 'Normal',
     viewModeCompact: 'Compact',
@@ -761,20 +825,19 @@ export const translations: Record<Lang, Translations> = {
     logStateDetected: (state) => `Detected in logs: ${state}`,
     logStateNotDetectedEditable: 'Not detected in logs (task predates the saved sessions). You can mark it manually; a real in-game event will always take priority.',
     logLockedHint: 'Detected in logs: state is controlled by the game, not editable.',
-    logsUnmatchedIds: (n) => `${n} log quest(s) not in the list`,
-    logsUnmatchedTitle: (n) =>
-      `${n} quest${n === 1 ? '' : 's'} from your logs ${n === 1 ? 'is' : 'are'} missing here`,
-    logsUnmatchedBody:
-      'The game recorded them, but they are not in this site’s quest database yet '
-      + '(for example new quests, another game mode, or not indexed yet).',
-    logsUnmatchedOk: 'No worries: matching quests keep syncing normally.',
+    logsUnmatchedIds: (n) => `${n} unmatched quest ID(s)`,
     logsUnmatchedStatus: (completed, started, failed) => {
       const parts: string[] = [];
       if (completed > 0) parts.push(`${completed} completed`);
       if (started > 0) parts.push(`${started} in progress`);
       if (failed > 0) parts.push(`${failed} failed`);
-      return parts.length > 0 ? `In your logs: ${parts.join(' · ')}` : '';
+      return parts.length > 0 ? parts.join(' · ') : 'No known status';
     },
+    logsUnmatchedTitle: (n) =>
+      `${n} quest(s) in logs with no match in the current list`,
+    logsUnmatchedBody:
+      'They appear in your logs but not in the loaded quests (different game mode, incomplete list, or unknown IDs).',
+    logsUnmatchedOk: 'This does not affect quests that matched correctly.',
     logsWipeStartTitle: 'Wipe start point',
     logsWipeStartAuto: 'Automatic (latest detected version)',
     logsWipeStartAll: 'Use full history (no filtering)',

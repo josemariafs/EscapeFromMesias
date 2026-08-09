@@ -8,9 +8,18 @@ interface AppFooterProps {
   notices?: ReactNode;
   formatVisits: (n: number) => string;
   formatOnline: (n: number) => string;
+  feedbackLabel: string;
+  onOpenFeedback: () => void;
 }
 
-export function AppFooter({ locale, notices, formatVisits, formatOnline }: AppFooterProps) {
+export function AppFooter({
+  locale,
+  notices,
+  formatVisits,
+  formatOnline,
+  feedbackLabel,
+  onOpenFeedback,
+}: AppFooterProps) {
   const { impressions } = useVisitCounter();
   const { online } = useOnlinePresence();
 
@@ -18,6 +27,10 @@ export function AppFooter({ locale, notices, formatVisits, formatOnline }: AppFo
     <footer className={`app-footer${notices ? ' app-footer--with-notices' : ''}`}>
       {notices && <div className="app-footer-notices">{notices}</div>}
       <div className="app-footer-meta">
+        <button type="button" className="app-footer-feedback" onClick={onOpenFeedback}>
+          {feedbackLabel}
+        </button>
+        <span aria-hidden="true">·</span>
         {online != null && (
           <>
             <span className="app-footer-online" title={formatOnline(online)}>

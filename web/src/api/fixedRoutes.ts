@@ -13,7 +13,7 @@ export interface CreateFixedRoutePointInput {
   color: string;
   label?: string | null;
   imageUrl?: string | null;
-  markerType?: 'default' | 'kb' | 'question' | null;
+  markerType?: 'default' | 'kb-document' | 'question' | 'kb' | null;
 }
 
 export interface UpdateFixedRoutePointInput {
@@ -24,7 +24,7 @@ export interface UpdateFixedRoutePointInput {
   color?: string;
   label?: string | null;
   imageUrl?: string | null;
-  markerType?: 'default' | 'kb' | 'question' | null;
+  markerType?: 'default' | 'kb-document' | 'question' | 'kb' | null;
 }
 
 async function parseErrorMessage(res: Response): Promise<string> {
@@ -56,7 +56,7 @@ export async function fetchFixedRoutes(
 }
 
 export async function verifyAdminToken(token: string): Promise<void> {
-  const res = await fetch('/api/admin/ping', {
+  const res = await fetch('/api/admin/dashboard?view=ping', {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) {

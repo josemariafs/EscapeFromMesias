@@ -6,6 +6,8 @@ import { LoginScreen } from '../components/LoginScreen';
 interface SiteAuthContextValue {
   kind: SiteAuthKind | null;
   canRevealDailyCode: boolean;
+  /** Sesión iniciada con ADMIN_TOKEN: acceso al panel /admin. */
+  canAccessAdmin: boolean;
   /** Logo Escape From Gorditos (token public o código semanal). */
   useGorditosLogo: boolean;
 }
@@ -13,6 +15,7 @@ interface SiteAuthContextValue {
 const SiteAuthContext = createContext<SiteAuthContextValue>({
   kind: null,
   canRevealDailyCode: false,
+  canAccessAdmin: false,
   useGorditosLogo: false,
 });
 
@@ -26,6 +29,7 @@ interface SiteAuthGateProps {
 
 export function SiteAuthGate({ children }: SiteAuthGateProps) {
   const { status, kind, canRevealDailyCode, error, failCount, submitting, login } = useSiteAuth();
+  const canAccessAdmin = kind === 'admin';
   const useGorditosLogo = kind === 'public' || kind === 'daily';
 
   if (status === 'checking') {
@@ -50,7 +54,9 @@ export function SiteAuthGate({ children }: SiteAuthGateProps) {
   }
 
   return (
-    <SiteAuthContext.Provider value={{ kind, canRevealDailyCode, useGorditosLogo }}>
+    <SiteAuthContext.Provider
+      value={{ kind, canRevealDailyCode, canAccessAdmin, useGorditosLogo }}
+    >
       {children}
     </SiteAuthContext.Provider>
   );

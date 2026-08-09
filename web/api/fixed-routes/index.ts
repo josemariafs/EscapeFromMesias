@@ -17,7 +17,7 @@ import { normalizeImageUrl } from '../_lib/image.js';
 import { isValidMapKey } from '../_lib/maps.js';
 import {
   DEFAULT_FIXED_MARKER_TYPE,
-  isIconMarkerType,
+  isLabellessMarkerType,
   normalizeMarkerType,
 } from '../_lib/markers.js';
 
@@ -90,7 +90,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       const markerType = markerParsed.value ?? DEFAULT_FIXED_MARKER_TYPE;
       const label =
-        isIconMarkerType(markerType)
+        isLabellessMarkerType(markerType)
           ? null
           : typeof body.label === 'string' && body.label.trim()
             ? body.label.trim().slice(0, 80)

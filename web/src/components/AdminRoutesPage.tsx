@@ -1,12 +1,14 @@
 import { useCallback, useState } from 'react';
+import { useAdminAuth } from '../hooks/useAdminAuth';
 import { useFixedRouteMaps } from '../hooks/useFixedRouteMaps';
 import { useMapExtracts } from '../hooks/useMapExtracts';
-import { useAdminAuth } from '../hooks/useAdminAuth';
 import { useLanguage } from '../i18n/useLanguage';
 import type { GameMode } from '../types';
 import {
+  allowsFixedPointLabel,
   DEFAULT_FIXED_MARKER_TYPE,
   DEFAULT_ROUTE_POINT_COLOR,
+  isLabellessMarkerType,
   type FixedMarkerType,
   type RouteEnvironment,
 } from '../types/routes';
@@ -21,7 +23,6 @@ export function AdminRoutesPage() {
   const fixed = useFixedRouteMaps(environment);
   const extractGameMode: GameMode = environment === 'regular' ? 'regular' : 'seasonal';
   const mapExtracts = useMapExtracts(lang, extractGameMode);
-  const token = auth.token;
   const [selectedMapKey, setSelectedMapKey] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string>(DEFAULT_ROUTE_POINT_COLOR);
   const [draftLabel, setDraftLabel] = useState('');
@@ -30,6 +31,7 @@ export function AdminRoutesPage() {
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
+  const token = auth.token;
   const fixedPoints = selectedMapKey ? fixed.getPoints(selectedMapKey) : [];
 
   const handleEnvironmentChange = (next: RouteEnvironment) => {
@@ -54,7 +56,7 @@ export function AdminRoutesPage() {
         left,
         top,
         color: selectedColor,
-        label: draftMarkerType === 'default' ? (draftLabel.trim() || null) : null,
+        label: allowsFixedPointLabel(draftMarkerType) ? (draftLabel.trim() || null) : null,
         imageUrl: draftImageUrl,
         markerType: draftMarkerType,
         environment,
@@ -133,7 +135,7 @@ export function AdminRoutesPage() {
     try {
       await fixed.patchPoint(token, pointId, {
         markerType,
-        ...(markerType !== 'default' ? { label: null } : {}),
+        ...(isLabellessMarkerType(markerType) ? { label: null } : {}),
       });
     } catch (err) {
       setActionError(err instanceof Error ? err.message : t.adminLoginError);
@@ -172,7 +174,7 @@ export function AdminRoutesPage() {
   if (auth.status === 'checking') {
     return (
       <div className="admin-routes-page admin-routes-page--login">
-        <p className="admin-muted">Comprobando acceso…</p>
+        <p className="admin-muted">{t.adminWorking}</p>
       </div>
     );
   }
@@ -187,9 +189,9 @@ export function AdminRoutesPage() {
           onLoginValueChange={auth.setLoginValue}
           onSubmit={auth.login}
           loggingIn={auth.loggingIn}
-          error={auth.loginError}
+          error={auth.loginError ? t.adminLoginError : null}
         />
-        <a className="admin-back-link" href="/admin">{t.adminLoginTitle}</a>
+        <a className="admin-back-link" href="/">{t.routesBackToMaps}</a>
       </div>
     );
   }
@@ -197,10 +199,14 @@ export function AdminRoutesPage() {
   return (
     <div className="admin-routes-page">
       <header className="admin-routes-toolbar">
-        <div>
-          <h1>{t.adminRoutesTitle}</h1>
-          <p>{t.adminRoutesHint}</p>
-          <p className="admin-env-hint">{t.routeEnvironmentHint}</p>
+        <div className="admin-routes-toolbar-main">
+          <a className="admin-brand" href="/" title={t.appTitle}>
+            <img src="/logo.png" alt={t.appTitle} className="admin-brand-logo" />
+          </a>
+          <div className="admin-routes-toolbar-title">
+            <p className="admin-eyebrow">Admin</p>
+            <h1>{t.adminRoutesTitle}</h1>
+          </div>
           <div className="segmented admin-env-segmented" role="tablist" aria-label={t.routeEnvironmentHint}>
             <button
               type="button"
@@ -222,9 +228,12 @@ export function AdminRoutesPage() {
             </button>
           </div>
         </div>
+        <nav className="admin-toolbar-nav" aria-label="Admin">
+          <a className="admin-toolbar-nav-link" href="/admin">
+            {t.adminBackToDashboard}
+          </a>
+        </nav>
         <div className="admin-routes-toolbar-actions">
-          <a className="btn" href="/admin">Panel</a>
-          <a className="btn btn-reset" href="/">{t.appTitle}</a>
           <button type="button" className="btn btn-wipe" onClick={handleLogout}>
             {t.adminLogout}
           </button>

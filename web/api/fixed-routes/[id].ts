@@ -14,7 +14,7 @@ import { normalizeImageUrl } from '../_lib/image.js';
 import { isValidMapKey } from '../_lib/maps.js';
 import {
   DEFAULT_FIXED_MARKER_TYPE,
-  isIconMarkerType,
+  isLabellessMarkerType,
   normalizeMarkerType,
   resolveMarkerType,
 } from '../_lib/markers.js';
@@ -142,7 +142,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         markerType = markerParsed.value ?? DEFAULT_FIXED_MARKER_TYPE;
       }
       if (body.label !== undefined) {
-        if (body.label == null || body.label === '' || isIconMarkerType(markerType)) {
+        if (body.label == null || body.label === '' || isLabellessMarkerType(markerType)) {
           label = null;
         } else if (typeof body.label === 'string') {
           label = body.label.trim().slice(0, 80) || null;
@@ -151,7 +151,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           res.status(400).json({ error: 'Invalid label' });
           return;
         }
-      } else if (isIconMarkerType(markerType)) {
+      } else if (isLabellessMarkerType(markerType)) {
         label = null;
       }
       if (body.imageUrl !== undefined) {

@@ -39,6 +39,8 @@ export function serverError(res: VercelResponse, err: unknown): void {
   const message = err instanceof Error ? err.message : 'Internal server error';
   const isConfig =
     message.includes('TURSO_DATABASE_URL')
-    || message.includes('ADMIN_TOKEN');
+    || message.includes('ADMIN_TOKEN')
+    || message.includes('ADMIN_EMAIL')
+    || message.includes('RESEND_API_KEY');
   res.status(isConfig ? 503 : 500).json({ error: message });
 }

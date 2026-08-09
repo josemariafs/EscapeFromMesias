@@ -2,21 +2,8 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "functions": {
-    "api/cron/sync-tasks.ts": {
-      "maxDuration": 300
-    },
-    "api/tasks/index.ts": {
-      "maxDuration": 60
-    }
-  },
-  "crons": [
-    {
-      "path": "/api/cron/sync-tasks",
-      "schedule": "0 3 * * *"
-    }
-  ],
   "rewrites": [
+    { "source": "/admin", "destination": "/index.html" },
     { "source": "/admin/:path*", "destination": "/index.html" }
   ]
 }

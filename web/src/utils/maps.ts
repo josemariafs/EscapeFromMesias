@@ -2,10 +2,7 @@ import type { GameMap, Task } from '../types';
 
 export const ANY_MAP_ID = '__any__';
 
-const MAP_SVG_BASE =
-  'https://raw.githubusercontent.com/the-hideout/tarkov-dev-svg-maps/main';
-
-/** normalizedName del mapa base → archivo SVG en tarkov-dev-svg-maps */
+/** normalizedName → archivo en /public/maps (siempre local). */
 const MAP_SVG_FILES: Record<string, string> = {
   factory: 'Factory.svg',
   customs: 'Customs.svg',
@@ -34,27 +31,9 @@ export const ROUTE_MAPS: { key: string; name: string }[] = [
   { key: 'the-lab', name: 'The Lab' },
 ];
 
-/**
- * Interchange: el SVG upstream apila Second_Floor (planta parcial, más pequeña)
- * encima de First_Floor. En vista plana eso hace que el interior del mall parezca
- * a escala incorrecta. Usamos una copia local con Second_Floor oculto.
- */
-const LOCAL_MAP_SVG: Partial<Record<string, string>> = {
-  interchange: '/maps/Interchange.svg',
-  /** Ground Zero rotado 90° a la izquierda. */
-  'ground-zero': '/maps/GroundZero.svg?v=gz-rot-1',
-  /** Lighthouse rotado 90° a la izquierda. */
-  lighthouse: '/maps/Lighthouse.svg?v=lh-rot-1',
-  /** Streets of Tarkov rotado 90° a la izquierda. */
-  'streets-of-tarkov': '/maps/StreetsOfTarkov.svg?v=sot-rot-1',
-  reserve: '/maps/Reserve.svg?v=reserve-1',
-};
-
 export function getMapSvgUrl(normalizedName: string): string | null {
-  const local = LOCAL_MAP_SVG[normalizedName];
-  if (local) return local;
   const file = MAP_SVG_FILES[normalizedName];
-  return file ? `${MAP_SVG_BASE}/${file}` : null;
+  return file ? `/maps/${file}` : null;
 }
 
 export function getTarkovDevMapUrl(normalizedName: string): string {

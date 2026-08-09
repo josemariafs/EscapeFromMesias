@@ -1,0 +1,38 @@
+{
+  "repository": "EscapeFromGorditos",
+  "classification": "multi-part",
+  "parts": [
+    {
+      "id": "web",
+      "display_name": "React Frontend",
+      "project_type": "web",
+      "root_path": "web/src",
+      "deploy_root": "web",
+      "docs": [
+        "architecture-web.md",
+        "component-inventory-web.md",
+        "development-guide-web.md"
+      ]
+    },
+    {
+      "id": "api",
+      "display_name": "Vercel Serverless API",
+      "project_type": "backend",
+      "root_path": "web/api",
+      "deploy_root": "web",
+      "docs": [
+        "architecture-api.md",
+        "api-contracts-api.md",
+        "data-models-api.md",
+        "development-guide-api.md"
+      ]
+    }
+  ],
+  "shared_docs": [
+    "project-overview.md",
+    "integration-architecture.md",
+    "source-tree-analysis.md",
+    "deployment-guide.md",
+    "index.md"
+  ]
+}

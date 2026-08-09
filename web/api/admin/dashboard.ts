@@ -1,9 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import type { InValue } from '@libsql/client';
 import { getAdminToken, isAuthorized, unauthorizedBody } from '../_lib/auth.js';
 import { ensureSchema, getDb } from '../_lib/db.js';
 import { applyCors, handleOptions, serverError } from '../_lib/http.js';
 import { getMadridCivilDayKey } from '../_lib/siteAccess.js';
 import { readDailyStats } from '../_lib/siteStatsDaily.js';
+import { isUsageAccessFilter, readUsageAdminSnapshot } from '../_lib/usageLogs.js';
 
 const ONLINE_WINDOW_MS = 60_000;
 
@@ -12,7 +14,7 @@ function num(raw: unknown): number {
   return Number.isFinite(value) ? value : 0;
 }
 
-async function countSql(sql: string, args: unknown[] = []): Promise<number> {
+async function countSql(sql: string, args: InValue[] = []): Promise<number> {
   const db = getDb();
   const result = await db.execute({ sql, args });
   const row = result.rows[0] as Record<string, unknown> | undefined;
@@ -26,7 +28,7 @@ function dayKeyDaysAgo(daysAgo: number, now = new Date()): string {
   return getMadridCivilDayKey(new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000));
 }
 
-/** Panel admin: snapshots, historial de cambios, sync y visitas diarias. */
+/** Panel admin: dashboard (+ uso con ?view=usage). */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (handleOptions(req, res)) return;
 
@@ -50,6 +52,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     await ensureSchema();
+
+    const view = typeof req.query.view === 'string' ? req.query.view.trim() : '';
+    if (view === 'ping') {
+      applyCors(res);
+      res.status(200).json({ ok: true });
+      return;
+    }
+
+    if (view === 'usage') {
+      const raw = typeof req.query.accessKind === 'string' ? req.query.accessKind.trim() : '';
+      const accessKind = raw && isUsageAccessFilter(raw) ? raw : null;
+      const snapshot = await readUsageAdminSnapshot(30, accessKind);
+      applyCors(res);
+      res.status(200).json({
+        timezone: 'Europe/Madrid',
+        retentionDays: 90,
+        ...snapshot,
+      });
+      return;
+    }
+
     const db = getDb();
     const today = getMadridCivilDayKey();
     const yesterday = dayKeyDaysAgo(1);

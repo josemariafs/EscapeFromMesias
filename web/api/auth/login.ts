@@ -25,7 +25,7 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const body = readJsonBody<LoginBody>(req);
-  const password = typeof body.password === 'string' ? body.password : '';
+  const password = typeof body.password === 'string' ? body.password.trim() : '';
   const result = resolveSiteLogin(password);
 
   if (!result.ok) {

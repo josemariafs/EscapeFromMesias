@@ -8,6 +8,7 @@ interface HomeUsageScreenProps {
   t: Translations;
   onChoose: (choice: HomeUsageChoice) => void;
   canRevealDailyCode?: boolean;
+  canAccessAdmin?: boolean;
   logoSrc?: string;
 }
 
@@ -88,10 +89,38 @@ function IconSeasonal() {
   );
 }
 
+function IconAdmin() {
+  return (
+    <svg className="home-usage-card-icon" viewBox="0 0 64 64" aria-hidden>
+      <defs>
+        <radialGradient id="home-icon-admin-metal" cx="35%" cy="30%" r="70%">
+          <stop offset="0%" stopColor="#e0c56a" />
+          <stop offset="45%" stopColor="#9a7a28" />
+          <stop offset="100%" stopColor="#4a3a14" />
+        </radialGradient>
+      </defs>
+      <circle cx="32" cy="32" r="30" fill="url(#home-icon-admin-metal)" stroke="#1a2226" strokeWidth="2" />
+      <circle cx="32" cy="32" r="22" fill="#1c2428" stroke="#c9a227" strokeWidth="1.5" />
+      <path
+        d="M32 18l2.2 6.8h7.1l-5.7 4.2 2.2 6.8L32 31.6l-5.8 4.2 2.2-6.8-5.7-4.2h7.1z"
+        fill="#c9a227"
+      />
+      <path
+        d="M22 42h20"
+        fill="none"
+        stroke="#8a949a"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 export function HomeUsageScreen({
   t,
   onChoose,
   canRevealDailyCode = false,
+  canAccessAdmin = false,
   logoSrc = '/logo.png',
 }: HomeUsageScreenProps) {
   const [dailyOpen, setDailyOpen] = useState(false);
@@ -107,7 +136,10 @@ export function HomeUsageScreen({
         />
       </div>
 
-      <div className="home-usage-strip" role="list">
+      <div
+        className={`home-usage-strip${canAccessAdmin ? ' home-usage-strip--with-admin' : ''}`}
+        role="list"
+      >
         <button
           type="button"
           className="home-usage-card home-usage-card--routes"
@@ -150,6 +182,21 @@ export function HomeUsageScreen({
           </span>
           <span className="home-usage-card-info" aria-hidden>i</span>
         </button>
+
+        {canAccessAdmin ? (
+          <a
+            className="home-usage-card home-usage-card--admin"
+            role="listitem"
+            href="/admin"
+            title={t.openAdminPanel}
+          >
+            <IconAdmin />
+            <span className="home-usage-card-text">
+              <strong className="home-usage-card-title">{t.homeCardAdmin}</strong>
+              <span className="home-usage-card-tag">{t.homeCardTagAdmin}</span>
+            </span>
+          </a>
+        ) : null}
       </div>
 
       {canRevealDailyCode && (

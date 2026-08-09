@@ -3,6 +3,7 @@ import { ActiveTasksView } from './components/ActiveTasksView';
 import { AppFooter } from './components/AppFooter';
 import { DataSourceControl } from './components/DataSourceControl';
 import { CrtViewTransition } from './components/CrtViewTransition';
+import { FeedbackModal } from './components/FeedbackModal';
 import { HeaderAccessCode } from './components/HeaderAccessCode';
 import { HomeUsageScreen, type HomeUsageChoice } from './components/HomeUsageScreen';
 import { useSiteAuthContext } from './context/SiteAuthContext';
@@ -50,10 +51,16 @@ export default function App() {
   const { isTable: isTableView } = useViewMode();
   const { gameMode, setGameMode } = useGameMode();
   const { dataSource, setDataSource, isLogsMode } = useDataSource();
-  const { kind: accessKind, canRevealDailyCode, useGorditosLogo } = useSiteAuthContext();
+  const {
+    kind: accessKind,
+    canRevealDailyCode,
+    canAccessAdmin,
+    useGorditosLogo,
+  } = useSiteAuthContext();
   const brandLogoSrc = useGorditosLogo ? '/gorditos-logo.png' : '/logo.png';
   const { active: crtActive, playId: crtPlayId, transitionTo } = useCrtViewTransition();
   const [appUsage, setAppUsage] = useState<AppUsage>('home');
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   /** Routes y Seasonal comparten mapas; PVP Zone (regular) tiene los suyos. */
   const routeEnvironment: RouteEnvironment =
     appUsage === 'routes' || gameMode === 'seasonal' ? 'seasonal' : 'regular';
@@ -358,11 +365,25 @@ export default function App() {
     setSelectedRouteMapKey(null);
   }, [routeEnvironment]);
 
+  const feedbackFooter = (
+    <>
+      <AppFooter
+        locale={locale}
+        formatVisits={t.footerVisits}
+        formatOnline={t.footerOnline}
+        feedbackLabel={t.feedbackButton}
+        onOpenFeedback={() => setFeedbackOpen(true)}
+      />
+      <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} t={t} />
+    </>
+  );
+
   if (isQuestsUsage && loading) {
     return (
       <div className="app loading-screen">
         <div className="loader" />
         <p>{t.loading}</p>
+        {feedbackFooter}
       </div>
     );
   }
@@ -375,6 +396,7 @@ export default function App() {
         <button type="button" className="btn btn-start" onClick={() => reload()}>
           {t.retry}
         </button>
+        {feedbackFooter}
       </div>
     );
   }
@@ -391,6 +413,7 @@ export default function App() {
         <button type="button" className="btn btn-start" onClick={() => reload()}>
           {t.retry}
         </button>
+        {feedbackFooter}
       </div>
     );
   }
@@ -596,6 +619,11 @@ export default function App() {
                 </button>
               </div>
               <div className="header-actions">
+                {canAccessAdmin ? (
+                  <a className="btn btn-admin-panel" href="/admin" title={t.openAdminPanel}>
+                    {t.openAdminPanel}
+                  </a>
+                ) : null}
                 <button type="button" className="btn btn-wipe" onClick={handleWipeAll}>
                   {t.wipeAll}
                 </button>
@@ -622,6 +650,7 @@ export default function App() {
             t={getTranslations('en')}
             onChoose={handleHomeChoice}
             canRevealDailyCode={canRevealDailyCode}
+            canAccessAdmin={canAccessAdmin}
             logoSrc={brandLogoSrc}
           />
         ) : isRoutesUsage ? (
@@ -853,32 +882,33 @@ export default function App() {
         )}
       </main>
 
-      {!isHome && (
-        <AppFooter
-          locale={locale}
-          formatVisits={t.footerVisits}
-          formatOnline={t.footerOnline}
-          notices={(usingStaleCache || isLogsLocked) ? (
-            <>
-              {usingStaleCache && (
-                <p className="footer-notice footer-notice--warn">
-                  {t.staleCacheNotice}
-                  {apiError ? ` ${t.staleCacheNoticeDetail(apiError)}` : ''}{' '}
-                  <button type="button" className="link-btn" onClick={() => reload()}>
-                    {t.retry}
-                  </button>
-                </p>
-              )}
-              {isLogsLocked && (
-                <p className="footer-notice">{t.logsReadOnlyNotice}</p>
-              )}
-              {isLogsLocked && Object.keys(logSync.taskStatusMap).length === 0 && (
-                <p className="footer-notice footer-notice--warn">{t.logsNoEventsHint}</p>
-              )}
-            </>
-          ) : undefined}
-        />
-      )}
+      <AppFooter
+        locale={locale}
+        formatVisits={t.footerVisits}
+        formatOnline={t.footerOnline}
+        feedbackLabel={t.feedbackButton}
+        onOpenFeedback={() => setFeedbackOpen(true)}
+        notices={(usingStaleCache || isLogsLocked) ? (
+          <>
+            {usingStaleCache && (
+              <p className="footer-notice footer-notice--warn">
+                {t.staleCacheNotice}
+                {apiError ? ` ${t.staleCacheNoticeDetail(apiError)}` : ''}{' '}
+                <button type="button" className="link-btn" onClick={() => reload()}>
+                  {t.retry}
+                </button>
+              </p>
+            )}
+            {isLogsLocked && (
+              <p className="footer-notice">{t.logsReadOnlyNotice}</p>
+            )}
+            {isLogsLocked && Object.keys(logSync.taskStatusMap).length === 0 && (
+              <p className="footer-notice footer-notice--warn">{t.logsNoEventsHint}</p>
+            )}
+          </>
+        ) : undefined}
+      />
+      <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} t={t} />
     </div>
   );
 }

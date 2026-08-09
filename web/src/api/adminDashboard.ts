@@ -92,7 +92,7 @@ export async function forceTaskSync(token: string): Promise<unknown> {
   return res.json();
 }
 
-export type AdminUsageAccessKind = 'public' | 'private' | 'daily' | 'legacy';
+export type AdminUsageAccessKind = 'public' | 'private' | 'daily' | 'legacy' | 'admin';
 export type AdminUsageAccessFilter = AdminUsageAccessKind | 'unknown';
 
 export interface AdminUsageEventRow {
@@ -132,10 +132,9 @@ export async function fetchAdminUsage(
   token: string,
   accessKind?: AdminUsageAccessFilter | 'all' | null,
 ): Promise<AdminUsageData> {
-  const params = new URLSearchParams();
+  const params = new URLSearchParams({ view: 'usage' });
   if (accessKind && accessKind !== 'all') params.set('accessKind', accessKind);
-  const qs = params.toString();
-  const res = await fetch(`/api/admin/usage${qs ? `?${qs}` : ''}`, {
+  const res = await fetch(`/api/admin/dashboard?${params.toString()}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error(await parseErrorMessage(res));

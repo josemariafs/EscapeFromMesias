@@ -109,18 +109,19 @@ export function setUsageContext(next: {
 }
 
 /** Clave de acceso de la sesión actual (fallback si el contexto React aún no está listo). */
+function isAccessKind(value: string | undefined): boolean {
+  return (
+    value === 'public'
+    || value === 'private'
+    || value === 'daily'
+    || value === 'legacy'
+    || value === 'admin'
+  );
+}
+
 function resolveAccessKind(explicit?: string): string | undefined {
-  if (explicit === 'public' || explicit === 'private' || explicit === 'daily' || explicit === 'legacy') {
-    return explicit;
-  }
-  if (
-    context.accessKind === 'public'
-    || context.accessKind === 'private'
-    || context.accessKind === 'daily'
-    || context.accessKind === 'legacy'
-  ) {
-    return context.accessKind;
-  }
+  if (isAccessKind(explicit)) return explicit;
+  if (isAccessKind(context.accessKind)) return context.accessKind;
   return getStoredSiteKind() ?? undefined;
 }
 
@@ -180,10 +181,10 @@ export async function flushUsageEvents(useBeacon = false): Promise<void> {
   try {
     if (useBeacon && typeof navigator.sendBeacon === 'function') {
       const blob = new Blob([payload], { type: 'application/json' });
-      const ok = navigator.sendBeacon('/api/stats/usage', blob);
+      const ok = navigator.sendBeacon('/api/stats/visit', blob);
       if (ok) return;
     }
-    await fetch('/api/stats/usage', {
+    await fetch('/api/stats/visit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: payload,

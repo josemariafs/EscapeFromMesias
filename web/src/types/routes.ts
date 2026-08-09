@@ -8,22 +8,37 @@ export interface RoutePoint {
   source?: 'personal' | 'fixed';
 }
 
-export type FixedMarkerType = 'default' | 'kb' | 'question';
+export type FixedMarkerType = 'default' | 'kb-document' | 'question';
 
 export const DEFAULT_FIXED_MARKER_TYPE: FixedMarkerType = 'default';
 
-/** Icono del marcador especial KB (sin etiqueta de texto). */
+/** Icono del marcador Key Document. */
 export const KB_MARKER_ICON_URL = '/markers/kb-pin.png';
 
 /** Icono del marcador de interrogación (sin etiqueta de texto). */
 export const QUESTION_MARKER_ICON_URL = '/markers/question-pin.svg';
 
-export function isIconMarkerType(markerType?: FixedMarkerType | null): boolean {
-  return markerType === 'kb' || markerType === 'question';
+/** Pin con icono propio (sin número/texto sobre el mapa). */
+export function isIconMarkerType(markerType?: FixedMarkerType | string | null): boolean {
+  return markerType === 'kb' || markerType === 'kb-document' || markerType === 'question';
 }
 
-export function markerTypeIconUrl(markerType?: FixedMarkerType | null): string | null {
-  if (markerType === 'kb') return KB_MARKER_ICON_URL;
+/** Tipos que no guardan label (solo icono + imagen opcional). */
+export function isLabellessMarkerType(markerType?: FixedMarkerType | string | null): boolean {
+  return markerType === 'question';
+}
+
+export function allowsFixedPointLabel(markerType?: FixedMarkerType | string | null): boolean {
+  return !isLabellessMarkerType(markerType);
+}
+
+/** Key Document: pin KB + label opcional encima de la imagen. */
+export function isKeyDocumentMarkerType(markerType?: FixedMarkerType | string | null): boolean {
+  return markerType === 'kb' || markerType === 'kb-document';
+}
+
+export function markerTypeIconUrl(markerType?: FixedMarkerType | string | null): string | null {
+  if (isKeyDocumentMarkerType(markerType)) return KB_MARKER_ICON_URL;
   if (markerType === 'question') return QUESTION_MARKER_ICON_URL;
   return null;
 }
@@ -48,7 +63,11 @@ export interface FixedRoutePoint extends RoutePoint {
   environment: RouteEnvironment;
   /** URL http(s) o data URL de imagen para tooltip en hover. */
   imageUrl?: string;
-  /** Estilo del pin en el mapa. `kb` / `question` = icono especial sin etiqueta. */
+  /**
+   * Estilo del pin en el mapa.
+   * - `kb-document` (Key Document): icono KB + label encima de la imagen
+   * - `question`: icono ? sin label
+   */
   markerType?: FixedMarkerType;
   createdAt?: string;
   updatedAt?: string;

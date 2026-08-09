@@ -7,6 +7,7 @@ import {
   verifySiteSession,
   type SiteAuthKind,
 } from '../api/siteAuth';
+import { ADMIN_TOKEN_STORAGE_KEY } from '../types/routes';
 
 type AuthStatus = 'checking' | 'locked' | 'unlocked';
 type AuthError = 'invalid' | 'unavailable' | null;
@@ -61,6 +62,14 @@ export function useSiteAuth() {
       setError(null);
       setKind(result.kind);
       setStatus('unlocked');
+      // Misma clave sirve para /admin sin volver a pedirla.
+      if (result.kind === 'admin') {
+        try {
+          sessionStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, password);
+        } catch {
+          // ignore
+        }
+      }
       return true;
     }
 

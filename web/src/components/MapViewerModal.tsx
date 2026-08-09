@@ -10,7 +10,9 @@ import { createPortal } from 'react-dom';
 import type { CustomMapMarkerPin, CustomMapMarkers, Task } from '../types';
 import type { Translations } from '../i18n/translations';
 import {
+  allowsFixedPointLabel,
   isIconMarkerType,
+  isKeyDocumentMarkerType,
   markerTypeIconUrl,
   type FixedMarkerType,
   type FixedRoutePoint,
@@ -79,9 +81,16 @@ function fitImageSize(
 }
 
 function markerTypeTitle(markerType: FixedMarkerType | undefined, t: Translations): string {
-  if (markerType === 'kb') return t.adminMarkerTypeKb;
+  if (isKeyDocumentMarkerType(markerType)) return t.adminMarkerTypeKeyDocument;
   if (markerType === 'question') return t.adminMarkerTypeQuestion;
   return t.adminMarkerTypeDefault;
+}
+
+function imageCaptionForPoint(point: FixedRoutePoint): string {
+  if (allowsFixedPointLabel(point.markerType)) {
+    return point.label?.trim() || '';
+  }
+  return '';
 }
 
 function labelForColor(colorLabels: RouteColorLabels | undefined, color: string): string {
@@ -127,13 +136,18 @@ export function MapViewerModal({
   );
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
   const [areaSize, setAreaSize] = useState({ width: 0, height: 0 });
-  const [imageModal, setImageModal] = useState<{ src: string; label: string } | null>(null);
+  const [imageModal, setImageModal] = useState<{
+    src: string;
+    label: string;
+    documentStyle: boolean;
+  } | null>(null);
   const [imageTooltip, setImageTooltip] = useState<{
     pointId: string;
     x: number;
     y: number;
     src: string;
     label: string;
+    documentStyle: boolean;
   } | null>(null);
   const imageWrapRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -445,9 +459,13 @@ export function MapViewerModal({
                   if (!pos) return null;
                   const iconMarker = isIconMarkerType(point.markerType);
                   const iconUrl = markerTypeIconUrl(point.markerType);
-                  const markerLabel = iconMarker
-                    ? markerTypeTitle(point.markerType, t)
-                    : (point.label?.trim() || String(index + 1));
+                  const documentStyle = isKeyDocumentMarkerType(point.markerType);
+                  const imageCaption = imageCaptionForPoint(point);
+                  const markerLabel = documentStyle
+                    ? (point.label?.trim() || t.adminMarkerTypeKeyDocument)
+                    : iconMarker
+                      ? markerTypeTitle(point.markerType, t)
+                      : (point.label?.trim() || String(index + 1));
                   const isHovered = imageTooltip?.pointId === point.id;
                   return (
                     <button
@@ -458,7 +476,7 @@ export function MapViewerModal({
                         'route-map-marker--fixed',
                         iconMarker ? 'route-map-marker--icon' : '',
                         point.markerType === 'question' ? 'route-map-marker--question' : '',
-                        point.markerType === 'kb' ? 'route-map-marker--kb' : '',
+                        documentStyle ? 'route-map-marker--kb' : '',
                         point.imageUrl ? 'route-map-marker--has-image' : '',
                         isHovered ? 'route-map-marker--hovered' : '',
                       ].filter(Boolean).join(' ')}
@@ -470,10 +488,16 @@ export function MapViewerModal({
                       } as CSSProperties}
                       title={
                         point.imageUrl
-                          ? undefined
+                          ? (imageCaption || undefined)
                           : (iconMarker ? markerLabel : (point.label?.trim() || t.routesFixedSection))
                       }
-                      aria-label={iconMarker ? markerLabel : (point.label?.trim() || t.routesPointLabel(index + 1))}
+                      aria-label={
+                        documentStyle
+                          ? markerLabel
+                          : iconMarker
+                            ? markerLabel
+                            : (point.label?.trim() || t.routesPointLabel(index + 1))
+                      }
                       onMouseEnter={(e) => {
                         if (!point.imageUrl || imageModal) return;
                         const rect = e.currentTarget.getBoundingClientRect();
@@ -482,7 +506,8 @@ export function MapViewerModal({
                           x: rect.left + rect.width / 2,
                           y: rect.top,
                           src: point.imageUrl,
-                          label: markerLabel,
+                          label: imageCaption,
+                          documentStyle,
                         });
                       }}
                       onMouseLeave={() => setImageTooltip(null)}
@@ -492,7 +517,8 @@ export function MapViewerModal({
                           setImageTooltip(null);
                           setImageModal({
                             src: point.imageUrl,
-                            label: markerLabel,
+                            label: imageCaption,
+                            documentStyle,
                           });
                         }
                       }}
@@ -678,11 +704,18 @@ export function MapViewerModal({
           onClick={() => setImageModal(null)}
         >
           <div
-            className="route-point-image-modal"
+            className={[
+              'route-point-image-modal',
+              imageModal.documentStyle ? 'route-point-image-modal--document' : '',
+            ].filter(Boolean).join(' ')}
             onClick={(e) => e.stopPropagation()}
           >
             <header className="route-point-image-modal-header">
-              <h3>{imageModal.label || t.routesPointImageModal}</h3>
+              <h3>
+                {imageModal.documentStyle
+                  ? (imageModal.label || t.adminMarkerTypeKeyDocument)
+                  : (imageModal.label || t.routesPointImageModal)}
+              </h3>
               <button
                 type="button"
                 className="btn btn-ghost route-point-image-modal-close"
@@ -692,6 +725,9 @@ export function MapViewerModal({
               </button>
             </header>
             <div className="route-point-image-modal-body">
+              {imageModal.documentStyle && imageModal.label && (
+                <p className="route-point-image-modal-doc-title">{imageModal.label}</p>
+              )}
               <img src={imageModal.src} alt={imageModal.label || t.routesPointImageModal} />
             </div>
           </div>
@@ -706,13 +742,17 @@ export function MapViewerModal({
           <div
             className={[
               'route-fixed-image-tooltip',
+              imageTooltip.documentStyle ? 'route-fixed-image-tooltip--document' : '',
               imageTooltip.y < 180 ? 'is-below' : '',
             ].filter(Boolean).join(' ')}
             role="tooltip"
             style={{ left: imageTooltip.x, top: imageTooltip.y }}
           >
+            {imageTooltip.documentStyle && imageTooltip.label && (
+              <span className="route-fixed-image-tooltip-label">{imageTooltip.label}</span>
+            )}
             <img src={imageTooltip.src} alt={imageTooltip.label} />
-            {imageTooltip.label && (
+            {!imageTooltip.documentStyle && imageTooltip.label && (
               <span className="route-fixed-image-tooltip-label">{imageTooltip.label}</span>
             )}
           </div>,

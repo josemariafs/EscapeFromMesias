@@ -1,4 +1,4 @@
-export type SiteAuthKind = 'public' | 'private' | 'daily' | 'legacy';
+export type SiteAuthKind = 'public' | 'private' | 'daily' | 'legacy' | 'admin';
 
 const SITE_SESSION_KEY = 'efg-site-session';
 const SITE_KIND_KEY = 'efg-site-kind';
@@ -14,7 +14,13 @@ export function getStoredSiteSession(): string | null {
 export function getStoredSiteKind(): SiteAuthKind | null {
   try {
     const kind = sessionStorage.getItem(SITE_KIND_KEY);
-    if (kind === 'public' || kind === 'private' || kind === 'daily' || kind === 'legacy') {
+    if (
+      kind === 'public'
+      || kind === 'private'
+      || kind === 'daily'
+      || kind === 'legacy'
+      || kind === 'admin'
+    ) {
       return kind;
     }
     return null;
