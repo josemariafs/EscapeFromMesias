@@ -1,4 +1,4 @@
-import { timingSafeEqual } from 'node:crypto';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { gunzipSync, gzipSync } from 'node:zlib';
 import type { VercelRequest } from '@vercel/node';
 import { fetchTasksFromJson } from '../../src/api/tarkovJson';
@@ -18,6 +18,10 @@ export const TASK_SYNC_START_HOUR_MADRID = 5;
 export const TASK_SYNC_MAX_ATTEMPTS = 3;
 /** Separación mínima entre intentos (cron horario + margen). */
 const RETRY_GAP_MS = 50 * 60 * 1000;
+/** Metadatos de sync diario a conservar (el resto se purga). */
+const SYNC_DAY_RETENTION_DAYS = 14;
+/** Historial de cambios de dataset (sin payloads). */
+const SNAPSHOT_CHANGE_RETENTION_DAYS = 90;
 
 export type TaskSyncDayStatus = 'pending' | 'success' | 'failed';
 
@@ -29,6 +33,8 @@ export interface TaskSnapshotMeta {
   taskCount: number;
   fetchedAt: string;
   updatedAt: string;
+  contentHash?: string | null;
+  unchanged?: boolean;
 }
 
 export interface TaskSyncDayRow {
@@ -54,6 +60,7 @@ export interface SyncCombinationResult {
   lang: TaskSyncLang;
   ok: boolean;
   taskCount?: number;
+  unchanged?: boolean;
   error?: string;
 }
 
@@ -62,7 +69,10 @@ export interface SyncRunResult {
   attempt: number;
   status: TaskSyncDayStatus;
   results: SyncCombinationResult[];
+  /** Combinaciones OK cuyo payload cambió. */
   updated: number;
+  /** Combinaciones OK iguales al snapshot previo (solo fecha). */
+  unchanged: number;
   error?: string;
 }
 
@@ -95,6 +105,15 @@ export function decompressTasks(payloadGz: string): Task[] {
     throw new Error('Snapshot de misiones corrupto (no es un array).');
   }
   return parsed as Task[];
+}
+
+export function hashTasks(tasks: Task[]): string {
+  return createHash('sha256').update(JSON.stringify(tasks)).digest('hex');
+}
+
+function madridDayKeyDaysAgo(daysAgo: number, now = new Date()): string {
+  const ms = now.getTime() - daysAgo * 24 * 60 * 60 * 1000;
+  return getMadridCivilDayKey(new Date(ms));
 }
 
 async function readSyncDay(dayKey: string): Promise<TaskSyncDayRow | null> {
@@ -130,6 +149,27 @@ async function writeSyncDay(row: TaskSyncDayRow): Promise<void> {
       row.last_error,
       row.updated_combinations,
     ],
+  });
+}
+
+/** Purge metadatos de sync antiguos; los snapshots de misiones son 1 fila por modo/idioma. */
+async function pruneOldSyncDays(now = new Date()): Promise<void> {
+  const cutoff = madridDayKeyDaysAgo(SYNC_DAY_RETENTION_DAYS, now);
+  const db = getDb();
+  await db.execute({
+    sql: `DELETE FROM task_sync_days WHERE day_key < ?`,
+    args: [cutoff],
+  });
+}
+
+async function pruneSnapshotChanges(now = new Date()): Promise<void> {
+  const cutoffIso = new Date(
+    now.getTime() - SNAPSHOT_CHANGE_RETENTION_DAYS * 24 * 60 * 60 * 1000,
+  ).toISOString();
+  const db = getDb();
+  await db.execute({
+    sql: `DELETE FROM task_snapshot_changes WHERE detected_at < ?`,
+    args: [cutoffIso],
   });
 }
 
@@ -206,6 +246,41 @@ export async function decideSyncRun(options: {
   };
 }
 
+async function readStoredContentHash(
+  gameMode: GameMode,
+  lang: TaskSyncLang,
+): Promise<string | null> {
+  const db = getDb();
+  const result = await db.execute({
+    sql: `SELECT content_hash, payload_gz FROM task_snapshots
+          WHERE game_mode = ? AND lang = ?`,
+    args: [gameMode, lang],
+  });
+  const row = result.rows[0] as { content_hash?: string | null; payload_gz?: string } | undefined;
+  if (!row) return null;
+  if (typeof row.content_hash === 'string' && row.content_hash.length > 0) {
+    return row.content_hash;
+  }
+  // Migración: snapshots previos sin hash → calcular una vez desde el payload.
+  if (row.payload_gz) {
+    try {
+      const hash = hashTasks(decompressTasks(row.payload_gz));
+      await db.execute({
+        sql: `UPDATE task_snapshots SET content_hash = ? WHERE game_mode = ? AND lang = ?`,
+        args: [hash, gameMode, lang],
+      });
+      return hash;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+/**
+ * Guarda el snapshot solo si el contenido cambió.
+ * Si es idéntico al almacenado, solo actualiza fetched_at / updated_at.
+ */
 export async function upsertTaskSnapshot(
   gameMode: GameMode,
   lang: TaskSyncLang,
@@ -217,27 +292,72 @@ export async function upsertTaskSnapshot(
   }
 
   const now = new Date().toISOString();
-  const payloadGz = compressTasks(tasks);
+  const contentHash = hashTasks(tasks);
+  const previousHash = await readStoredContentHash(gameMode, lang);
   const db = getDb();
+
+  if (previousHash && previousHash === contentHash) {
+    // Solo refrescar fecha de comprobación; no tocar updated_at/changed_at ni el payload.
+    await db.execute({
+      sql: `UPDATE task_snapshots
+            SET fetched_at = ?, source = ?, schema_version = ?, content_hash = ?
+            WHERE game_mode = ? AND lang = ?`,
+      args: [now, source, TASKS_CACHE_SCHEMA, contentHash, gameMode, lang],
+    });
+    return {
+      gameMode,
+      lang,
+      schemaVersion: TASKS_CACHE_SCHEMA,
+      source,
+      taskCount: tasks.length,
+      fetchedAt: now,
+      updatedAt: now,
+      contentHash,
+      unchanged: true,
+    };
+  }
+
+  const payloadGz = compressTasks(tasks);
   await db.execute({
     sql: `INSERT INTO task_snapshots (
-            game_mode, lang, schema_version, source, payload_gz, task_count, fetched_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            game_mode, lang, schema_version, source, payload_gz, content_hash, task_count,
+            fetched_at, updated_at, changed_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(game_mode, lang) DO UPDATE SET
             schema_version = excluded.schema_version,
             source = excluded.source,
             payload_gz = excluded.payload_gz,
+            content_hash = excluded.content_hash,
             task_count = excluded.task_count,
             fetched_at = excluded.fetched_at,
-            updated_at = excluded.updated_at`,
+            updated_at = excluded.updated_at,
+            changed_at = excluded.changed_at`,
     args: [
       gameMode,
       lang,
       TASKS_CACHE_SCHEMA,
       source,
       payloadGz,
+      contentHash,
       tasks.length,
       now,
+      now,
+      now,
+    ],
+  });
+
+  await db.execute({
+    sql: `INSERT INTO task_snapshot_changes (
+            id, game_mode, lang, content_hash, previous_hash, task_count, source, detected_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    args: [
+      `tsc_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+      gameMode,
+      lang,
+      contentHash,
+      previousHash,
+      tasks.length,
+      source,
       now,
     ],
   });
@@ -250,6 +370,8 @@ export async function upsertTaskSnapshot(
     taskCount: tasks.length,
     fetchedAt: now,
     updatedAt: now,
+    contentHash,
+    unchanged: false,
   };
 }
 
@@ -259,7 +381,7 @@ export async function readTaskSnapshot(
 ): Promise<{ tasks: Task[]; meta: TaskSnapshotMeta } | null> {
   const db = getDb();
   const result = await db.execute({
-    sql: `SELECT game_mode, lang, schema_version, source, payload_gz, task_count, fetched_at, updated_at
+    sql: `SELECT game_mode, lang, schema_version, source, payload_gz, content_hash, task_count, fetched_at, updated_at
           FROM task_snapshots WHERE game_mode = ? AND lang = ?`,
     args: [gameMode, lang],
   });
@@ -270,6 +392,7 @@ export async function readTaskSnapshot(
         schema_version: number;
         source: string;
         payload_gz: string;
+        content_hash?: string | null;
         task_count: number;
         fetched_at: string;
         updated_at: string;
@@ -292,6 +415,7 @@ export async function readTaskSnapshot(
       taskCount: Number(row.task_count),
       fetchedAt: row.fetched_at,
       updatedAt: row.updated_at,
+      contentHash: row.content_hash ?? null,
     },
   };
 }
@@ -303,8 +427,14 @@ async function syncOne(
   try {
     const tasks = await fetchTasksFromJson(lang, gameMode);
     const source = `json.tarkov.dev/${gameMode === 'seasonal' ? 'pvp-season' : gameMode}`;
-    await upsertTaskSnapshot(gameMode, lang, tasks, source);
-    return { gameMode, lang, ok: true, taskCount: tasks.length };
+    const meta = await upsertTaskSnapshot(gameMode, lang, tasks, source);
+    return {
+      gameMode,
+      lang,
+      ok: true,
+      taskCount: tasks.length,
+      unchanged: Boolean(meta.unchanged),
+    };
   } catch (err) {
     return {
       gameMode,
@@ -317,7 +447,9 @@ async function syncOne(
 
 /**
  * Descarga misiones desde tarkov.dev y las guarda en Turso.
- * No borra snapshots previos si una combinación falla.
+ * - 1 fila por (gameMode, lang): no hay historial de payloads.
+ * - Si el contenido es idéntico, solo se actualiza la fecha.
+ * - Se purgan metadatos de sync con más de 14 días.
  */
 export async function runTaskSync(options: {
   force?: boolean;
@@ -340,7 +472,9 @@ export async function runTaskSync(options: {
     }
   }
 
-  const updated = results.filter((r) => r.ok).length;
+  const okResults = results.filter((r) => r.ok);
+  const updated = okResults.filter((r) => !r.unchanged).length;
+  const unchanged = okResults.filter((r) => r.unchanged).length;
   const failed = results.filter((r) => !r.ok);
   const allOk = failed.length === 0;
   const status: TaskSyncDayStatus = allOk ? 'success' : 'failed';
@@ -358,6 +492,13 @@ export async function runTaskSync(options: {
     updated_combinations: updated,
   });
 
+  try {
+    await pruneOldSyncDays(now);
+    await pruneSnapshotChanges(now);
+  } catch {
+    // La sync ya terminó; no fallar el cron por la purga.
+  }
+
   return {
     skipped: false,
     run: {
@@ -366,6 +507,7 @@ export async function runTaskSync(options: {
       status,
       results,
       updated,
+      unchanged,
       error: error ?? undefined,
     },
   };

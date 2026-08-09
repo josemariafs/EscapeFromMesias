@@ -1,38 +1,27 @@
-import { useCallback, useState, type FormEvent } from 'react';
-import { verifyAdminToken } from '../api/fixedRoutes';
+import { useCallback, useState } from 'react';
 import { useFixedRouteMaps } from '../hooks/useFixedRouteMaps';
 import { useMapExtracts } from '../hooks/useMapExtracts';
+import { useAdminAuth } from '../hooks/useAdminAuth';
 import { useLanguage } from '../i18n/useLanguage';
 import type { GameMode } from '../types';
 import {
-  ADMIN_TOKEN_STORAGE_KEY,
   DEFAULT_FIXED_MARKER_TYPE,
   DEFAULT_ROUTE_POINT_COLOR,
   type FixedMarkerType,
   type RouteEnvironment,
 } from '../types/routes';
 import { fileToCompressedDataUrl } from '../utils/routePointImage';
+import { AdminLoginCard } from './AdminLoginCard';
 import { RouteMapsView } from './RouteMapsView';
-
-function readStoredToken(): string {
-  try {
-    return sessionStorage.getItem(ADMIN_TOKEN_STORAGE_KEY) ?? '';
-  } catch {
-    return '';
-  }
-}
 
 export function AdminRoutesPage() {
   const { lang, t } = useLanguage();
+  const auth = useAdminAuth();
   const [environment, setEnvironment] = useState<RouteEnvironment>('seasonal');
   const fixed = useFixedRouteMaps(environment);
   const extractGameMode: GameMode = environment === 'regular' ? 'regular' : 'seasonal';
   const mapExtracts = useMapExtracts(lang, extractGameMode);
-  const [token, setToken] = useState(readStoredToken);
-  const [authed, setAuthed] = useState(() => Boolean(readStoredToken()));
-  const [loginValue, setLoginValue] = useState('');
-  const [loginError, setLoginError] = useState<string | null>(null);
-  const [loggingIn, setLoggingIn] = useState(false);
+  const token = auth.token;
   const [selectedMapKey, setSelectedMapKey] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string>(DEFAULT_ROUTE_POINT_COLOR);
   const [draftLabel, setDraftLabel] = useState('');
@@ -50,29 +39,8 @@ export function AdminRoutesPage() {
     setActionError(null);
   };
 
-  const handleLogin = async (event: FormEvent) => {
-    event.preventDefault();
-    const next = loginValue.trim();
-    if (!next) return;
-    setLoggingIn(true);
-    setLoginError(null);
-    try {
-      await verifyAdminToken(next);
-      sessionStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, next);
-      setToken(next);
-      setAuthed(true);
-      setLoginValue('');
-    } catch {
-      setLoginError(t.adminLoginError);
-    } finally {
-      setLoggingIn(false);
-    }
-  };
-
   const handleLogout = () => {
-    sessionStorage.removeItem(ADMIN_TOKEN_STORAGE_KEY);
-    setToken('');
-    setAuthed(false);
+    auth.logout();
     setSelectedMapKey(null);
   };
 
@@ -201,28 +169,27 @@ export function AdminRoutesPage() {
     }
   }, [handleUpdateImage, t.adminPointImageError]);
 
-  if (!authed) {
+  if (auth.status === 'checking') {
     return (
       <div className="admin-routes-page admin-routes-page--login">
-        <form className="admin-login-card" onSubmit={handleLogin}>
-          <h1>{t.adminLoginTitle}</h1>
-          <p>{t.adminRoutesHint}</p>
-          <label className="admin-login-label">
-            {t.adminTokenLabel}
-            <input
-              type="password"
-              autoComplete="current-password"
-              value={loginValue}
-              placeholder={t.adminTokenPlaceholder}
-              onChange={(e) => setLoginValue(e.target.value)}
-            />
-          </label>
-          {loginError && <p className="admin-login-error">{loginError}</p>}
-          <button type="submit" className="btn btn-start" disabled={loggingIn || !loginValue.trim()}>
-            {loggingIn ? t.adminWorking : t.adminLogin}
-          </button>
-          <a className="admin-back-link" href="/">{t.routesBackToMaps}</a>
-        </form>
+        <p className="admin-muted">Comprobando acceso…</p>
+      </div>
+    );
+  }
+
+  if (auth.status === 'locked') {
+    return (
+      <div className="admin-routes-page admin-routes-page--login">
+        <AdminLoginCard
+          title={t.adminLoginTitle}
+          subtitle={t.adminRoutesHint}
+          loginValue={auth.loginValue}
+          onLoginValueChange={auth.setLoginValue}
+          onSubmit={auth.login}
+          loggingIn={auth.loggingIn}
+          error={auth.loginError}
+        />
+        <a className="admin-back-link" href="/admin">{t.adminLoginTitle}</a>
       </div>
     );
   }
@@ -256,6 +223,7 @@ export function AdminRoutesPage() {
           </div>
         </div>
         <div className="admin-routes-toolbar-actions">
+          <a className="btn" href="/admin">Panel</a>
           <a className="btn btn-reset" href="/">{t.appTitle}</a>
           <button type="button" className="btn btn-wipe" onClick={handleLogout}>
             {t.adminLogout}

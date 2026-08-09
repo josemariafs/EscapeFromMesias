@@ -56,8 +56,13 @@ export function getDb(): Client {
   return client;
 }
 
-async function ensureColumn(db: Client, column: string, ddl: string): Promise<void> {
-  const info = await db.execute('PRAGMA table_info(fixed_route_points)');
+async function ensureColumn(
+  db: Client,
+  table: string,
+  column: string,
+  ddl: string,
+): Promise<void> {
+  const info = await db.execute(`PRAGMA table_info(${table})`);
   const hasColumn = info.rows.some((row) => {
     const name = (row as { name?: unknown }).name;
     return name === column;
@@ -106,9 +111,11 @@ export async function ensureSchema(): Promise<void> {
             schema_version INTEGER NOT NULL,
             source TEXT NOT NULL,
             payload_gz TEXT NOT NULL,
+            content_hash TEXT,
             task_count INTEGER NOT NULL,
             fetched_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
+            changed_at TEXT,
             PRIMARY KEY (game_mode, lang)
           )`,
           `CREATE TABLE IF NOT EXISTS task_sync_days (
@@ -120,20 +127,62 @@ export async function ensureSchema(): Promise<void> {
             last_error TEXT,
             updated_combinations INTEGER NOT NULL DEFAULT 0
           )`,
+          `CREATE TABLE IF NOT EXISTS task_snapshot_changes (
+            id TEXT PRIMARY KEY,
+            game_mode TEXT NOT NULL,
+            lang TEXT NOT NULL,
+            content_hash TEXT NOT NULL,
+            previous_hash TEXT,
+            task_count INTEGER NOT NULL,
+            source TEXT NOT NULL,
+            detected_at TEXT NOT NULL
+          )`,
+          `CREATE INDEX IF NOT EXISTS idx_task_snapshot_changes_detected
+            ON task_snapshot_changes(detected_at DESC)`,
+          `CREATE TABLE IF NOT EXISTS site_daily_stats (
+            day_key TEXT PRIMARY KEY,
+            visits INTEGER NOT NULL DEFAULT 0,
+            unique_visitors INTEGER NOT NULL DEFAULT 0,
+            updated_at TEXT NOT NULL
+          )`,
+          `CREATE TABLE IF NOT EXISTS site_daily_visitor_hits (
+            day_key TEXT NOT NULL,
+            visitor_id TEXT NOT NULL,
+            PRIMARY KEY (day_key, visitor_id)
+          )`,
         ],
         'write',
       );
-      await ensureColumn(db, 'image_url', 'ALTER TABLE fixed_route_points ADD COLUMN image_url TEXT');
       await ensureColumn(
         db,
+        'fixed_route_points',
+        'image_url',
+        'ALTER TABLE fixed_route_points ADD COLUMN image_url TEXT',
+      );
+      await ensureColumn(
+        db,
+        'fixed_route_points',
         'marker_type',
         'ALTER TABLE fixed_route_points ADD COLUMN marker_type TEXT',
       );
       // Nullable + backfill: más compatible con LibSQL/Turso que NOT NULL DEFAULT en ALTER.
       await ensureColumn(
         db,
+        'fixed_route_points',
         'environment',
         'ALTER TABLE fixed_route_points ADD COLUMN environment TEXT',
+      );
+      await ensureColumn(
+        db,
+        'task_snapshots',
+        'content_hash',
+        'ALTER TABLE task_snapshots ADD COLUMN content_hash TEXT',
+      );
+      await ensureColumn(
+        db,
+        'task_snapshots',
+        'changed_at',
+        'ALTER TABLE task_snapshots ADD COLUMN changed_at TEXT',
       );
       // Puntos previos sin entorno → seasonal (comportamiento histórico de Routes).
       await db.execute({

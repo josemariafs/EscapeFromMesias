@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { ensureSchema, getDb } from '../_lib/db.js';
 import { applyCors, handleOptions, readJsonBody, serverError } from '../_lib/http.js';
+import { pruneDailyStats, recordDailyVisit } from '../_lib/siteStatsDaily.js';
 
 const VISITOR_ID_RE = /^[a-zA-Z0-9_-]{8,80}$/;
 
@@ -71,6 +72,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
       const raw = bumped.rows[0]?.value;
       const impressions = typeof raw === 'number' ? raw : Number(raw);
+
+      try {
+        await recordDailyVisit(visitorId);
+        // Purga ocasional (~2%) para no alargar cada request.
+        if (Math.random() < 0.02) await pruneDailyStats();
+      } catch {
+        // No bloquear el contador global si falla la serie diaria.
+      }
 
       applyCors(res);
       res.status(200).json({
