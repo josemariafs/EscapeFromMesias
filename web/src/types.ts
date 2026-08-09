@@ -161,7 +161,7 @@ export const TASKS_CACHE_KEY = 'eft-quest-tracker-tasks-cache';
 /** Incrementar al cambiar el esquema de datos cacheados (p. ej. zonas con posición), o para
  * invalidar de golpe cachés corruptos guardados por versiones anteriores (p. ej. una respuesta
  * parcial de la API de tarkov.dev con muy pocas misiones). */
-export const TASKS_CACHE_SCHEMA = 8;
+export const TASKS_CACHE_SCHEMA = 9;
 
 /** Clave de progreso local por modo (regular reutiliza la clave histórica sin sufijo). */
 export function progressStorageKey(mode: GameMode): string {

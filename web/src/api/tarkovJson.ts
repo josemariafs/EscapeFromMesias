@@ -434,6 +434,7 @@ function mapTask(
 
 /**
  * Carga misiones desde json.tarkov.dev (API REST alternativa a GraphQL).
+ * Seasonal (Kord Breach) → `pvp-season`; Regular → `regular`; PvE → `pve`.
  * @see https://json.tarkov.dev/endpoints
  */
 export async function fetchTasksFromJson(

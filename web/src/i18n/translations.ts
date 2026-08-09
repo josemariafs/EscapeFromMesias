@@ -252,7 +252,7 @@ export const translations: Record<Lang, Translations> = {
       + 'ni de tus misiones: con una lista tan incompleta, ninguna misión detectada en los logs (ni en modo Local) '
       + 'puede emparejarse correctamente, así que no se muestra nada. Reintenta en un momento.',
     staleCacheNotice:
-      'Ni GraphQL ni json.tarkov.dev respondieron: mostrando misiones offline empaquetadas.',
+      'No se pudo leer el snapshot del servidor: mostrando misiones offline del modo actual.',
     staleCacheNoticeDetail: (detail) => `Detalle: ${detail}`,
     searchPlaceholder: 'Buscar misión o comerciante…',
     allTraders: 'Todos los comerciantes',
@@ -271,9 +271,10 @@ export const translations: Record<Lang, Translations> = {
       seasonal: 'Seasonal',
     },
     gameModeHint: {
-      regular: 'Personaje permanente de la zona PvP',
+      regular: 'Personaje permanente de la zona PvP (dataset json.tarkov.dev/regular)',
       pve: 'Personaje permanente de la zona PvE',
-      seasonal: 'Personaje de temporada (progreso independiente; se resetea con cada temporada)',
+      seasonal:
+        'Kord Breach / PVP Seasonal (dataset json.tarkov.dev/pvp-season; progreso independiente)',
     },
     settings: 'Ajustes',
     traderLevels: 'Loyalty Level de comerciantes',
@@ -535,7 +536,7 @@ export const translations: Record<Lang, Translations> = {
       + 'reader or your quests: with such an incomplete list, no quest detected in the logs (or in Local mode) '
       + 'can be matched correctly, so nothing shows up. Please retry in a moment.',
     staleCacheNotice:
-      'Neither GraphQL nor json.tarkov.dev responded: showing bundled offline quests.',
+      'Could not read the server snapshot: showing offline quests for the current mode.',
     staleCacheNoticeDetail: (detail) => `Detail: ${detail}`,
     searchPlaceholder: 'Search quest or trader…',
     allTraders: 'All traders',
@@ -554,9 +555,10 @@ export const translations: Record<Lang, Translations> = {
       seasonal: 'Seasonal',
     },
     gameModeHint: {
-      regular: 'Permanent PvP Zone character',
-      pve: 'Permanent PvE Zone character',
-      seasonal: 'Seasonal character (independent progress; resets each season)',
+      regular: 'Permanent PvP zone character (json.tarkov.dev/regular dataset)',
+      pve: 'Permanent PvE zone character',
+      seasonal:
+        'Kord Breach / PVP Seasonal (json.tarkov.dev/pvp-season dataset; independent progress)',
     },
     settings: 'Settings',
     traderLevels: 'Trader loyalty levels',

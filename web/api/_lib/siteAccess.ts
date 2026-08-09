@@ -19,7 +19,7 @@ function pad2(n: number): string {
   return String(n).padStart(2, '0');
 }
 
-function getMadridParts(now: Date): { year: number; month: number; day: number; hour: number } {
+export function getMadridParts(now: Date): { year: number; month: number; day: number; hour: number } {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: MADRID_TZ,
     year: 'numeric',
@@ -40,6 +40,16 @@ function getMadridParts(now: Date): { year: number; month: number; day: number; 
     day: Number(map.day),
     hour: Number(map.hour),
   };
+}
+
+/** Día civil YYYY-MM-DD en Europe/Madrid. */
+export function getMadridCivilDayKey(now = new Date()): string {
+  const z = getMadridParts(now);
+  return `${z.year}-${pad2(z.month)}-${pad2(z.day)}`;
+}
+
+export function getMadridHour(now = new Date()): number {
+  return getMadridParts(now).hour;
 }
 
 /**

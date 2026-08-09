@@ -125,7 +125,9 @@ export async function writeTaskCache(
 export function isCacheValid(cached: CachedTasks, lang: Lang, gameMode: GameMode): boolean {
   if (cached.schema !== TASKS_CACHE_SCHEMA) return false;
   if (cached.lang !== lang || cached.tasks.length < MIN_VALID_TASK_COUNT) return false;
-  if (cached.gameMode != null && cached.gameMode !== gameMode) return false;
+  // Sin gameMode se asume Regular legacy; Seasonal nunca debe reutilizarla.
+  const cachedMode = cached.gameMode ?? 'regular';
+  if (cachedMode !== gameMode) return false;
   if (!cacheHasZonePositions(cached.tasks)) return false;
   return Date.now() - new Date(cached.fetchedAt).getTime() < CACHE_TTL_MS;
 }

@@ -100,6 +100,26 @@ export async function ensureSchema(): Promise<void> {
           )`,
           `CREATE INDEX IF NOT EXISTS idx_site_visitors_last_seen
             ON site_visitors(last_seen_at)`,
+          `CREATE TABLE IF NOT EXISTS task_snapshots (
+            game_mode TEXT NOT NULL,
+            lang TEXT NOT NULL,
+            schema_version INTEGER NOT NULL,
+            source TEXT NOT NULL,
+            payload_gz TEXT NOT NULL,
+            task_count INTEGER NOT NULL,
+            fetched_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (game_mode, lang)
+          )`,
+          `CREATE TABLE IF NOT EXISTS task_sync_days (
+            day_key TEXT PRIMARY KEY,
+            attempts INTEGER NOT NULL DEFAULT 0,
+            status TEXT NOT NULL,
+            last_attempt_at TEXT,
+            last_success_at TEXT,
+            last_error TEXT,
+            updated_combinations INTEGER NOT NULL DEFAULT 0
+          )`,
         ],
         'write',
       );
