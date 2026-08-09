@@ -53,16 +53,30 @@ export function TaskDetail({
   return (
     <aside className="task-detail">
       <header className="detail-header">
-        <span className={`state-badge state-${state}`}>{t.state[state]}</span>
-        <h2>{task.name}</h2>
-        <p className="detail-trader">
-          {task.trader.name}
-          {loyaltyLevel > 0 ? ` · ${t.loyaltyShort(loyaltyLevel)}` : ''}
-        </p>
-        {isLogsMode && (
-          <p className={`log-detection-hint${logRawState ? '' : ' log-detection-hint--warn'}`}>
-            {logRawState ? t.logStateDetected(t.state[logRawState]) : t.logStateNotDetectedEditable}
+        <div className="detail-header-main">
+          <span className={`state-badge state-${state}`}>{t.state[state]}</span>
+          <h2>{task.name}</h2>
+          <p className="detail-trader">
+            {task.trader.name}
+            {loyaltyLevel > 0 ? ` · ${t.loyaltyShort(loyaltyLevel)}` : ''}
           </p>
+          {isLogsMode && (
+            <p className={`log-detection-hint${logRawState ? '' : ' log-detection-hint--warn'}`}>
+              {logRawState ? t.logStateDetected(t.state[logRawState]) : t.logStateNotDetectedEditable}
+            </p>
+          )}
+        </div>
+        {task.wikiLink && (
+          <a
+            className="wiki-btn"
+            href={task.wikiLink}
+            target="_blank"
+            rel="noreferrer"
+            title={t.viewWiki}
+          >
+            <span className="wiki-btn-label">{t.viewWikiOn}</span>
+            <span className="wiki-btn-brand">WIKI</span>
+          </a>
         )}
       </header>
 
@@ -76,12 +90,6 @@ export function TaskDetail({
         )}
         {task.kappaRequired && <div className="kappa-line">{t.kappaRequired}</div>}
       </div>
-
-      {task.wikiLink && (
-        <a className="wiki-link" href={task.wikiLink} target="_blank" rel="noreferrer">
-          {t.viewWiki}
-        </a>
-      )}
 
       {task.taskRequirements.length > 0 && (
         <section>

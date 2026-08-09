@@ -183,6 +183,7 @@ export interface Translations {
   faction: string;
   kappaRequired: string;
   viewWiki: string;
+  viewWikiOn: string;
   prevQuests: string;
   traderReqs: string;
   requiredKeys: string;
@@ -451,7 +452,8 @@ export const translations: Record<Lang, Translations> = {
     minLevel: 'Nivel mín.',
     faction: 'Facción',
     kappaRequired: 'Requerida para Kappa',
-    viewWiki: 'Ver en Wiki →',
+    viewWiki: 'Ver en Wiki',
+    viewWikiOn: 'Ver en',
     prevQuests: 'Misiones previas',
     traderReqs: 'Requisitos de comerciante',
     requiredKeys: 'Llaves necesarias',
@@ -755,7 +757,8 @@ export const translations: Record<Lang, Translations> = {
     minLevel: 'Min. level',
     faction: 'Faction',
     kappaRequired: 'Required for Kappa',
-    viewWiki: 'View on Wiki →',
+    viewWiki: 'View on Wiki',
+    viewWikiOn: 'View on',
     prevQuests: 'Previous quests',
     traderReqs: 'Trader requirements',
     requiredKeys: 'Required keys',
