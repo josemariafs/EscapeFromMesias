@@ -33,6 +33,12 @@ import { recalculateStates, sortTasksForDisplay } from './utils/unlock';
 import { isSideTask, isStoryApiTask } from './utils/taskCategory';
 import { MIN_VALID_TASK_COUNT } from './types';
 import type { RouteEnvironment } from './types/routes';
+import {
+  flushUsageEvents,
+  setUsageContext,
+  trackSessionStartOnce,
+  trackUsage,
+} from './utils/usageAnalytics';
 import './App.css';
 
 type AppUsage = 'home' | 'quests' | 'routes';
@@ -44,7 +50,7 @@ export default function App() {
   const { isTable: isTableView } = useViewMode();
   const { gameMode, setGameMode } = useGameMode();
   const { dataSource, setDataSource, isLogsMode } = useDataSource();
-  const { canRevealDailyCode, useGorditosLogo } = useSiteAuthContext();
+  const { kind: accessKind, canRevealDailyCode, useGorditosLogo } = useSiteAuthContext();
   const brandLogoSrc = useGorditosLogo ? '/gorditos-logo.png' : '/logo.png';
   const { active: crtActive, playId: crtPlayId, transitionTo } = useCrtViewTransition();
   const [appUsage, setAppUsage] = useState<AppUsage>('home');
@@ -133,25 +139,40 @@ export default function App() {
 
   const guardedStartTask = useCallback(
     (id: string) => {
-      if (!isLogsMode) { startTask(id); return; }
+      if (!isLogsMode) {
+        startTask(id);
+        trackUsage('task_started', { taskId: id });
+        return;
+      }
       if (logLockedIds?.has(id)) return;
       logsOverrides.startOverride(id);
+      trackUsage('task_started', { taskId: id, source: 'logs_override' });
     },
     [isLogsMode, logLockedIds, startTask, logsOverrides],
   );
   const guardedCompleteTask = useCallback(
     (id: string) => {
-      if (!isLogsMode) { completeTask(id); return; }
+      if (!isLogsMode) {
+        completeTask(id);
+        trackUsage('task_completed', { taskId: id });
+        return;
+      }
       if (logLockedIds?.has(id)) return;
       logsOverrides.completeOverride(id);
+      trackUsage('task_completed', { taskId: id, source: 'logs_override' });
     },
     [isLogsMode, logLockedIds, completeTask, logsOverrides],
   );
   const guardedResetTask = useCallback(
     (id: string) => {
-      if (!isLogsMode) { resetTask(id); return; }
+      if (!isLogsMode) {
+        resetTask(id);
+        trackUsage('task_reset', { taskId: id });
+        return;
+      }
       if (logLockedIds?.has(id)) return;
       logsOverrides.resetOverride(id);
+      trackUsage('task_reset', { taskId: id, source: 'logs_override' });
     },
     [isLogsMode, logLockedIds, resetTask, logsOverrides],
   );
@@ -164,6 +185,40 @@ export default function App() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showTraderLevels, setShowTraderLevels] = useState(false);
   const [selectedRouteMapKey, setSelectedRouteMapKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    setUsageContext({
+      gameMode,
+      appUsage,
+      dataSource,
+      lang,
+      ...(accessKind ? { accessKind } : {}),
+    });
+  }, [gameMode, appUsage, dataSource, lang, accessKind]);
+
+  useEffect(() => {
+    if (!accessKind) return;
+    setUsageContext({ accessKind });
+    trackSessionStartOnce();
+  }, [accessKind]);
+
+  useEffect(() => {
+    if (!search.trim()) return;
+    const timer = window.setTimeout(() => {
+      trackUsage('search_used', { tab: viewTab, category: allQuestTab });
+    }, 900);
+    return () => window.clearTimeout(timer);
+  }, [search, viewTab, allQuestTab]);
+
+  const trackSelectEntity = useCallback((id: string | null) => {
+    setSelectedId(id);
+    if (!id) return;
+    if (storyNodes.some((n) => n.id === id)) {
+      trackUsage('story_node_selected', { nodeId: id });
+    } else {
+      trackUsage('task_selected', { taskId: id });
+    }
+  }, [storyNodes]);
 
   const locale = lang === 'en' ? 'en-US' : 'es-ES';
   const isHome = appUsage === 'home';
@@ -248,16 +303,20 @@ export default function App() {
     setSelectedId(null);
     setSearch('');
     setTraderFilter('all');
+    trackUsage('quest_category', { category: tab });
   };
 
   const handleWipeAll = () => {
-    if (window.confirm(t.confirmWipeAll)) {
+    if (!window.confirm(t.confirmWipeAll)) return;
+    trackUsage('local_data_wiped');
+    void flushUsageEvents(true).finally(() => {
       localStorage.clear();
       window.location.reload();
-    }
+    });
   };
 
   const goHome = () => {
+    trackUsage('go_home');
     transitionTo(() => {
       setAppUsage('home');
       setSelectedRouteMapKey(null);
@@ -267,6 +326,7 @@ export default function App() {
   };
 
   const handleHomeChoice = (choice: HomeUsageChoice) => {
+    trackUsage('home_choice', { choice });
     transitionTo(() => {
       if (choice === 'routes') {
         // Routes comparte datos de mapa con Seasonal.
@@ -278,6 +338,11 @@ export default function App() {
       setViewTab(isLogsMode ? 'active' : 'all');
       setAppUsage('quests');
     });
+  };
+
+  const handleSelectRouteMap = (mapKey: string | null) => {
+    setSelectedRouteMapKey(mapKey);
+    if (mapKey) trackUsage('route_map_opened', { mapKey });
   };
 
   // En modo Logs: Activas y Completadas (progreso desde logs).
@@ -369,7 +434,10 @@ export default function App() {
                       role="tab"
                       aria-selected={viewTab === 'all'}
                       className={`segmented-item${viewTab === 'all' ? ' active' : ''}`}
-                      onClick={() => setViewTab('all')}
+                      onClick={() => {
+                        setViewTab('all');
+                        trackUsage('quest_tab', { tab: 'all' });
+                      }}
                     >
                       {t.tabAll}
                     </button>
@@ -379,7 +447,10 @@ export default function App() {
                     role="tab"
                     aria-selected={viewTab === 'active'}
                     className={`segmented-item${viewTab === 'active' ? ' active' : ''}`}
-                    onClick={() => setViewTab('active')}
+                    onClick={() => {
+                      setViewTab('active');
+                      trackUsage('quest_tab', { tab: 'active' });
+                    }}
                   >
                     {t.tabActive}
                     {startedCount > 0 && <span className="seg-count">{startedCount}</span>}
@@ -392,6 +463,7 @@ export default function App() {
                     onClick={() => {
                       setViewTab('completed');
                       setSelectedId(null);
+                      trackUsage('quest_tab', { tab: 'completed' });
                     }}
                   >
                     {t.tabCompleted}
@@ -461,7 +533,10 @@ export default function App() {
                   )}
                   <DataSourceControl
                     dataSource={dataSource}
-                    onChangeDataSource={setDataSource}
+                    onChangeDataSource={(next) => {
+                      setDataSource(next);
+                      trackUsage('data_source_changed', { source: next });
+                    }}
                     status={logSync.status}
                     folderName={logSync.folderName}
                     lastSyncedAt={logSync.lastSyncedAt}
@@ -482,9 +557,15 @@ export default function App() {
                     canLivePoll={logSync.canLivePoll}
                     locale={locale}
                     t={t}
-                    onConnect={logSync.connect}
+                    onConnect={() => {
+                      trackUsage('logs_connect');
+                      void logSync.connect();
+                    }}
                     onReconnect={logSync.reconnect}
-                    onDisconnect={logSync.disconnect}
+                    onDisconnect={() => {
+                      trackUsage('logs_disconnect');
+                      logSync.disconnect();
+                    }}
                   />
                 </>
               )}
@@ -492,7 +573,10 @@ export default function App() {
                 <button
                   type="button"
                   className={`lang-flag${lang === 'es' ? ' active' : ''}`}
-                  onClick={() => setLang('es')}
+                  onClick={() => {
+                    setLang('es');
+                    trackUsage('language_changed', { lang: 'es' });
+                  }}
                   aria-pressed={lang === 'es'}
                   title="Español"
                 >
@@ -501,7 +585,10 @@ export default function App() {
                 <button
                   type="button"
                   className={`lang-flag${lang === 'en' ? ' active' : ''}`}
-                  onClick={() => setLang('en')}
+                  onClick={() => {
+                    setLang('en');
+                    trackUsage('language_changed', { lang: 'en' });
+                  }}
                   aria-pressed={lang === 'en'}
                   title="English"
                 >
@@ -542,7 +629,7 @@ export default function App() {
             routes={routes}
             fixedRoutes={fixedRoutes.routes}
             selectedMapKey={selectedRouteMapKey}
-            onSelectMap={setSelectedRouteMapKey}
+            onSelectMap={handleSelectRouteMap}
             points={routePoints}
             fixedPoints={fixedRoutePoints}
             mapExtracts={
@@ -555,10 +642,14 @@ export default function App() {
             onChangeColor={setSelectedColor}
             onChangeColorLabel={setColorLabel}
             onAddPoint={(left, top) => {
-              if (selectedRouteMapKey) addPoint(selectedRouteMapKey, left, top);
+              if (!selectedRouteMapKey) return;
+              addPoint(selectedRouteMapKey, left, top);
+              trackUsage('route_point_added', { mapKey: selectedRouteMapKey });
             }}
             onRemovePoint={(pointId) => {
-              if (selectedRouteMapKey) removePoint(selectedRouteMapKey, pointId);
+              if (!selectedRouteMapKey) return;
+              removePoint(selectedRouteMapKey, pointId);
+              trackUsage('route_point_removed', { mapKey: selectedRouteMapKey });
             }}
             onMovePoint={(pointId, left, top) => {
               if (selectedRouteMapKey) movePoint(selectedRouteMapKey, pointId, left, top);
@@ -567,7 +658,9 @@ export default function App() {
               if (selectedRouteMapKey) undoLast(selectedRouteMapKey);
             }}
             onClearMap={() => {
-              if (selectedRouteMapKey) clearMap(selectedRouteMapKey);
+              if (!selectedRouteMapKey) return;
+              clearMap(selectedRouteMapKey);
+              trackUsage('route_map_cleared', { mapKey: selectedRouteMapKey });
             }}
             fixedLoading={fixedRoutes.loading}
             fixedError={fixedRoutes.error}
@@ -593,7 +686,12 @@ export default function App() {
                   value={chapterFilter === 'all' ? 'all' : String(chapterFilter)}
                   onChange={(e) => {
                     const v = e.target.value;
-                    setChapterFilter(v === 'all' ? 'all' : Number(v));
+                    const next = v === 'all' ? 'all' : Number(v);
+                    setChapterFilter(next);
+                    trackUsage('filter_changed', {
+                      filter: 'chapter',
+                      value: String(next),
+                    });
                   }}
                 >
                   <option value="all">{t.allChapters}</option>
@@ -605,7 +703,13 @@ export default function App() {
                 <select
                   className="view-filter-select"
                   value={traderFilter}
-                  onChange={(e) => setTraderFilter(e.target.value)}
+                  onChange={(e) => {
+                    setTraderFilter(e.target.value);
+                    trackUsage('filter_changed', {
+                      filter: 'trader',
+                      value: e.target.value,
+                    });
+                  }}
                 >
                   <option value="all">{t.allTraders}</option>
                   {sideTraders.map((tr) => (
@@ -629,7 +733,7 @@ export default function App() {
               t={t}
               isTable={isActiveTableView}
               listMode={viewTab === 'completed' ? 'completed' : 'started'}
-              onSelect={setSelectedId}
+              onSelect={trackSelectEntity}
               onStart={guardedStartTask}
               onComplete={guardedCompleteTask}
               onReset={guardedResetTask}
@@ -650,7 +754,7 @@ export default function App() {
               locale={locale}
               t={t}
               getRequirementNames={getRequirementNames}
-              onSelect={setSelectedId}
+              onSelect={trackSelectEntity}
               onStartNode={startNode}
               onCompleteNode={completeNode}
               onResetNode={resetNode}
@@ -665,7 +769,7 @@ export default function App() {
               taskStates={effectiveTaskStates}
               selectedId={selectedId}
               t={t}
-              onSelect={setSelectedId}
+              onSelect={trackSelectEntity}
               onStart={guardedStartTask}
               onComplete={guardedCompleteTask}
               onReset={guardedResetTask}
@@ -684,7 +788,7 @@ export default function App() {
                   state={state}
                   selected={selectedId === task.id}
                   t={t}
-                  onSelect={() => setSelectedId(task.id)}
+                  onSelect={() => trackSelectEntity(task.id)}
                   onStart={() => guardedStartTask(task.id)}
                   onComplete={() => guardedCompleteTask(task.id)}
                   onReset={() => guardedResetTask(task.id)}

@@ -21,6 +21,7 @@ export function AdminLoginCard({
 }: AdminLoginCardProps) {
   return (
     <form className="admin-login-card" onSubmit={onSubmit}>
+      <p className="admin-eyebrow">Escape From Gorditos</p>
       <h1>{title}</h1>
       {subtitle ? <p className="admin-login-hint">{subtitle}</p> : null}
       <label className="admin-login-label" htmlFor="admin-token">

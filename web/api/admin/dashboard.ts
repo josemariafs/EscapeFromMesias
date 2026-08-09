@@ -2,42 +2,28 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getAdminToken, isAuthorized, unauthorizedBody } from '../_lib/auth.js';
 import { ensureSchema, getDb } from '../_lib/db.js';
 import { applyCors, handleOptions, serverError } from '../_lib/http.js';
+import { getMadridCivilDayKey } from '../_lib/siteAccess.js';
 import { readDailyStats } from '../_lib/siteStatsDaily.js';
 
 const ONLINE_WINDOW_MS = 60_000;
 
-async function countOnline(): Promise<number> {
-  const db = getDb();
-  const since = new Date(Date.now() - ONLINE_WINDOW_MS).toISOString();
-  const result = await db.execute({
-    sql: `SELECT COUNT(*) AS n FROM site_visitors WHERE last_seen_at >= ?`,
-    args: [since],
-  });
-  const raw = result.rows[0]?.n ?? (result.rows[0] as { 'COUNT(*)'?: unknown })?.['COUNT(*)'];
+function num(raw: unknown): number {
   const value = typeof raw === 'number' ? raw : Number(raw);
   return Number.isFinite(value) ? value : 0;
 }
 
-async function readImpressions(): Promise<number> {
+async function countSql(sql: string, args: unknown[] = []): Promise<number> {
   const db = getDb();
-  const result = await db.execute({
-    sql: `SELECT value FROM site_stats WHERE key = 'impressions'`,
-    args: [],
-  });
-  const raw = result.rows[0]?.value;
-  const value = typeof raw === 'number' ? raw : Number(raw);
-  return Number.isFinite(value) ? value : 0;
+  const result = await db.execute({ sql, args });
+  const row = result.rows[0] as Record<string, unknown> | undefined;
+  if (!row) return 0;
+  if ('n' in row) return num(row.n);
+  const first = Object.values(row)[0];
+  return num(first);
 }
 
-async function countBrowsers(): Promise<number> {
-  const db = getDb();
-  const result = await db.execute({
-    sql: `SELECT COUNT(*) AS n FROM site_visitors WHERE visit_count > 0`,
-    args: [],
-  });
-  const raw = result.rows[0]?.n ?? (result.rows[0] as { 'COUNT(*)'?: unknown })?.['COUNT(*)'];
-  const value = typeof raw === 'number' ? raw : Number(raw);
-  return Number.isFinite(value) ? value : 0;
+function dayKeyDaysAgo(daysAgo: number, now = new Date()): string {
+  return getMadridCivilDayKey(new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000));
 }
 
 /** Panel admin: snapshots, historial de cambios, sync y visitas diarias. */
@@ -65,36 +51,75 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     await ensureSchema();
     const db = getDb();
+    const today = getMadridCivilDayKey();
+    const yesterday = dayKeyDaysAgo(1);
+    const weekAgo = dayKeyDaysAgo(6);
+    const onlineSince = new Date(Date.now() - ONLINE_WINDOW_MS).toISOString();
 
-    const [impressions, uniqueBrowsers, online, dailyVisits, snapshotsResult, syncDaysResult, changesResult] =
-      await Promise.all([
-        readImpressions(),
-        countBrowsers(),
-        countOnline(),
-        readDailyStats(30),
-        db.execute({
-          sql: `SELECT game_mode, lang, schema_version, source, content_hash, task_count,
-                       fetched_at, updated_at, changed_at
-                FROM task_snapshots
-                ORDER BY game_mode ASC, lang ASC`,
-          args: [],
-        }),
-        db.execute({
-          sql: `SELECT day_key, attempts, status, last_attempt_at, last_success_at,
-                       last_error, updated_combinations
-                FROM task_sync_days
-                ORDER BY day_key DESC
-                LIMIT 14`,
-          args: [],
-        }),
-        db.execute({
-          sql: `SELECT id, game_mode, lang, content_hash, previous_hash, task_count, source, detected_at
-                FROM task_snapshot_changes
-                ORDER BY detected_at DESC
-                LIMIT 40`,
-          args: [],
-        }),
-      ]);
+    const [
+      impressions,
+      uniqueBrowsers,
+      online,
+      fixedPoints,
+      changes7d,
+      dailyVisits,
+      todayStats,
+      yesterdayStats,
+      snapshotsResult,
+      syncDaysResult,
+      changesResult,
+    ] = await Promise.all([
+      countSql(`SELECT value AS n FROM site_stats WHERE key = 'impressions'`),
+      countSql(`SELECT COUNT(*) AS n FROM site_visitors WHERE visit_count > 0`),
+      countSql(`SELECT COUNT(*) AS n FROM site_visitors WHERE last_seen_at >= ?`, [onlineSince]),
+      countSql(`SELECT COUNT(*) AS n FROM fixed_route_points`),
+      countSql(`SELECT COUNT(*) AS n FROM task_snapshot_changes WHERE detected_at >= ?`, [
+        new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+      ]),
+      readDailyStats(30),
+      db.execute({
+        sql: `SELECT visits, unique_visitors FROM site_daily_stats WHERE day_key = ?`,
+        args: [today],
+      }),
+      db.execute({
+        sql: `SELECT visits, unique_visitors FROM site_daily_stats WHERE day_key = ?`,
+        args: [yesterday],
+      }),
+      db.execute({
+        sql: `SELECT game_mode, lang, schema_version, source, content_hash, task_count,
+                     fetched_at, updated_at, changed_at
+              FROM task_snapshots
+              ORDER BY game_mode ASC, lang ASC`,
+        args: [],
+      }),
+      db.execute({
+        sql: `SELECT day_key, attempts, status, last_attempt_at, last_success_at,
+                     last_error, updated_combinations
+              FROM task_sync_days
+              ORDER BY day_key DESC
+              LIMIT 14`,
+        args: [],
+      }),
+      db.execute({
+        sql: `SELECT id, game_mode, lang, content_hash, previous_hash, task_count, source, detected_at
+              FROM task_snapshot_changes
+              ORDER BY detected_at DESC
+              LIMIT 50`,
+        args: [],
+      }),
+    ]);
+
+    const todayRow = todayStats.rows[0] as { visits?: unknown; unique_visitors?: unknown } | undefined;
+    const ydayRow = yesterdayStats.rows[0] as { visits?: unknown; unique_visitors?: unknown } | undefined;
+    const visitsToday = num(todayRow?.visits);
+    const uniquesToday = num(todayRow?.unique_visitors);
+    const visitsYesterday = num(ydayRow?.visits);
+    const uniquesYesterday = num(ydayRow?.unique_visitors);
+
+    const weekSlice = dailyVisits.filter((d) => d.dayKey >= weekAgo);
+    const visits7d = weekSlice.reduce((sum, d) => sum + d.visits, 0);
+    const uniques7d = weekSlice.reduce((sum, d) => sum + d.uniqueVisitors, 0);
+    const avgVisits7d = weekSlice.length > 0 ? visits7d / weekSlice.length : 0;
 
     const snapshots = snapshotsResult.rows.map((row) => {
       const r = row as Record<string, unknown>;
@@ -138,13 +163,47 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       };
     });
 
+    const lastSync = syncDays[0] ?? null;
+    const oldestFetchMs = snapshots.reduce<number | null>((acc, s) => {
+      const t = Date.parse(s.fetchedAt);
+      if (!Number.isFinite(t)) return acc;
+      return acc == null ? t : Math.min(acc, t);
+    }, null);
+    const freshestChangeMs = snapshots.reduce<number | null>((acc, s) => {
+      const t = Date.parse(s.changedAt ?? '');
+      if (!Number.isFinite(t)) return acc;
+      return acc == null ? t : Math.max(acc, t);
+    }, null);
+
+    const totalTasks = snapshots
+      .filter((s) => s.lang === 'es')
+      .reduce((sum, s) => sum + s.taskCount, 0);
+
     applyCors(res);
     res.status(200).json({
       summary: {
         impressions,
         uniqueBrowsers,
         online,
+        fixedPoints,
         timezone: 'Europe/Madrid',
+        visitsToday,
+        uniquesToday,
+        visitsYesterday,
+        uniquesYesterday,
+        visits7d,
+        uniques7d,
+        avgVisits7d: Math.round(avgVisits7d * 10) / 10,
+        visitsDeltaPct:
+          visitsYesterday > 0
+            ? Math.round(((visitsToday - visitsYesterday) / visitsYesterday) * 1000) / 10
+            : null,
+        changes7d,
+        totalTasksEs: totalTasks,
+        snapshotCount: snapshots.length,
+        oldestFetchedAt: oldestFetchMs ? new Date(oldestFetchMs).toISOString() : null,
+        lastDatasetChangeAt: freshestChangeMs ? new Date(freshestChangeMs).toISOString() : null,
+        lastSync,
       },
       snapshots,
       syncDays,

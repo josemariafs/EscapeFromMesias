@@ -150,6 +150,37 @@ export async function ensureSchema(): Promise<void> {
             visitor_id TEXT NOT NULL,
             PRIMARY KEY (day_key, visitor_id)
           )`,
+          `CREATE TABLE IF NOT EXISTS usage_events (
+            id TEXT PRIMARY KEY,
+            visitor_id TEXT NOT NULL,
+            session_id TEXT NOT NULL,
+            event_name TEXT NOT NULL,
+            access_kind TEXT,
+            props_json TEXT,
+            day_key TEXT NOT NULL,
+            occurred_at TEXT NOT NULL
+          )`,
+          `CREATE INDEX IF NOT EXISTS idx_usage_events_day
+            ON usage_events(day_key DESC)`,
+          `CREATE INDEX IF NOT EXISTS idx_usage_events_name_day
+            ON usage_events(event_name, day_key DESC)`,
+          `CREATE INDEX IF NOT EXISTS idx_usage_events_occurred
+            ON usage_events(occurred_at DESC)`,
+          // Índice de access_kind: solo tras ensureColumn (tablas ya creadas sin la columna).
+          `CREATE TABLE IF NOT EXISTS usage_daily_counts (
+            day_key TEXT NOT NULL,
+            event_name TEXT NOT NULL,
+            count INTEGER NOT NULL DEFAULT 0,
+            unique_visitors INTEGER NOT NULL DEFAULT 0,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (day_key, event_name)
+          )`,
+          `CREATE TABLE IF NOT EXISTS usage_daily_event_visitors (
+            day_key TEXT NOT NULL,
+            event_name TEXT NOT NULL,
+            visitor_id TEXT NOT NULL,
+            PRIMARY KEY (day_key, event_name, visitor_id)
+          )`,
         ],
         'write',
       );
@@ -184,6 +215,45 @@ export async function ensureSchema(): Promise<void> {
         'changed_at',
         'ALTER TABLE task_snapshots ADD COLUMN changed_at TEXT',
       );
+      await ensureColumn(
+        db,
+        'usage_events',
+        'access_kind',
+        'ALTER TABLE usage_events ADD COLUMN access_kind TEXT',
+      );
+      await db.execute(
+        `CREATE INDEX IF NOT EXISTS idx_usage_events_access_day
+          ON usage_events(access_kind, day_key DESC)`,
+      );
+      // Backfill desde props si el cliente ya envió accessKind antes de la columna.
+      try {
+        await db.execute(`
+          UPDATE usage_events
+          SET access_kind = json_extract(props_json, '$.accessKind')
+          WHERE access_kind IS NULL
+            AND props_json IS NOT NULL
+            AND json_extract(props_json, '$.accessKind') IS NOT NULL
+        `);
+      } catch {
+        // json_extract puede no estar disponible en algunos runtimes; no bloquear schema.
+      }
+      // Purga única de eventos de uso sin clave de acceso (datos previos al tracking).
+      {
+        const purgeFlag = await db.execute({
+          sql: `SELECT value FROM site_stats WHERE key = ?`,
+          args: ['usage_purge_unclassified_v1'],
+        });
+        const alreadyPurged = purgeFlag.rows.some((row) => Number((row as { value?: unknown }).value) === 1);
+        if (!alreadyPurged) {
+          const { purgeUnclassifiedUsageEvents } = await import('./usageLogs.js');
+          await purgeUnclassifiedUsageEvents();
+          await db.execute({
+            sql: `INSERT INTO site_stats (key, value) VALUES (?, 1)
+                  ON CONFLICT(key) DO UPDATE SET value = 1`,
+            args: ['usage_purge_unclassified_v1'],
+          });
+        }
+      }
       // Puntos previos sin entorno → seasonal (comportamiento histórico de Routes).
       await db.execute({
         sql: `UPDATE fixed_route_points
