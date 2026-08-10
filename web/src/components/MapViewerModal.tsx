@@ -11,15 +11,23 @@ import type { CustomMapMarkerPin, CustomMapMarkers, Task } from '../types';
 import type { Translations } from '../i18n/translations';
 import {
   allowsFixedPointLabel,
+  DEFAULT_ROUTE_POINT_COLOR,
   isIconMarkerType,
   isKeyDocumentMarkerType,
   markerTypeIconUrl,
   type FixedMarkerType,
   type FixedRoutePoint,
+  type RouteArrow,
   type RouteColorLabels,
   type RoutePoint,
 } from '../types/routes';
-import { mapPercentToAreaPoint, useMapPanZoom } from '../hooks/useMapPanZoom';
+import { useMapArrowDraw } from '../hooks/useMapArrowDraw';
+import {
+  areaPointToMapPercent,
+  mapPercentToAreaPoint,
+  useMapPanZoom,
+} from '../hooks/useMapPanZoom';
+import { RouteMapArrows } from './RouteMapArrows';
 import {
   fixedMarkerLayerId,
   isExtractLayerVisible,
@@ -37,6 +45,10 @@ import {
   getTasksWithoutMapMarkers,
 } from '../utils/mapMarkers';
 import { getTraderImagePath } from '../utils/traderImages';
+import {
+  getQuestItemRequirements,
+  type QuestItemRequirement,
+} from '../utils/unlock';
 import { FixedLayerToggles } from './FixedLayerToggles';
 import {
   MapFloatingTooltip,
@@ -62,6 +74,20 @@ interface MapViewerModalProps {
   onClose: () => void;
   onSetCustomMapMarker: (mapKey: string, taskId: string, pin: CustomMapMarkerPin) => void;
   onClearCustomMapMarker: (mapKey: string, taskId: string) => void;
+  /** Clic en el mapa (sin modo colocar misión) → punto personal. */
+  onAddRoutePoint?: (left: number, top: number) => void;
+  /** Clic en un pin personal → eliminarlo. */
+  onRemoveRoutePoint?: (pointId: string) => void;
+  /** Actualizar etiqueta de un pin personal. */
+  onUpdateRoutePointLabel?: (pointId: string, label: string) => void;
+  /** Flechas personales dibujadas a mano. */
+  routeArrows?: RouteArrow[];
+  /** Color activo para puntos/flechas. */
+  routeDrawColor?: string;
+  /** Clic + arrastre → flecha. */
+  onAddRouteArrow?: (fromLeft: number, fromTop: number, toLeft: number, toTop: number) => void;
+  /** Clic en una flecha → eliminarla. */
+  onRemoveRouteArrow?: (arrowId: string) => void;
 }
 
 function fitImageSize(
@@ -97,6 +123,19 @@ function labelForColor(colorLabels: RouteColorLabels | undefined, color: string)
   return colorLabels?.[color]?.trim() ?? '';
 }
 
+function personalPointTitle(
+  point: RoutePoint,
+  index: number,
+  colorLabels: RouteColorLabels | undefined,
+  fallback: (n: number) => string,
+): string {
+  const custom = point.label?.trim();
+  if (custom) return custom;
+  const playerName = labelForColor(colorLabels, point.color);
+  if (playerName) return playerName;
+  return fallback(index + 1);
+}
+
 export function MapViewerModal({
   mapName,
   mapKey,
@@ -113,7 +152,22 @@ export function MapViewerModal({
   onClose,
   onSetCustomMapMarker,
   onClearCustomMapMarker,
+  onAddRoutePoint,
+  onRemoveRoutePoint,
+  onUpdateRoutePointLabel,
+  routeArrows = [],
+  routeDrawColor = DEFAULT_ROUTE_POINT_COLOR,
+  onAddRouteArrow,
+  onRemoveRouteArrow,
 }: MapViewerModalProps) {
+  const canEditRoutePoints = Boolean(
+    onAddRoutePoint
+      || onRemoveRoutePoint
+      || onUpdateRoutePointLabel
+      || onAddRouteArrow
+      || onRemoveRouteArrow,
+  );
+  const [editingLabels, setEditingLabels] = useState<Record<string, string>>({});
   const { visibility: fixedLayerVisibility, toggleLayer: toggleFixedLayer } =
     useFixedLayerVisibility();
   const visibleFixedPoints = useMemo(
@@ -134,6 +188,10 @@ export function MapViewerModal({
   const [mapTooltip, setMapTooltip] = useState<(MapFloatingTooltipData & { id: string }) | null>(
     null,
   );
+  /** Marcadores de misión ocultos con el checkbox de la leyenda. */
+  const [hiddenQuestMarkerIds, setHiddenQuestMarkerIds] = useState<Set<string>>(() => new Set());
+  /** Resaltado al hacer hover sobre el checkbox de un punto. */
+  const [highlightedMarkerId, setHighlightedMarkerId] = useState<string | null>(null);
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
   const [areaSize, setAreaSize] = useState({ width: 0, height: 0 });
   const [imageModal, setImageModal] = useState<{
@@ -151,6 +209,25 @@ export function MapViewerModal({
   } | null>(null);
   const imageWrapRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+  const legendPointRefs = useRef<Map<string, HTMLLabelElement>>(new Map());
+  const arrowDrawEnabled = Boolean(onAddRouteArrow) && !placingTaskId;
+
+  const hideQuestMarker = useCallback((markerId: string) => {
+    setHiddenQuestMarkerIds((prev) => {
+      if (prev.has(markerId)) return prev;
+      const next = new Set(prev);
+      next.add(markerId);
+      return next;
+    });
+    setHighlightedMarkerId(null);
+    setMapTooltip(null);
+  }, []);
+
+  const highlightLegendPoint = useCallback((markerId: string) => {
+    setHighlightedMarkerId(markerId);
+    const el = legendPointRefs.current.get(markerId);
+    el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, []);
   const {
     containerRef: mapAreaRef,
     setContainerRef: setMapAreaRef,
@@ -161,53 +238,65 @@ export function MapViewerModal({
     contentStyle,
     panHandlers,
     shouldSuppressClick,
-  } = useMapPanZoom(mapKey);
+  } = useMapPanZoom(mapKey, { leftPanEnabled: !arrowDrawEnabled });
 
   const markers = useMemo(
     () => getAllMapMarkers(mapKey, mapTasks, completedObjectives, customMapMarkers),
     [mapKey, mapTasks, completedObjectives, customMapMarkers],
   );
 
-  /** Agrupa por misión; una descripción por objetivo (varios puntos del mapa pueden compartirla). */
+  const tasksById = useMemo(
+    () => new Map(mapTasks.map((task) => [task.id, task])),
+    [mapTasks],
+  );
+
+  /** Agrupa por misión; un checkbox por cada punto real del mapa. */
   const legendEntries = useMemo(() => {
     const byTask = new Map<
       string,
       {
         taskId: string;
         taskName: string;
+        traderName: string;
+        traderImage: string | null;
+        requiredItems: QuestItemRequirement[];
         custom: boolean;
-        descriptions: string[];
+        points: Array<{ id: string; description: string; custom: boolean }>;
       }
     >();
-    const seenObjective = new Set<string>();
 
     for (const marker of markers) {
-      const objectiveKey = `${marker.taskId}:${marker.objectiveId}`;
-      if (seenObjective.has(objectiveKey)) continue;
-      seenObjective.add(objectiveKey);
-
-      const description = marker.custom
-        ? null
-        : marker.objectiveDescription.trim();
       let entry = byTask.get(marker.taskId);
       if (!entry) {
+        const task = tasksById.get(marker.taskId);
         entry = {
           taskId: marker.taskId,
           taskName: marker.taskName,
+          traderName: marker.trader.name,
+          traderImage: getTraderImagePath(marker.trader),
+          requiredItems: task ? getQuestItemRequirements(task) : [],
           custom: Boolean(marker.custom),
-          descriptions: [],
+          points: [],
         };
         byTask.set(marker.taskId, entry);
       }
-      if (marker.custom) {
-        entry.custom = true;
-      } else if (description && !entry.descriptions.includes(description)) {
-        entry.descriptions.push(description);
-      }
+      if (marker.custom) entry.custom = true;
+      entry.points.push({
+        id: marker.id,
+        description: marker.custom
+          ? ''
+          : marker.objectiveDescription.trim(),
+        custom: Boolean(marker.custom),
+      });
     }
 
     return [...byTask.values()];
-  }, [markers]);
+  }, [markers, tasksById]);
+
+  useEffect(() => {
+    setHiddenQuestMarkerIds(new Set());
+    setHighlightedMarkerId(null);
+  }, [mapKey]);
 
   const markerTaskIds = useMemo(
     () => new Set(markers.map((m) => m.taskId)),
@@ -219,14 +308,25 @@ export function MapViewerModal({
     [mapKey, mapTasks, completedObjectives, markerTaskIds],
   );
 
+  const hasLeftLegend =
+    routePoints.length > 0
+    || routeArrows.length > 0
+    || canEditRoutePoints
+    || Boolean(onAddRouteArrow);
+  const hasRightLegend =
+    fixedRoutePoints.length > 0
+    || mapExtracts.length > 0
+    || markers.length > 0
+    || tasksWithoutMarkers.length > 0;
+  const hasLegend = hasLeftLegend || hasRightLegend;
   const hasRouteMarkers =
     visibleFixedPoints.length > 0 ||
     visibleExtracts.length > 0 ||
     routePoints.length > 0 ||
+    routeArrows.length > 0 ||
     fixedRoutePoints.length > 0 ||
-    mapExtracts.length > 0;
-  const hasLegend =
-    markers.length > 0 || tasksWithoutMarkers.length > 0 || hasRouteMarkers;
+    mapExtracts.length > 0 ||
+    canEditRoutePoints;
   const canProject = imageSize.width > 0 && areaSize.width > 0;
 
   const placingTask = placingTaskId
@@ -247,6 +347,41 @@ export function MapViewerModal({
       panY,
     );
   }, [areaSize.height, areaSize.width, canProject, imageSize.height, imageSize.width, panX, panY, zoom]);
+
+  const clientToMapPercent = useCallback((clientX: number, clientY: number) => {
+    const area = mapAreaRef.current;
+    if (!area || imageSize.width <= 0 || areaSize.width <= 0) return null;
+    const rect = area.getBoundingClientRect();
+    return areaPointToMapPercent(
+      clientX - rect.left,
+      clientY - rect.top,
+      imageSize.width,
+      imageSize.height,
+      areaSize.width,
+      areaSize.height,
+      zoom,
+      panX,
+      panY,
+    );
+  }, [areaSize.height, areaSize.width, imageSize.height, imageSize.width, mapAreaRef, panX, panY, zoom]);
+
+  const {
+    draft: arrowDraft,
+    drawHandlers,
+    shouldSuppressClick: shouldSuppressArrowClick,
+  } = useMapArrowDraw({
+    enabled: arrowDrawEnabled,
+    color: routeDrawColor,
+    clientToPercent: clientToMapPercent,
+    onComplete: (fromLeft, fromTop, toLeft, toTop) => {
+      onAddRouteArrow?.(fromLeft, fromTop, toLeft, toTop);
+    },
+    onTap: onAddRoutePoint
+      ? (left, top) => {
+          onAddRoutePoint(left, top);
+        }
+      : undefined,
+  });
 
   const updateImageSize = useCallback(() => {
     const area = mapAreaRef.current;
@@ -295,21 +430,25 @@ export function MapViewerModal({
   }, [imageModal, onClose, placingTaskId]);
 
   const handleMapClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!placingTaskId || !imageWrapRef.current) return;
-    if (shouldSuppressClick()) return;
+    if (shouldSuppressClick() || shouldSuppressArrowClick()) return;
 
-    const rect = imageWrapRef.current.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) return;
+    // Con dibujo de flechas, el tap ya lo gestiona useMapArrowDraw.
+    if (arrowDrawEnabled) return;
 
-    const left = ((e.clientX - rect.left) / rect.width) * 100;
-    const top = ((e.clientY - rect.top) / rect.height) * 100;
+    const point = clientToMapPercent(e.clientX, e.clientY);
+    if (!point) return;
 
-    onSetCustomMapMarker(mapKey, placingTaskId, {
-      left: Math.max(0, Math.min(100, left)),
-      top: Math.max(0, Math.min(100, top)),
-    });
-    setPlacingTaskId(null);
+    if (placingTaskId) {
+      onSetCustomMapMarker(mapKey, placingTaskId, point);
+      setPlacingTaskId(null);
+      return;
+    }
+
+    onAddRoutePoint?.(point.left, point.top);
   };
+
+  const mapClickable =
+    Boolean(placingTaskId) || Boolean(onAddRoutePoint) || arrowDrawEnabled;
 
   return (
     <div
@@ -351,8 +490,14 @@ export function MapViewerModal({
         <div className="map-modal-body">
           <div
             ref={setMapAreaRef}
-            className={`map-modal-map-area${placingTaskId ? ' map-modal-map-area--placing' : ''}${zoom > 1 ? ' map-modal-map-area--zoomed' : ''}${isPanning ? ' is-panning' : ''}`}
-            {...panHandlers}
+            className={`map-modal-map-area${mapClickable ? ' map-modal-map-area--placing' : ''}${zoom > 1 ? ' map-modal-map-area--zoomed' : ''}${isPanning ? ' is-panning' : ''}${arrowDraft ? ' is-drawing-arrow' : ''}`}
+            onPointerDown={(event) => {
+              drawHandlers.onPointerDown?.(event);
+              // Pan con rueda/Alt (o izquierdo si no hay dibujo de flechas).
+              if (!arrowDrawEnabled || event.button !== 0 || event.altKey) {
+                panHandlers.onPointerDown?.(event);
+              }
+            }}
           >
             <div className="map-modal-map-viewport">
               <div
@@ -363,10 +508,16 @@ export function MapViewerModal({
                   height: imageSize.height > 0 ? `${imageSize.height}px` : undefined,
                   ...contentStyle,
                 }}
-                onClick={placingTaskId ? handleMapClick : undefined}
-                role={placingTaskId ? 'button' : undefined}
-                tabIndex={placingTaskId ? 0 : undefined}
-                aria-label={placingTaskId ? t.mapPlaceBanner(placingTask?.name ?? '') : undefined}
+                onClick={mapClickable ? handleMapClick : undefined}
+                role={mapClickable ? 'button' : undefined}
+                tabIndex={mapClickable ? 0 : undefined}
+                aria-label={
+                  placingTaskId
+                    ? t.mapPlaceBanner(placingTask?.name ?? '')
+                    : canEditRoutePoints
+                      ? t.mapRoutePointsEditHint
+                      : undefined
+                }
               >
                 <img
                   ref={imageRef}
@@ -387,6 +538,16 @@ export function MapViewerModal({
                 ))}
               </div>
             </div>
+            {canProject && (
+              <RouteMapArrows
+                arrows={routeArrows}
+                draft={arrowDraft}
+                project={projectMarker}
+                markerIdPrefix={`map-modal-arrow-${mapKey}`}
+                onRemoveArrow={onRemoveRouteArrow}
+                removeLabel={t.routesRemoveArrow}
+              />
+            )}
             {canProject && (markers.length > 0 || hasRouteMarkers) && (
               <div className="map-modal-markers map-modal-markers--overlay">
                 {visibleExtracts.map((extract) => {
@@ -544,20 +705,42 @@ export function MapViewerModal({
                 {routePoints.map((point, index) => {
                   const pos = projectMarker(point.left, point.top);
                   if (!pos) return null;
-                  const playerName = labelForColor(colorLabels, point.color);
-                  const markerLabel = playerName || String(index + 1);
+                  const label = personalPointTitle(point, index, colorLabels, t.routesPointLabel);
+                  const markerLabel = point.label?.trim() || t.routesPointLabelPlaceholder;
+                  const style = {
+                    left: pos.x,
+                    top: pos.y,
+                    '--route-marker-color': point.color,
+                    zIndex: 2,
+                  } as CSSProperties;
+                  if (onRemoveRoutePoint) {
+                    return (
+                      <button
+                        key={point.id}
+                        type="button"
+                        className="route-map-marker"
+                        style={style}
+                        title={`${label} — ${t.routesRemovePoint}`}
+                        aria-label={`${label}. ${t.routesRemovePoint}`}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onRemoveRoutePoint(point.id);
+                        }}
+                      >
+                        <span className="route-map-marker-body">
+                          <span className="route-map-marker-label">{markerLabel}</span>
+                          <span className="route-map-marker-pin" />
+                        </span>
+                      </button>
+                    );
+                  }
                   return (
                     <div
                       key={point.id}
                       className="route-map-marker"
-                      style={{
-                        left: pos.x,
-                        top: pos.y,
-                        '--route-marker-color': point.color,
-                        zIndex: 2,
-                      } as CSSProperties}
-                      title={playerName || t.routesPointLabel(index + 1)}
-                      aria-label={playerName || t.routesPointLabel(index + 1)}
+                      style={style}
+                      title={label}
+                      aria-label={label}
                     >
                       <span className="route-map-marker-body">
                         <span className="route-map-marker-label">{markerLabel}</span>
@@ -567,13 +750,15 @@ export function MapViewerModal({
                   );
                 })}
                 {markers.map((marker) => {
+                  if (hiddenQuestMarkerIds.has(marker.id)) return null;
                   const pos = projectMarker(marker.left, marker.top);
                   if (!pos) return null;
                   const description = marker.custom
                     ? t.mapMarkerManual
                     : marker.objectiveDescription;
                   const traderImage = getTraderImagePath(marker.trader);
-                  const isHovered = mapTooltip?.id === marker.id;
+                  const isHovered =
+                    mapTooltip?.id === marker.id || highlightedMarkerId === marker.id;
                   return (
                     <div
                       key={marker.id}
@@ -585,6 +770,8 @@ export function MapViewerModal({
                       style={{ left: pos.x, top: pos.y, zIndex: isHovered ? 8 : undefined }}
                       onMouseEnter={(e) => {
                         const rect = e.currentTarget.getBoundingClientRect();
+                        const task = tasksById.get(marker.taskId);
+                        highlightLegendPoint(marker.id);
                         setMapTooltip({
                           id: marker.id,
                           x: rect.left + rect.width / 2,
@@ -594,10 +781,20 @@ export function MapViewerModal({
                           description,
                           iconSrc: traderImage,
                           iconAlt: marker.trader.name,
+                          items: task ? getQuestItemRequirements(task) : undefined,
+                          anyItemLabel: t.anyItem,
                         });
                       }}
-                      onMouseLeave={() => setMapTooltip(null)}
-                      onClick={(e) => e.stopPropagation()}
+                      onMouseLeave={() => {
+                        setMapTooltip(null);
+                        setHighlightedMarkerId((current) =>
+                          current === marker.id ? null : current,
+                        );
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        hideQuestMarker(marker.id);
+                      }}
                     >
                       <span className="map-quest-marker-pin" />
                       <span className="map-quest-marker-label">{marker.taskName}</span>
@@ -607,17 +804,133 @@ export function MapViewerModal({
               </div>
             )}
           </div>
-          {hasLegend && (
-            <aside className="map-modal-legend">
-              {(fixedRoutePoints.length > 0 || mapExtracts.length > 0 || routePoints.length > 0) && (
+          {hasLeftLegend && (
+            <aside className="map-modal-legend map-modal-legend--left">
+              {(routePoints.length > 0 || canEditRoutePoints) && (
+                <div className="map-modal-legend-section">
+                  <h4>{t.routesPersonalSection}</h4>
+                  {canEditRoutePoints && (
+                    <p className="map-modal-place-hint">{t.mapRoutePointsEditHint}</p>
+                  )}
+                  {routePoints.length === 0 ? (
+                    <p className="map-modal-place-hint">{t.routesNoPoints}</p>
+                  ) : (
+                    <ol className="map-modal-route-points map-modal-route-points--editable">
+                      {routePoints.map((point, index) => {
+                        const labelValue = editingLabels[point.id] ?? point.label ?? '';
+                        return (
+                          <li key={point.id} className="map-modal-route-point-row">
+                            <span
+                              className="route-point-dot"
+                              style={{ background: point.color }}
+                              aria-hidden
+                            />
+                            {onUpdateRoutePointLabel ? (
+                              <input
+                                type="text"
+                                className="route-color-name-input map-modal-route-point-input"
+                                value={labelValue}
+                                placeholder={t.routesPointLabelPlaceholder}
+                                maxLength={80}
+                                onChange={(e) => {
+                                  setEditingLabels((prev) => ({
+                                    ...prev,
+                                    [point.id]: e.target.value,
+                                  }));
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key !== 'Enter') return;
+                                  e.preventDefault();
+                                  const next = labelValue.trim();
+                                  if (!next || next === (point.label ?? '')) return;
+                                  onUpdateRoutePointLabel(point.id, next);
+                                }}
+                              />
+                            ) : (
+                              <span>
+                                {personalPointTitle(point, index, colorLabels, t.routesPointLabel)}
+                              </span>
+                            )}
+                            <div className="map-modal-route-point-actions">
+                              {onUpdateRoutePointLabel && (
+                                <button
+                                  type="button"
+                                  className="btn-icon-action"
+                                  aria-label={t.adminSaveLabel}
+                                  title={t.adminSaveLabel}
+                                  disabled={
+                                    !labelValue.trim()
+                                    || labelValue.trim() === (point.label ?? '')
+                                  }
+                                  onClick={() =>
+                                    onUpdateRoutePointLabel(point.id, labelValue.trim())
+                                  }
+                                >
+                                  <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
+                                    <path
+                                      fill="currentColor"
+                                      d="M2.5 1.5h9.2L14.5 4.3v9.2a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1v-11a1 1 0 0 1 1-1Zm1 1v4.5h7v-4.5h-1.2v3.2H5.7V2.5H3.5Zm0 6v4h9v-4h-9Z"
+                                    />
+                                  </svg>
+                                </button>
+                              )}
+                              {onRemoveRoutePoint && (
+                                <button
+                                  type="button"
+                                  className="btn-icon-action"
+                                  aria-label={t.routesRemovePoint}
+                                  title={t.routesRemovePoint}
+                                  onClick={() => onRemoveRoutePoint(point.id)}
+                                >
+                                  ×
+                                </button>
+                              )}
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ol>
+                  )}
+                </div>
+              )}
+              {(routeArrows.length > 0 || onAddRouteArrow) && (
+                <div className="map-modal-legend-section">
+                  <h4>{t.routesArrows(routeArrows.length)}</h4>
+                  {routeArrows.length === 0 ? (
+                    <p className="map-modal-place-hint">{t.routesNoArrows}</p>
+                  ) : (
+                    <ol className="map-modal-route-points">
+                      {routeArrows.map((arrow, index) => (
+                        <li key={arrow.id}>
+                          <span className="route-arrow-list-icon" aria-hidden>
+                            ↗
+                          </span>
+                          <span>{t.routesArrowLabel(index + 1)}</span>
+                          {onRemoveRouteArrow && (
+                            <button
+                              type="button"
+                              className="btn btn-ghost map-marker-clear"
+                              aria-label={t.routesRemoveArrow}
+                              title={t.routesRemoveArrow}
+                              onClick={() => onRemoveRouteArrow(arrow.id)}
+                            >
+                              ×
+                            </button>
+                          )}
+                        </li>
+                      ))}
+                    </ol>
+                  )}
+                </div>
+              )}
+            </aside>
+          )}
+          {hasRightLegend && (
+            <aside className="map-modal-legend map-modal-legend--right">
+              {(fixedRoutePoints.length > 0 || mapExtracts.length > 0) && (
                 <div className="map-modal-legend-section">
                   <h4>
-                    {fixedRoutePoints.length + mapExtracts.length > 0
-                      ? t.routesFixedPoints(fixedRoutePoints.length + mapExtracts.length)
-                      : t.routesPoints(routePoints.length)}
-                    {fixedRoutePoints.length + mapExtracts.length > 0 && routePoints.length > 0
-                      ? ` · ${t.routesPoints(routePoints.length)}`
-                      : ''}
+                    {t.routesFixedPoints(fixedRoutePoints.length + mapExtracts.length)}
                   </h4>
                   <FixedLayerToggles
                     fixedPoints={fixedRoutePoints}
@@ -631,36 +944,131 @@ export function MapViewerModal({
               )}
               {legendEntries.length > 0 && (
                 <div className="map-modal-legend-section">
-                  <h4>{t.mapMarkersTitle(markers.length)}</h4>
+                  <h4>
+                    {t.mapMarkersTitle(
+                      markers.filter((marker) => !hiddenQuestMarkerIds.has(marker.id)).length,
+                    )}
+                  </h4>
                   <ul className="map-modal-legend-list">
-                    {legendEntries.map((entry) => (
-                      <li key={entry.taskId} className="map-modal-legend-item">
-                        <div className="map-modal-legend-row">
-                          <div className="map-modal-legend-text">
-                            <strong className="map-modal-legend-name">{entry.taskName}</strong>
-                            {entry.custom && entry.descriptions.length === 0 ? (
-                              <span className="map-modal-legend-desc">{t.mapMarkerManual}</span>
-                            ) : (
-                              entry.descriptions.map((description) => (
-                                <span key={description} className="map-modal-legend-desc">
-                                  {description}
-                                </span>
-                              ))
-                            )}
+                    {legendEntries.map((entry) => {
+                      const tooltipLines = entry.points
+                        .map((point) =>
+                          point.custom
+                            ? t.mapMarkerManual
+                            : point.description,
+                        )
+                        .filter(Boolean);
+                      const uniqueLines = [...new Set(tooltipLines)];
+                      return (
+                        <li
+                          key={entry.taskId}
+                          className={[
+                            'map-modal-legend-item',
+                            entry.points.some((point) => point.id === highlightedMarkerId)
+                              ? 'is-highlighted'
+                              : '',
+                          ].filter(Boolean).join(' ')}
+                          onMouseEnter={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setMapTooltip({
+                              id: `legend:${entry.taskId}`,
+                              x: rect.left + rect.width / 2,
+                              y: rect.top,
+                              title: entry.taskName,
+                              subtitle: entry.traderName,
+                              description: uniqueLines.join('\n'),
+                              iconSrc: entry.traderImage,
+                              iconAlt: entry.traderName,
+                              items: entry.requiredItems,
+                              anyItemLabel: t.anyItem,
+                            });
+                          }}
+                          onMouseLeave={() => {
+                            setMapTooltip((current) =>
+                              current?.id === `legend:${entry.taskId}` ? null : current,
+                            );
+                            setHighlightedMarkerId(null);
+                          }}
+                        >
+                          <div className="map-modal-legend-row">
+                            <div className="map-modal-legend-text">
+                              <strong className="map-modal-legend-name">{entry.taskName}</strong>
+                              <div
+                                className="map-modal-legend-point-toggles"
+                                role="group"
+                                aria-label={entry.taskName}
+                              >
+                                {entry.points.map((point, pointIndex) => {
+                                  const hidden = hiddenQuestMarkerIds.has(point.id);
+                                  const pointLabel = point.custom
+                                    ? t.mapMarkerManual
+                                    : (point.description || t.routesPointLabel(pointIndex + 1));
+                                  return (
+                                    <label
+                                      key={point.id}
+                                      ref={(el) => {
+                                        if (el) legendPointRefs.current.set(point.id, el);
+                                        else legendPointRefs.current.delete(point.id);
+                                      }}
+                                      className={[
+                                        'map-modal-legend-point-toggle',
+                                        highlightedMarkerId === point.id ? 'is-highlighted' : '',
+                                        hidden ? 'is-hidden-marker' : '',
+                                      ].filter(Boolean).join(' ')}
+                                      title={pointLabel}
+                                      onMouseEnter={() => {
+                                        if (!hidden) setHighlightedMarkerId(point.id);
+                                      }}
+                                      onMouseLeave={() => {
+                                        setHighlightedMarkerId((current) =>
+                                          current === point.id ? null : current,
+                                        );
+                                      }}
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        checked={hidden}
+                                        onChange={() => {
+                                          setHiddenQuestMarkerIds((prev) => {
+                                            const next = new Set(prev);
+                                            if (next.has(point.id)) next.delete(point.id);
+                                            else next.add(point.id);
+                                            return next;
+                                          });
+                                          setHighlightedMarkerId(null);
+                                        }}
+                                      />
+                                      <span aria-hidden>{pointIndex + 1}</span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                            <div className="map-modal-legend-aside">
+                              {entry.traderImage && (
+                                <img
+                                  className="map-modal-legend-trader"
+                                  src={entry.traderImage}
+                                  alt={entry.traderName}
+                                  title={entry.traderName}
+                                  draggable={false}
+                                />
+                              )}
+                              {entry.custom && (
+                                <button
+                                  type="button"
+                                  className="btn btn-ghost map-marker-clear"
+                                  onClick={() => onClearCustomMapMarker(mapKey, entry.taskId)}
+                                  title={t.mapClearCustomMarker}
+                                >
+                                  ×
+                                </button>
+                              )}
+                            </div>
                           </div>
-                          {entry.custom && (
-                            <button
-                              type="button"
-                              className="btn btn-ghost map-marker-clear"
-                              onClick={() => onClearCustomMapMarker(mapKey, entry.taskId)}
-                              title={t.mapClearCustomMarker}
-                            >
-                              ×
-                            </button>
-                          )}
-                        </div>
-                      </li>
-                    ))}
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               )}

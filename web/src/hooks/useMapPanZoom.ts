@@ -29,11 +29,20 @@ interface DragState {
   active: boolean;
 }
 
+interface UseMapPanZoomOptions {
+  /**
+   * Si false, el pan con botón izquierdo se desactiva (p. ej. para dibujar flechas).
+   * Con zoom > 1 se puede panear con botón medio o Alt + clic izquierdo.
+   */
+  leftPanEnabled?: boolean;
+}
+
 /**
  * Zoom con rueda (hacia el cursor) y arrastre para panear cuando hay zoom.
  * Un click sin arrastre no inicia pan (permite colocar marcadores).
  */
-export function useMapPanZoom(resetKey: unknown) {
+export function useMapPanZoom(resetKey: unknown, options: UseMapPanZoomOptions = {}) {
+  const leftPanEnabled = options.leftPanEnabled !== false;
   const [container, setContainer] = useState<HTMLElement | null>(null);
   const containerRef = useRef<HTMLElement | null>(null);
 
@@ -99,7 +108,9 @@ export function useMapPanZoom(resetKey: unknown) {
   }, [container]);
 
   const onPointerDown = useCallback((event: ReactPointerEvent<HTMLElement>) => {
-    if (event.button !== 0) return;
+    const isMiddle = event.button === 1;
+    const isLeftPan = event.button === 0 && (leftPanEnabled || event.altKey);
+    if (!isMiddle && !isLeftPan) return;
     if (stateRef.current.zoom <= MIN_ZOOM) return;
     const target = event.target as HTMLElement | null;
     if (target?.closest('button, a, input, label')) return;
@@ -166,7 +177,7 @@ export function useMapPanZoom(resetKey: unknown) {
       window.removeEventListener('pointerup', onWindowUp);
       window.removeEventListener('pointercancel', onWindowUp);
     };
-  }, [stopWindowDragTracking]);
+  }, [leftPanEnabled, stopWindowDragTracking]);
 
   const shouldSuppressClick = useCallback(() => {
     if (didPanRef.current) {

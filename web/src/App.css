@@ -1665,7 +1665,7 @@ a.home-usage-card {
 .map-modal {
   display: flex;
   flex-direction: column;
-  width: min(96vw, 1400px);
+  width: 90vw;
   height: min(92vh, 100%);
   max-height: 92vh;
   background: var(--bg-elevated);
@@ -1676,7 +1676,7 @@ a.home-usage-card {
 }
 
 .map-modal--with-legend {
-  width: min(96vw, 1600px);
+  width: 90vw;
 }
 
 .map-modal-header {
@@ -1792,6 +1792,11 @@ a.home-usage-card {
   cursor: grabbing !important;
 }
 
+.map-modal-map-area.is-drawing-arrow,
+.map-modal-map-area.is-drawing-arrow .map-modal-image-wrap {
+  cursor: crosshair !important;
+}
+
 .map-modal-image-wrap {
   position: relative;
   line-height: 0;
@@ -1854,7 +1859,7 @@ a.home-usage-card {
   max-width: 8rem;
   overflow: visible;
   pointer-events: auto;
-  cursor: default;
+  cursor: pointer;
   z-index: 1;
 }
 
@@ -1895,8 +1900,55 @@ a.home-usage-card {
 }
 
 .map-quest-marker.is-hovered .map-quest-marker-pin {
-  transform: scale(1.2);
-  box-shadow: 0 0 0 2px rgba(229, 226, 0, 0.55), 0 2px 8px rgba(0, 0, 0, 0.7);
+  transform: scale(1.35);
+  box-shadow:
+    0 0 0 3px rgba(229, 226, 0, 0.75),
+    0 0 14px rgba(229, 226, 0, 0.55),
+    0 2px 8px rgba(0, 0, 0, 0.7);
+}
+
+.map-quest-marker.is-hovered .map-quest-marker-label {
+  border-color: rgba(229, 226, 0, 0.85);
+  box-shadow: 0 0 10px rgba(229, 226, 0, 0.35);
+}
+
+.map-modal-legend-point-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.35rem;
+}
+
+.map-modal-legend-point-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.15rem 0.35rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 650;
+  cursor: pointer;
+  user-select: none;
+}
+
+.map-modal-legend-point-toggle input {
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.map-modal-legend-point-toggle:hover,
+.map-modal-legend-point-toggle.is-highlighted {
+  color: var(--text);
+  border-color: rgba(229, 226, 0, 0.65);
+  background: rgba(229, 226, 0, 0.1);
+}
+
+.map-modal-legend-point-toggle.is-hidden-marker {
+  opacity: 0.55;
 }
 
 /* Tooltip flotante (misiones / extracciones): portal fixed, fuera del overflow. */
@@ -1989,7 +2041,49 @@ a.home-usage-card {
   font-size: 0.82rem;
   line-height: 1.4;
   color: rgba(235, 232, 220, 0.92);
-  white-space: normal;
+  white-space: pre-line;
+}
+
+.map-floating-tooltip.has-items {
+  width: min(20rem, 78vw);
+}
+
+.map-floating-tooltip-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.45rem;
+}
+
+.map-floating-tooltip-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  max-width: 100%;
+  padding: 0.15rem 0.35rem;
+  border-radius: 3px;
+  border: 1px solid color-mix(in srgb, var(--map-tooltip-accent) 35%, transparent);
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: rgba(244, 241, 228, 0.95);
+}
+
+.map-floating-tooltip-item img {
+  width: 1.15rem;
+  height: 1.15rem;
+  object-fit: contain;
+  flex-shrink: 0;
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.map-floating-tooltip-item span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .map-modal-legend {
@@ -2002,8 +2096,16 @@ a.home-usage-card {
   flex-direction: column;
   gap: 0.75rem;
   padding: 0.75rem;
-  border-left: 1px solid var(--border);
   background: var(--bg-elevated);
+}
+
+.map-modal-legend--left {
+  order: -1;
+  border-right: 1px solid var(--border);
+}
+
+.map-modal-legend--right {
+  border-left: 1px solid var(--border);
 }
 
 @media (max-width: 720px) {
@@ -2014,6 +2116,15 @@ a.home-usage-card {
   .map-modal-legend {
     width: 100%;
     max-height: 32vh;
+  }
+
+  .map-modal-legend--left {
+    order: 0;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .map-modal-legend--right {
     border-left: none;
     border-top: 1px solid var(--border);
   }
@@ -2052,19 +2163,52 @@ a.home-usage-card {
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid var(--border);
+  transition: border-color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease;
+}
+
+.map-modal-legend-item.is-highlighted {
+  border-color: rgba(229, 226, 0, 0.65);
+  background: rgba(229, 226, 0, 0.08);
+  box-shadow: 0 0 0 1px rgba(229, 226, 0, 0.2);
 }
 
 .map-modal-legend-row {
   display: flex;
-  align-items: flex-start;
+  align-items: stretch;
   justify-content: space-between;
   gap: 0.5rem;
+  min-height: 3.25rem;
+}
+
+.map-modal-legend-aside {
+  display: flex;
+  align-items: stretch;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.map-modal-legend-trader {
+  display: block;
+  width: 3.1rem;
+  height: 100%;
+  min-height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: #111;
+}
+
+.map-modal-legend-aside .map-marker-clear {
+  align-self: flex-start;
 }
 
 .map-modal-legend-text {
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
+  min-width: 0;
+  flex: 1;
   min-width: 0;
 }
 
@@ -2095,6 +2239,117 @@ a.home-usage-card {
   margin: 0 0 0.5rem;
   font-size: 0.75rem;
   color: var(--text-muted);
+}
+
+.map-modal-route-points {
+  margin: 0.35rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.map-modal-route-points li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--text);
+}
+
+.map-modal-route-points .route-point-dot {
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.map-modal-route-points span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.map-modal-route-points--editable li,
+.map-modal-route-point-row {
+  align-items: center;
+}
+
+.map-modal-route-point-input,
+.route-maps-personal-point-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.map-modal-route-point-actions,
+.route-maps-point-actions-icons {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.btn-icon-action {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.btn-icon-action:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--accent-dim);
+}
+
+.btn-icon-action:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.route-arrow-list-icon {
+  width: 0.9rem;
+  flex-shrink: 0;
+  text-align: center;
+  color: #22c55e;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.route-maps-point-list li.route-maps-point-item--personal {
+  align-items: center;
+}
+
+.route-maps-point-list li.route-maps-point-item--arrow {
+  align-items: center;
+}
+
+.route-maps-personal-point-edit {
+  flex: 1;
+  min-width: 0;
+}
+
+button.route-map-marker {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
 }
 
 .map-modal-place-btn {

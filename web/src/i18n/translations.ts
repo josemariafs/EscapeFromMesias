@@ -99,6 +99,11 @@ export interface Translations {
   routesClear: string;
   routesConfirmClear: string;
   routesRemovePoint: string;
+  routesRemoveArrow: string;
+  routesArrows: (n: number) => string;
+  routesArrowLabel: (n: number) => string;
+  routesNoArrows: string;
+  routesPointLabelPlaceholder: string;
   routesFixedSection: string;
   routesPersonalSection: string;
   routesFixedPoints: (n: number) => string;
@@ -208,6 +213,7 @@ export interface Translations {
   mapPlaceClickHint: string;
   mapPlaceBanner: (taskName: string) => string;
   mapPlaceCancel: string;
+  mapRoutePointsEditHint: string;
   mapMarkerManual: string;
   mapClearCustomMarker: string;
   close: string;
@@ -356,7 +362,8 @@ export const translations: Record<Lang, Translations> = {
       'Dibuja puntos de ruta sobre cualquier mapa de Tarkov. Independiente de las misiones: solo para planear recorridos.',
     routesOpenMap: 'Abrir mapa',
     routesBackToMaps: 'Todos los mapas',
-    routesDrawHint: 'Elige un color y haz clic en el mapa para añadir puntos. Arrastra un pin para moverlo; clic para eliminarlo.',
+    routesDrawHint:
+      'Elige un color y haz clic en el mapa para añadir puntos. Arrastra para dibujar una flecha. Arrastra un pin para moverlo; clic en pin/flecha para eliminar.',
     routesPointColor: 'Color del jugador',
     routesCustomColor: 'Personalizado',
     routesPlayerNamePlaceholder: 'Nombre del jugador',
@@ -367,6 +374,11 @@ export const translations: Record<Lang, Translations> = {
     routesClear: 'Borrar ruta',
     routesConfirmClear: '¿Borrar todos los puntos de este mapa?',
     routesRemovePoint: 'Eliminar punto',
+    routesRemoveArrow: 'Eliminar flecha',
+    routesArrows: (n) => `${n} flecha${n === 1 ? '' : 's'}`,
+    routesArrowLabel: (n) => `Flecha ${n}`,
+    routesNoArrows: 'Sin flechas en este mapa.',
+    routesPointLabelPlaceholder: 'Marker',
     routesFixedSection: 'Puntos fijos',
     routesPersonalSection: 'Tus puntos',
     routesFixedPoints: (n) => `${n} fijo${n === 1 ? '' : 's'}`,
@@ -481,6 +493,8 @@ export const translations: Record<Lang, Translations> = {
     mapPlaceClickHint: 'Clic en el mapa para colocar',
     mapPlaceBanner: (name) => `Coloca «${name}» en el mapa`,
     mapPlaceCancel: 'Cancelar',
+    mapRoutePointsEditHint:
+      'Clic para añadir un punto. Arrastra para dibujar una flecha. Clic en un pin o flecha para eliminarlos.',
     mapMarkerManual: 'Ubicación manual',
     mapClearCustomMarker: 'Quitar ubicación manual',
     close: 'Cerrar',
@@ -663,7 +677,8 @@ export const translations: Record<Lang, Translations> = {
       'Draw route points on any Tarkov map. Separate from quests — just for planning your runs.',
     routesOpenMap: 'Open map',
     routesBackToMaps: 'All maps',
-    routesDrawHint: 'Pick a color and click the map to add points. Drag a pin to move it; click to remove it.',
+    routesDrawHint:
+      'Pick a color and click the map to add points. Drag to draw an arrow. Drag a pin to move it; click a pin/arrow to remove it.',
     routesPointColor: 'Player color',
     routesCustomColor: 'Custom',
     routesPlayerNamePlaceholder: 'Player name',
@@ -674,6 +689,11 @@ export const translations: Record<Lang, Translations> = {
     routesClear: 'Clear route',
     routesConfirmClear: 'Clear all points on this map?',
     routesRemovePoint: 'Remove point',
+    routesRemoveArrow: 'Remove arrow',
+    routesArrows: (n) => `${n} arrow${n === 1 ? '' : 's'}`,
+    routesArrowLabel: (n) => `Arrow ${n}`,
+    routesNoArrows: 'No arrows on this map.',
+    routesPointLabelPlaceholder: 'Marker',
     routesFixedSection: 'Fixed points',
     routesPersonalSection: 'Your points',
     routesFixedPoints: (n) => `${n} fixed`,
@@ -788,6 +808,8 @@ export const translations: Record<Lang, Translations> = {
     mapPlaceClickHint: 'Click the map to place',
     mapPlaceBanner: (name) => `Place «${name}» on the map`,
     mapPlaceCancel: 'Cancel',
+    mapRoutePointsEditHint:
+      'Click to add a point. Drag to draw an arrow. Click a pin or arrow to remove it.',
     mapMarkerManual: 'Manual location',
     mapClearCustomMarker: 'Remove manual location',
     close: 'Close',

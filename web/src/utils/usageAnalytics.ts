@@ -26,6 +26,8 @@ export type UsageEventName =
   | 'route_map_opened'
   | 'route_point_added'
   | 'route_point_removed'
+  | 'route_arrow_added'
+  | 'route_arrow_removed'
   | 'route_map_cleared'
   | 'local_data_wiped';
 

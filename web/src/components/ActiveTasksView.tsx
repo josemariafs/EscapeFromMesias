@@ -3,6 +3,7 @@ import type { CustomMapMarkers, CustomMapMarkerPin, Task, TaskProgressState } fr
 import type { Translations } from '../i18n/translations';
 import type {
   FixedRouteMapsData,
+  RouteArrowsData,
   RouteColorLabels,
   RouteMapsData,
 } from '../types/routes';
@@ -25,6 +26,8 @@ interface ActiveTasksViewProps {
   completedObjectives: Record<string, string[]>;
   customMapMarkers: CustomMapMarkers;
   routeMaps?: RouteMapsData;
+  routeArrows?: RouteArrowsData;
+  routeDrawColor?: string;
   fixedRouteMaps?: FixedRouteMapsData;
   mapExtracts?: MapExtractsData;
   routeColorLabels?: RouteColorLabels;
@@ -39,6 +42,17 @@ interface ActiveTasksViewProps {
   onReset: (id: string) => void;
   onSetCustomMapMarker: (mapKey: string, taskId: string, pin: CustomMapMarkerPin) => void;
   onClearCustomMapMarker: (mapKey: string, taskId: string) => void;
+  onAddRoutePoint?: (mapKey: string, left: number, top: number) => void;
+  onRemoveRoutePoint?: (mapKey: string, pointId: string) => void;
+  onUpdateRoutePointLabel?: (mapKey: string, pointId: string, label: string) => void;
+  onAddRouteArrow?: (
+    mapKey: string,
+    fromLeft: number,
+    fromTop: number,
+    toLeft: number,
+    toTop: number,
+  ) => void;
+  onRemoveRouteArrow?: (mapKey: string, arrowId: string) => void;
   lockedIds?: Set<string>;
   /** false en modo Logs: el progreso es automático. */
   showActionsColumn?: boolean;
@@ -50,6 +64,8 @@ export function ActiveTasksView({
   completedObjectives,
   customMapMarkers,
   routeMaps = {},
+  routeArrows = {},
+  routeDrawColor,
   fixedRouteMaps = {},
   mapExtracts = {},
   routeColorLabels = {},
@@ -63,6 +79,11 @@ export function ActiveTasksView({
   onReset,
   onSetCustomMapMarker,
   onClearCustomMapMarker,
+  onAddRoutePoint,
+  onRemoveRoutePoint,
+  onUpdateRoutePointLabel,
+  onAddRouteArrow,
+  onRemoveRouteArrow,
   lockedIds,
   showActionsColumn = true,
 }: ActiveTasksViewProps) {
@@ -114,6 +135,8 @@ export function ActiveTasksView({
           completedObjectives={completedObjectives}
           customMapMarkers={customMapMarkers}
           routePoints={routeMaps[openMap.normalizedName] ?? []}
+          routeArrows={routeArrows[openMap.normalizedName] ?? []}
+          routeDrawColor={routeDrawColor}
           fixedRoutePoints={fixedRouteMaps[openMap.normalizedName] ?? []}
           mapExtracts={mapExtracts[openMap.normalizedName] ?? []}
           colorLabels={routeColorLabels}
@@ -122,6 +145,33 @@ export function ActiveTasksView({
           onClose={() => setOpenMap(null)}
           onSetCustomMapMarker={onSetCustomMapMarker}
           onClearCustomMapMarker={onClearCustomMapMarker}
+          onAddRoutePoint={
+            onAddRoutePoint
+              ? (left, top) => onAddRoutePoint(openMap.normalizedName, left, top)
+              : undefined
+          }
+          onRemoveRoutePoint={
+            onRemoveRoutePoint
+              ? (pointId) => onRemoveRoutePoint(openMap.normalizedName, pointId)
+              : undefined
+          }
+          onUpdateRoutePointLabel={
+            onUpdateRoutePointLabel
+              ? (pointId, label) =>
+                  onUpdateRoutePointLabel(openMap.normalizedName, pointId, label)
+              : undefined
+          }
+          onAddRouteArrow={
+            onAddRouteArrow
+              ? (fromLeft, fromTop, toLeft, toTop) =>
+                  onAddRouteArrow(openMap.normalizedName, fromLeft, fromTop, toLeft, toTop)
+              : undefined
+          }
+          onRemoveRouteArrow={
+            onRemoveRouteArrow
+              ? (arrowId) => onRemoveRouteArrow(openMap.normalizedName, arrowId)
+              : undefined
+          }
         />
       )}
       {groups.map(({ map, tasks: mapTasks }) => (

@@ -8,6 +8,19 @@ export interface RoutePoint {
   source?: 'personal' | 'fixed';
 }
 
+/** Flecha dibujada a mano (clic + arrastre) sobre un mapa, coordenadas en %. */
+export interface RouteArrow {
+  id: string;
+  fromLeft: number;
+  fromTop: number;
+  toLeft: number;
+  toTop: number;
+  color: string;
+}
+
+/** Preview de flecha mientras se arrastra. */
+export type RouteArrowDraft = Omit<RouteArrow, 'id'>;
+
 export type FixedMarkerType = 'default' | 'kb-document' | 'question';
 
 export const DEFAULT_FIXED_MARKER_TYPE: FixedMarkerType = 'default';
@@ -76,6 +89,9 @@ export interface FixedRoutePoint extends RoutePoint {
 /** mapKey → puntos en orden de la ruta. */
 export type RouteMapsData = Record<string, RoutePoint[]>;
 
+/** mapKey → flechas dibujadas a mano. */
+export type RouteArrowsData = Record<string, RouteArrow[]>;
+
 /** mapKey → puntos fijos del servidor. */
 export type FixedRouteMapsData = Record<string, FixedRoutePoint[]>;
 
@@ -83,11 +99,16 @@ export type FixedRouteMapsData = Record<string, FixedRoutePoint[]>;
 export type RouteColorLabels = Record<string, string>;
 
 export const ROUTE_MAPS_STORAGE_KEY = 'efg-route-maps';
+export const ROUTE_ARROWS_STORAGE_KEY = 'efg-route-arrows';
 export const ROUTE_COLOR_LABELS_STORAGE_KEY = 'efg-route-color-labels';
 export const ADMIN_TOKEN_STORAGE_KEY = 'efg-admin-token';
 
 export function routeMapsStorageKey(environment: RouteEnvironment): string {
   return `${ROUTE_MAPS_STORAGE_KEY}:${environment}`;
+}
+
+export function routeArrowsStorageKey(environment: RouteEnvironment): string {
+  return `${ROUTE_ARROWS_STORAGE_KEY}:${environment}`;
 }
 
 export function routeColorLabelsStorageKey(environment: RouteEnvironment): string {

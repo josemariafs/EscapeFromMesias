@@ -23,10 +23,12 @@ import {
   type FixedMarkerType,
   type FixedRouteMapsData,
   type FixedRoutePoint,
+  type RouteArrow,
   type RouteColorLabels,
   type RouteMapsData,
   type RoutePoint,
 } from '../types/routes';
+import { useMapArrowDraw } from '../hooks/useMapArrowDraw';
 import { areaPointToMapPercent, mapPercentToAreaPoint, useMapPanZoom } from '../hooks/useMapPanZoom';
 import {
   fixedMarkerLayerId,
@@ -42,6 +44,7 @@ import {
 } from '../utils/mapExtracts';
 import { getMapSvgUrl, ROUTE_MAPS } from '../utils/maps';
 import { FixedLayerToggles } from './FixedLayerToggles';
+import { RouteMapArrows } from './RouteMapArrows';
 import {
   MapFloatingTooltip,
   type MapFloatingTooltipData,
@@ -71,6 +74,7 @@ interface RouteMapsViewProps {
   selectedMapKey: string | null;
   onSelectMap: (mapKey: string | null) => void;
   points: RoutePoint[];
+  arrows?: RouteArrow[];
   fixedPoints?: FixedRoutePoint[];
   /** Extracciones PMC/SCAV del mapa seleccionado (automáticas). */
   mapExtracts?: MapExtractMarker[];
@@ -80,6 +84,9 @@ interface RouteMapsViewProps {
   onChangeColorLabel?: (color: string, name: string) => void;
   onAddPoint: (left: number, top: number) => void;
   onRemovePoint: (pointId: string) => void;
+  onUpdatePointLabel?: (pointId: string, label: string) => void;
+  onAddArrow?: (fromLeft: number, fromTop: number, toLeft: number, toTop: number) => void;
+  onRemoveArrow?: (arrowId: string) => void;
   onMovePoint?: (pointId: string, left: number, top: number) => void;
   onUndoLast?: () => void;
   onClearMap?: () => void;
@@ -124,12 +131,26 @@ function labelForColor(colorLabels: RouteColorLabels, color: string): string {
   return colorLabels[color]?.trim() ?? '';
 }
 
+function personalPointTitle(
+  point: RoutePoint,
+  index: number,
+  colorLabels: RouteColorLabels,
+  fallback: (n: number) => string,
+): string {
+  const custom = point.label?.trim();
+  if (custom) return custom;
+  const playerName = labelForColor(colorLabels, point.color);
+  if (playerName) return playerName;
+  return fallback(index + 1);
+}
+
 export function RouteMapsView({
   routes,
   fixedRoutes = {},
   selectedMapKey,
   onSelectMap,
   points,
+  arrows = [],
   fixedPoints = [],
   mapExtracts = [],
   selectedColor,
@@ -138,6 +159,9 @@ export function RouteMapsView({
   onChangeColorLabel,
   onAddPoint,
   onRemovePoint,
+  onUpdatePointLabel,
+  onAddArrow,
+  onRemoveArrow,
   onMovePoint,
   onUndoLast,
   onClearMap,
@@ -227,6 +251,7 @@ export function RouteMapsView({
   const dragMovedRef = useRef(false);
   const dragStateRef = useRef(dragState);
   dragStateRef.current = dragState;
+  const arrowDrawEnabled = Boolean(onAddArrow) && !isAdmin && !busy;
   const {
     containerRef: mapAreaRef,
     setContainerRef: setMapAreaRef,
@@ -237,7 +262,7 @@ export function RouteMapsView({
     contentStyle,
     panHandlers,
     shouldSuppressClick,
-  } = useMapPanZoom(selectedMapKey);
+  } = useMapPanZoom(selectedMapKey, { leftPanEnabled: !arrowDrawEnabled });
 
   const projectMarker = useCallback((left: number, top: number) => {
     if (imageSize.width <= 0 || areaSize.width <= 0) return null;
@@ -270,6 +295,22 @@ export function RouteMapsView({
       panY,
     );
   }, [areaSize.height, areaSize.width, imageSize.height, imageSize.width, mapAreaRef, panX, panY, zoom]);
+
+  const {
+    draft: arrowDraft,
+    drawHandlers,
+    shouldSuppressClick: shouldSuppressArrowClick,
+  } = useMapArrowDraw({
+    enabled: arrowDrawEnabled,
+    color: selectedColor,
+    clientToPercent: clientToMapPercent,
+    onComplete: (fromLeft, fromTop, toLeft, toTop) => {
+      onAddArrow?.(fromLeft, fromTop, toLeft, toTop);
+    },
+    onTap: (left, top) => {
+      onAddPoint(left, top);
+    },
+  });
 
   const beginMarkerDrag = useCallback((
     event: ReactPointerEvent<HTMLButtonElement>,
@@ -479,14 +520,12 @@ export function RouteMapsView({
 
   const handleMapClick = (event: MouseEvent<HTMLDivElement>) => {
     if (busy) return;
-    if (shouldSuppressClick()) return;
-    const wrap = imageWrapRef.current;
-    if (!wrap) return;
-    const rect = wrap.getBoundingClientRect();
-    if (rect.width <= 0 || rect.height <= 0) return;
-    const left = ((event.clientX - rect.left) / rect.width) * 100;
-    const top = ((event.clientY - rect.top) / rect.height) * 100;
-    onAddPoint(left, top);
+    if (shouldSuppressClick() || shouldSuppressArrowClick()) return;
+    // Con flechas, el tap lo gestiona useMapArrowDraw.
+    if (arrowDrawEnabled) return;
+    const point = clientToMapPercent(event.clientX, event.clientY);
+    if (!point) return;
+    onAddPoint(point.left, point.top);
   };
 
   if (!selectedMap || !mapUrl) {
@@ -834,12 +873,14 @@ export function RouteMapsView({
                         iconMarker ? 'route-maps-point-item--icon' : '',
                         isHovered ? 'route-maps-point-item--hovered' : '',
                       ].filter(Boolean).join(' ') || undefined}
-                      onMouseEnter={(e) => setPointHovered(point.id, {
-                        imageUrl: point.imageUrl,
-                        label: imageCaption,
-                        documentStyle,
-                        anchorEl: e.currentTarget,
-                      })}
+                      onMouseEnter={(e) => setPointHovered(point.id, isAdmin
+                        ? undefined
+                        : {
+                            imageUrl: point.imageUrl,
+                            label: imageCaption,
+                            documentStyle,
+                            anchorEl: e.currentTarget,
+                          })}
                       onMouseLeave={() => setPointHovered(null)}
                     >
                       {/* En admin el selector de tipo ya muestra el icono; evita el KB duplicado. */}
@@ -1023,81 +1064,168 @@ export function RouteMapsView({
         </section>
 
         {!isAdmin && (
-          <section className="route-maps-points">
-            <div className="route-maps-points-header">
-              <h3>{t.routesPersonalSection}</h3>
-              <div className="route-maps-point-actions">
-                {onUndoLast && (
-                  <button
-                    type="button"
-                    className="btn btn-reset"
-                    disabled={points.length === 0}
-                    onClick={onUndoLast}
-                  >
-                    {t.routesUndo}
-                  </button>
-                )}
-                {onClearMap && (
-                  <button
-                    type="button"
-                    className="btn btn-wipe"
-                    disabled={points.length === 0}
-                    onClick={() => {
-                      if (window.confirm(t.routesConfirmClear)) onClearMap();
-                    }}
-                  >
-                    {t.routesClear}
-                  </button>
-                )}
-              </div>
-            </div>
-            {points.length === 0 ? (
-              <p className="route-maps-empty">{t.routesNoPoints}</p>
-            ) : (
-              <ol className="route-maps-point-list">
-                {points.map((point, index) => {
-                  const playerName = labelForColor(colorLabels, point.color);
-                  const isHovered = hoveredPointId === point.id;
-                  return (
-                    <li
-                      key={point.id}
-                      ref={(el) => {
-                        if (el) pointListItemRefs.current.set(point.id, el);
-                        else pointListItemRefs.current.delete(point.id);
-                      }}
-                      className={isHovered ? 'route-maps-point-item--hovered' : undefined}
-                      onMouseEnter={() => setPointHovered(point.id, {})}
-                      onMouseLeave={() => setPointHovered(null)}
+          <>
+            <section className="route-maps-points">
+              <div className="route-maps-points-header">
+                <h3>{t.routesPersonalSection}</h3>
+                <div className="route-maps-point-actions">
+                  {onUndoLast && (
+                    <button
+                      type="button"
+                      className="btn btn-reset"
+                      disabled={points.length === 0}
+                      onClick={onUndoLast}
                     >
-                      <span
-                        className="route-point-dot"
-                        style={{ background: point.color }}
-                        aria-hidden
-                      />
-                      <span>
-                        {playerName || t.routesPointLabel(index + 1)}
-                      </span>
-                      <button
-                        type="button"
-                        className="btn-icon-close"
-                        aria-label={t.routesRemovePoint}
-                        onClick={() => onRemovePoint(point.id)}
+                      {t.routesUndo}
+                    </button>
+                  )}
+                  {onClearMap && (
+                    <button
+                      type="button"
+                      className="btn btn-wipe"
+                      disabled={points.length === 0 && arrows.length === 0}
+                      onClick={() => {
+                        if (window.confirm(t.routesConfirmClear)) onClearMap();
+                      }}
+                    >
+                      {t.routesClear}
+                    </button>
+                  )}
+                </div>
+              </div>
+              {points.length === 0 ? (
+                <p className="route-maps-empty">{t.routesNoPoints}</p>
+              ) : (
+                <ol className="route-maps-point-list">
+                  {points.map((point, index) => {
+                    const isHovered = hoveredPointId === point.id;
+                    const labelValue = editingLabels[point.id] ?? point.label ?? '';
+                    return (
+                      <li
+                        key={point.id}
+                        ref={(el) => {
+                          if (el) pointListItemRefs.current.set(point.id, el);
+                          else pointListItemRefs.current.delete(point.id);
+                        }}
+                        className={[
+                          'route-maps-point-item--personal',
+                          isHovered ? 'route-maps-point-item--hovered' : '',
+                        ].filter(Boolean).join(' ') || undefined}
+                        onMouseEnter={() => setPointHovered(point.id, {})}
+                        onMouseLeave={() => setPointHovered(null)}
                       >
-                        ×
-                      </button>
+                        <span
+                          className="route-point-dot"
+                          style={{ background: point.color }}
+                          aria-hidden
+                        />
+                        {onUpdatePointLabel ? (
+                          <input
+                            type="text"
+                            className="route-color-name-input route-maps-personal-point-input"
+                            value={labelValue}
+                            placeholder={t.routesPointLabelPlaceholder}
+                            maxLength={80}
+                            disabled={busy}
+                            onChange={(e) => {
+                              setEditingLabels((prev) => ({
+                                ...prev,
+                                [point.id]: e.target.value,
+                              }));
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key !== 'Enter') return;
+                              e.preventDefault();
+                              const next = labelValue.trim();
+                              if (!next || next === (point.label ?? '')) return;
+                              onUpdatePointLabel(point.id, next);
+                            }}
+                          />
+                        ) : (
+                          <span className="route-maps-personal-point-edit">
+                            {personalPointTitle(point, index, colorLabels, t.routesPointLabel)}
+                          </span>
+                        )}
+                        <div className="route-maps-point-actions-icons">
+                          {onUpdatePointLabel && (
+                            <button
+                              type="button"
+                              className="btn-icon-action"
+                              aria-label={t.adminSaveLabel}
+                              title={t.adminSaveLabel}
+                              disabled={
+                                busy
+                                || !labelValue.trim()
+                                || labelValue.trim() === (point.label ?? '')
+                              }
+                              onClick={() => onUpdatePointLabel(point.id, labelValue.trim())}
+                            >
+                              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
+                                <path
+                                  fill="currentColor"
+                                  d="M2.5 1.5h9.2L14.5 4.3v9.2a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1v-11a1 1 0 0 1 1-1Zm1 1v4.5h7v-4.5h-1.2v3.2H5.7V2.5H3.5Zm0 6v4h9v-4h-9Z"
+                                />
+                              </svg>
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="btn-icon-action"
+                            aria-label={t.routesRemovePoint}
+                            onClick={() => onRemovePoint(point.id)}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
+              )}
+            </section>
+
+            <section className="route-maps-points">
+              <div className="route-maps-points-header">
+                <h3>{t.routesArrows(arrows.length)}</h3>
+              </div>
+              {arrows.length === 0 ? (
+                <p className="route-maps-empty">{t.routesNoArrows}</p>
+              ) : (
+                <ol className="route-maps-point-list">
+                  {arrows.map((arrow, index) => (
+                    <li key={arrow.id} className="route-maps-point-item--arrow">
+                      <span className="route-arrow-list-icon" aria-hidden>
+                        ↗
+                      </span>
+                      <span>{t.routesArrowLabel(index + 1)}</span>
+                      {onRemoveArrow && (
+                        <button
+                          type="button"
+                          className="btn-icon-close"
+                          aria-label={t.routesRemoveArrow}
+                          onClick={() => onRemoveArrow(arrow.id)}
+                        >
+                          ×
+                        </button>
+                      )}
                     </li>
-                  );
-                })}
-              </ol>
-            )}
-          </section>
+                  ))}
+                </ol>
+              )}
+            </section>
+          </>
         )}
       </aside>
 
       <div
-        className={`route-maps-canvas map-modal-map-area map-modal-map-area--placing${zoom > 1 ? ' map-modal-map-area--zoomed' : ''}${isPanning ? ' is-panning' : ''}`}
+        className={`route-maps-canvas map-modal-map-area map-modal-map-area--placing${zoom > 1 ? ' map-modal-map-area--zoomed' : ''}${isPanning ? ' is-panning' : ''}${arrowDraft ? ' is-drawing-arrow' : ''}`}
         ref={setMapAreaRef}
-        {...panHandlers}
+        onPointerDown={(event) => {
+          drawHandlers.onPointerDown?.(event);
+          if (!arrowDrawEnabled || event.button !== 0 || event.altKey) {
+            panHandlers.onPointerDown?.(event);
+          }
+        }}
       >
         <div
           className="map-modal-image-wrap"
@@ -1128,6 +1256,14 @@ export function RouteMapsView({
             </div>
           ))}
         </div>
+        <RouteMapArrows
+          arrows={arrows}
+          draft={arrowDraft}
+          project={projectMarker}
+          markerIdPrefix={`route-map-arrow-${selectedMapKey ?? 'none'}`}
+          onRemoveArrow={!isAdmin ? onRemoveArrow : undefined}
+          removeLabel={t.routesRemoveArrow}
+        />
         <div className="map-modal-markers map-modal-markers--overlay">
           {visibleExtracts.map((extract) => {
             const pos = projectMarker(extract.left, extract.top);
@@ -1311,8 +1447,8 @@ export function RouteMapsView({
             const { left: displayLeft, top: displayTop } = resolvePointPosition(point);
             const pos = projectMarker(displayLeft, displayTop);
             if (!pos) return null;
-            const playerName = labelForColor(colorLabels, point.color);
-            const markerLabel = playerName || String(index + 1);
+            const title = personalPointTitle(point, index, colorLabels, t.routesPointLabel);
+            const markerLabel = point.label?.trim() || t.routesPointLabelPlaceholder;
             const isHovered = hoveredPointId === point.id;
             const canDragPersonal = Boolean(onMovePoint) && !busy;
             const isDragging = dragState?.id === point.id;
@@ -1332,8 +1468,8 @@ export function RouteMapsView({
                   '--route-marker-color': point.color,
                   zIndex: isDragging ? 5 : isHovered ? 3 : 2,
                 } as CSSProperties}
-                title={playerName ? `${playerName} — ${t.routesRemovePoint}` : t.routesRemovePoint}
-                aria-label={playerName || t.routesPointLabel(index + 1)}
+                title={`${title} — ${t.routesRemovePoint}`}
+                aria-label={title}
                 onMouseEnter={() => {
                   if (dragState) return;
                   setPointHovered(point.id, { scrollList: true });

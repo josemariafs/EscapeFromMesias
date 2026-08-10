@@ -36,6 +36,8 @@ const EVENT_LABELS: Record<string, string> = {
   route_map_opened: 'Mapa de rutas',
   route_point_added: 'Punto añadido',
   route_point_removed: 'Punto eliminado',
+  route_arrow_added: 'Flecha añadida',
+  route_arrow_removed: 'Flecha eliminada',
   route_map_cleared: 'Mapa limpiado',
   local_data_wiped: 'Borrado local',
 };

@@ -100,9 +100,14 @@ export default function App() {
     setSelectedColor,
     setColorLabel,
     getPoints,
+    getArrows,
+    arrows: routeArrowsData,
     addPoint,
     removePoint,
     movePoint,
+    updatePointLabel,
+    addArrow,
+    removeArrow,
     undoLast,
     clearMap,
   } = useRouteMaps(routeEnvironment);
@@ -237,6 +242,7 @@ export default function App() {
   const isActiveTableView =
     isQuestsUsage && isTableView && (viewTab === 'active' || viewTab === 'completed');
   const routePoints = selectedRouteMapKey ? getPoints(selectedRouteMapKey) : [];
+  const routeMapArrows = selectedRouteMapKey ? getArrows(selectedRouteMapKey) : [];
   const fixedRoutePoints = selectedRouteMapKey
     ? fixedRoutes.getPoints(selectedRouteMapKey)
     : [];
@@ -664,6 +670,7 @@ export default function App() {
             selectedMapKey={selectedRouteMapKey}
             onSelectMap={handleSelectRouteMap}
             points={routePoints}
+            arrows={routeMapArrows}
             fixedPoints={fixedRoutePoints}
             mapExtracts={
               selectedRouteMapKey
@@ -683,6 +690,20 @@ export default function App() {
               if (!selectedRouteMapKey) return;
               removePoint(selectedRouteMapKey, pointId);
               trackUsage('route_point_removed', { mapKey: selectedRouteMapKey });
+            }}
+            onUpdatePointLabel={(pointId, label) => {
+              if (!selectedRouteMapKey) return;
+              updatePointLabel(selectedRouteMapKey, pointId, label);
+            }}
+            onAddArrow={(fromLeft, fromTop, toLeft, toTop) => {
+              if (!selectedRouteMapKey) return;
+              addArrow(selectedRouteMapKey, fromLeft, fromTop, toLeft, toTop);
+              trackUsage('route_arrow_added', { mapKey: selectedRouteMapKey });
+            }}
+            onRemoveArrow={(arrowId) => {
+              if (!selectedRouteMapKey) return;
+              removeArrow(selectedRouteMapKey, arrowId);
+              trackUsage('route_arrow_removed', { mapKey: selectedRouteMapKey });
             }}
             onMovePoint={(pointId, left, top) => {
               if (selectedRouteMapKey) movePoint(selectedRouteMapKey, pointId, left, top);
@@ -759,6 +780,8 @@ export default function App() {
               completedObjectives={progress.completedObjectives}
               customMapMarkers={progress.customMapMarkers ?? {}}
               routeMaps={routes}
+              routeArrows={routeArrowsData}
+              routeDrawColor={selectedColor}
               fixedRouteMaps={fixedRoutes.routes}
               mapExtracts={mapExtracts.extracts}
               routeColorLabels={colorLabels}
@@ -772,6 +795,25 @@ export default function App() {
               onReset={guardedResetTask}
               onSetCustomMapMarker={setCustomMapMarker}
               onClearCustomMapMarker={clearCustomMapMarker}
+              onAddRoutePoint={(mapKey, left, top) => {
+                addPoint(mapKey, left, top);
+                trackUsage('route_point_added', { mapKey, source: 'quest_map' });
+              }}
+              onRemoveRoutePoint={(mapKey, pointId) => {
+                removePoint(mapKey, pointId);
+                trackUsage('route_point_removed', { mapKey, source: 'quest_map' });
+              }}
+              onUpdateRoutePointLabel={(mapKey, pointId, label) => {
+                updatePointLabel(mapKey, pointId, label);
+              }}
+              onAddRouteArrow={(mapKey, fromLeft, fromTop, toLeft, toTop) => {
+                addArrow(mapKey, fromLeft, fromTop, toLeft, toTop);
+                trackUsage('route_arrow_added', { mapKey, source: 'quest_map' });
+              }}
+              onRemoveRouteArrow={(mapKey, arrowId) => {
+                removeArrow(mapKey, arrowId);
+                trackUsage('route_arrow_removed', { mapKey, source: 'quest_map' });
+              }}
               lockedIds={logLockedIds}
               showActionsColumn={!isLogsMode}
             />
