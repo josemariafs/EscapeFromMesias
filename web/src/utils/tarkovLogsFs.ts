@@ -164,13 +164,15 @@ export function createHandleLogsDirectory(handle: FileSystemDirectoryHandle): Lo
   };
 }
 
+function relativePathParts(file: File): string[] {
+  const rel = (file.webkitRelativePath || '').replace(/\\/g, '/');
+  if (rel) return rel.split('/').filter(Boolean);
+  return file.name ? [file.name] : [];
+}
+
 function fileBaseName(file: File): string {
-  const rel = file.webkitRelativePath;
-  if (rel) {
-    const parts = rel.split('/');
-    return parts[parts.length - 1] || file.name;
-  }
-  return file.name;
+  const parts = relativePathParts(file);
+  return parts[parts.length - 1] || file.name;
 }
 
 async function readMatchingFilesText(
@@ -206,7 +208,7 @@ export function buildSessionsFromFileList(files: File[]): SessionFolderInfo[] {
   const bySession = new Map<string, File[]>();
 
   for (const file of files) {
-    const parts = file.webkitRelativePath.split('/').filter(Boolean);
+    const parts = relativePathParts(file);
     const sessionName = parts.find((part) => isSessionFolderName(part));
     if (!sessionName) continue;
     const list = bySession.get(sessionName);
@@ -239,6 +241,10 @@ export function createFileListLogsDirectory(rootName: string, files: File[]): Lo
 /**
  * Abre el selector de carpeta nativo vía &lt;input webkitdirectory&gt;.
  * Compatible con Firefox (y Safari). No permite sondeo en vivo ni recordar la carpeta.
+ *
+ * Importante (Firefox): al elegir carpeta el foco vuelve a la ventana *antes* de
+ * disparar `change`. Un timeout corto en `focus` abortaba la selección y dejaba
+ * la UI en "conectar carpeta" aunque el usuario sí hubiera elegido Logs.
  */
 export function pickLogsDirectoryViaInput(): Promise<LogsDirectory> {
   return new Promise((resolve, reject) => {
@@ -247,36 +253,65 @@ export function pickLogsDirectoryViaInput(): Promise<LogsDirectory> {
     input.multiple = true;
     input.setAttribute('webkitdirectory', '');
     input.setAttribute('directory', '');
+    // Firefox es más fiable con el input montado en el DOM.
+    input.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0;pointer-events:none';
+    document.body.appendChild(input);
 
     let settled = false;
+    let cancelTimer: number | null = null;
+
+    const cleanup = () => {
+      if (cancelTimer != null) {
+        window.clearTimeout(cancelTimer);
+        cancelTimer = null;
+      }
+      window.removeEventListener('focus', onWindowFocus);
+      input.remove();
+    };
+
     const settle = (fn: () => void) => {
       if (settled) return;
       settled = true;
-      window.removeEventListener('focus', onWindowFocus);
+      cleanup();
       fn();
     };
 
+    const onPicked = () => {
+      const files = Array.from(input.files ?? []);
+      if (files.length === 0) return false;
+      const firstRel = (files[0]?.webkitRelativePath || files[0]?.name || '').replace(/\\/g, '/');
+      const rootName = firstRel.split('/').filter(Boolean)[0] || 'Logs';
+      settle(() => resolve(createFileListLogsDirectory(rootName, files)));
+      return true;
+    };
+
     const onWindowFocus = () => {
-      // Si el usuario cancela, normalmente no hay evento change; lo detectamos al volver el foco.
-      window.setTimeout(() => {
-        if (!input.files?.length) {
+      // Firefox restaura el foco antes de rellenar `input.files` / disparar `change`.
+      // Sondeamos un rato; solo si sigue vacío asumimos cancelación.
+      if (cancelTimer != null) window.clearTimeout(cancelTimer);
+      const startedAt = Date.now();
+      const poll = () => {
+        if (settled) return;
+        if (onPicked()) return;
+        if (Date.now() - startedAt >= 12_000) {
           settle(() => reject(new DOMException('The user aborted a request.', 'AbortError')));
+          return;
         }
-      }, 400);
+        cancelTimer = window.setTimeout(poll, 200);
+      };
+      cancelTimer = window.setTimeout(poll, 250);
     };
 
     input.addEventListener('change', () => {
-      const files = Array.from(input.files ?? []);
-      if (files.length === 0) {
+      if (!onPicked()) {
         settle(() => reject(new DOMException('The user aborted a request.', 'AbortError')));
-        return;
       }
-      const firstRel = files[0]?.webkitRelativePath ?? '';
-      const rootName = firstRel.split('/')[0] || 'Logs';
-      settle(() => resolve(createFileListLogsDirectory(rootName, files)));
     });
-
+    input.addEventListener('input', () => {
+      void onPicked();
+    });
     window.addEventListener('focus', onWindowFocus);
+    // Deja que el click síncrono del gesto del usuario abra el diálogo.
     input.click();
   });
 }

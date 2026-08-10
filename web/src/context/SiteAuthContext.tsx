@@ -10,6 +10,8 @@ interface SiteAuthContextValue {
   canAccessAdmin: boolean;
   /** Logo Escape From Gorditos (token public o código semanal). */
   useGorditosLogo: boolean;
+  /** Cierra sesión de la app y vuelve a la pantalla de contraseña. */
+  logout: () => void;
 }
 
 const SiteAuthContext = createContext<SiteAuthContextValue>({
@@ -17,6 +19,7 @@ const SiteAuthContext = createContext<SiteAuthContextValue>({
   canRevealDailyCode: false,
   canAccessAdmin: false,
   useGorditosLogo: false,
+  logout: () => {},
 });
 
 export function useSiteAuthContext(): SiteAuthContextValue {
@@ -28,7 +31,8 @@ interface SiteAuthGateProps {
 }
 
 export function SiteAuthGate({ children }: SiteAuthGateProps) {
-  const { status, kind, canRevealDailyCode, error, failCount, submitting, login } = useSiteAuth();
+  const { status, kind, canRevealDailyCode, error, failCount, submitting, login, logout } =
+    useSiteAuth();
   const canAccessAdmin = kind === 'admin';
   const useGorditosLogo = kind === 'public' || kind === 'daily';
 
@@ -55,7 +59,7 @@ export function SiteAuthGate({ children }: SiteAuthGateProps) {
 
   return (
     <SiteAuthContext.Provider
-      value={{ kind, canRevealDailyCode, canAccessAdmin, useGorditosLogo }}
+      value={{ kind, canRevealDailyCode, canAccessAdmin, useGorditosLogo, logout }}
     >
       {children}
     </SiteAuthContext.Provider>

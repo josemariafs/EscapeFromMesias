@@ -179,6 +179,38 @@ body {
   color: var(--text);
 }
 
+.app-footer-updated {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.app-footer-updated-label {
+  color: var(--text-muted);
+}
+
+.app-footer-logout {
+  appearance: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #e09090;
+  font: inherit;
+  font-size: inherit;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+.app-footer-logout:hover {
+  color: #f0b0b0;
+}
+
 .app-footer-visits {
   letter-spacing: 0.02em;
   color: var(--text-muted);

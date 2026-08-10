@@ -10,6 +10,9 @@ interface AppFooterProps {
   formatOnline: (n: number) => string;
   feedbackLabel: string;
   onOpenFeedback: () => void;
+  lastUpdateLabel: string;
+  logoutLabel: string;
+  onLogout: () => void;
 }
 
 export function AppFooter({
@@ -19,6 +22,9 @@ export function AppFooter({
   formatOnline,
   feedbackLabel,
   onOpenFeedback,
+  lastUpdateLabel,
+  logoutLabel,
+  onLogout,
 }: AppFooterProps) {
   const { impressions } = useVisitCounter();
   const { online } = useOnlinePresence();
@@ -50,7 +56,14 @@ export function AppFooter({
         )}
         <span>v{APP_VERSION}</span>
         <span aria-hidden="true">·</span>
-        <time dateTime={BUILD_TIME}>{formatBuildTime(BUILD_TIME, locale)}</time>
+        <span className="app-footer-updated">
+          <span className="app-footer-updated-label">{lastUpdateLabel}</span>
+          <time dateTime={BUILD_TIME}>{formatBuildTime(BUILD_TIME, locale)}</time>
+        </span>
+        <span aria-hidden="true">·</span>
+        <button type="button" className="app-footer-logout" onClick={onLogout}>
+          {logoutLabel}
+        </button>
       </div>
     </footer>
   );

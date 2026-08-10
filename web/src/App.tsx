@@ -56,6 +56,7 @@ export default function App() {
     canRevealDailyCode,
     canAccessAdmin,
     useGorditosLogo,
+    logout: siteLogout,
   } = useSiteAuthContext();
   const brandLogoSrc = useGorditosLogo ? '/gorditos-logo.png' : '/logo.png';
   const { active: crtActive, playId: crtPlayId, transitionTo } = useCrtViewTransition();
@@ -373,6 +374,9 @@ export default function App() {
         formatOnline={t.footerOnline}
         feedbackLabel={t.feedbackButton}
         onOpenFeedback={() => setFeedbackOpen(true)}
+        lastUpdateLabel={t.footerLastUpdate}
+        logoutLabel={t.footerLogout}
+        onLogout={siteLogout}
       />
       <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} t={t} />
     </>
@@ -888,6 +892,9 @@ export default function App() {
         formatOnline={t.footerOnline}
         feedbackLabel={t.feedbackButton}
         onOpenFeedback={() => setFeedbackOpen(true)}
+        lastUpdateLabel={t.footerLastUpdate}
+        logoutLabel={t.footerLogout}
+        onLogout={siteLogout}
         notices={(usingStaleCache || isLogsLocked) ? (
           <>
             {usingStaleCache && (

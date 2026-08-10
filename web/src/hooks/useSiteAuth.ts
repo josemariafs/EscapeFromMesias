@@ -80,6 +80,19 @@ export function useSiteAuth() {
     return false;
   }, []);
 
+  const logout = useCallback(() => {
+    clearSiteSession();
+    try {
+      sessionStorage.removeItem(ADMIN_TOKEN_STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+    setKind(null);
+    setError(null);
+    setFailCount(0);
+    setStatus('locked');
+  }, []);
+
   return {
     status,
     kind: kind ?? getStoredSiteKind(),
@@ -88,5 +101,6 @@ export function useSiteAuth() {
     failCount,
     submitting,
     login,
+    logout,
   };
 }
