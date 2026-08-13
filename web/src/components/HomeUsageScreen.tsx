@@ -63,33 +63,6 @@ function IconPvp() {
   );
 }
 
-function IconSeasonal() {
-  return (
-    <svg className="home-usage-card-icon" viewBox="0 0 64 64" aria-hidden>
-      <defs>
-        <linearGradient id="home-icon-season-metal" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#8fd4c8" />
-          <stop offset="45%" stopColor="#4a7a74" />
-          <stop offset="100%" stopColor="#2a403c" />
-        </linearGradient>
-      </defs>
-      <path
-        d="M32 4 56 18v28L32 60 8 46V18Z"
-        fill="url(#home-icon-season-metal)"
-        stroke="#1a2226"
-        strokeWidth="2"
-      />
-      <path d="M32 12 48 22v20L32 52 16 42V22Z" fill="#1a282c" stroke="#6a9a92" strokeWidth="1.2" />
-      <path
-        d="M32 20c-5 0-8 4-8 8 0 4 2 7 5 10l3 4 3-4c3-3 5-6 5-10 0-4-3-8-8-8z"
-        fill="#a8c4c0"
-      />
-      <path d="M27 34h10v4c0 2-2 4-5 4s-5-2-5-4v-4z" fill="#6a8a86" />
-      <path d="M24 28h16" stroke="#1a282c" strokeWidth="1.5" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 function IconAdmin() {
   return (
     <svg className="home-usage-card-icon" viewBox="0 0 64 64" aria-hidden>
@@ -176,7 +149,12 @@ export function HomeUsageScreen({
           title={t.gameModeHint.seasonal}
           onClick={() => onChoose('seasonal')}
         >
-          <IconSeasonal />
+          <img
+            className="home-usage-card-icon home-usage-card-icon--seasonal"
+            src="/brand/pvp-seasonal-icon.png"
+            alt=""
+            draggable={false}
+          />
           <span className="home-usage-card-text">
             <strong className="home-usage-card-title">{t.homeCardSeasonal}</strong>
             <span className="home-usage-card-tag">{t.homeCardTagSeasonal}</span>

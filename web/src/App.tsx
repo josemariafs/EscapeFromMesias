@@ -6,6 +6,7 @@ import { DataSourceControl } from './components/DataSourceControl';
 import { CrtViewTransition } from './components/CrtViewTransition';
 import { FeedbackModal } from './components/FeedbackModal';
 import { HeaderAccessCode } from './components/HeaderAccessCode';
+import { HeaderAppMenu } from './components/HeaderAppMenu';
 import { HomeUsageScreen, type HomeUsageChoice } from './components/HomeUsageScreen';
 import { useSiteAuthContext } from './context/SiteAuthContext';
 import { useCrtViewTransition } from './hooks/useCrtViewTransition';
@@ -60,6 +61,8 @@ export default function App() {
     logout: siteLogout,
   } = useSiteAuthContext();
   const brandLogoSrc = useGorditosLogo ? '/gorditos-logo.png' : '/logo.png';
+  const brandLogoClass = useGorditosLogo ? ' brand-logo--gorditos' : '';
+  const seasonalGameLogoSrc = '/brand/kord-breach-season1.png';
   const { active: crtActive, playId: crtPlayId, transitionTo } = useCrtViewTransition();
   const [appUsage, setAppUsage] = useState<AppUsage>('home');
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -441,217 +444,238 @@ export default function App() {
   }
 
   return (
-    <div className={`app${isHome ? ' app--home' : ''}${isLogsLocked ? ' logs-locked' : ''}`}>
+    <div
+      className={[
+        'app',
+        isHome ? 'app--home' : '',
+        !isHome && isQuestsUsage ? 'app--header-contextual' : '',
+        isLogsLocked ? 'logs-locked' : '',
+        gameMode === 'seasonal' ? 'app--seasonal' : '',
+      ].filter(Boolean).join(' ')}
+    >
       <CrtViewTransition active={crtActive} playId={crtPlayId} logoSrc={brandLogoSrc} />
       {!isHome && (
-      <header className="app-header">
-        <div className="header-grid">
-          <div className={`header-logo${canRevealDailyCode ? ' header-logo--with-access' : ''}`}>
-            <button
-              type="button"
-              className="header-logo-btn"
-              onClick={goHome}
-              title={t.homeBack}
-              aria-label={t.homeBack}
+      <header className={`app-header${isQuestsUsage ? ' app-header--contextual' : ''}`}>
+        <div className={`header-logo${canRevealDailyCode ? ' header-logo--with-access' : ''}`}>
+          <button
+            type="button"
+            className="header-logo-btn"
+            onClick={goHome}
+            title={t.homeBack}
+            aria-label={t.homeBack}
+          >
+            <img
+              src={brandLogoSrc}
+              alt={t.appTitle}
+              className={`brand-logo${brandLogoClass}`}
+            />
+          </button>
+          {isQuestsUsage && gameMode !== 'seasonal' && (
+            <span
+              className="header-mode-badge"
+              title={t.gameModeHint[gameMode === 'pve' ? 'regular' : gameMode]}
             >
-              <img
-                src={brandLogoSrc}
-                alt={t.appTitle}
-                className={`brand-logo${useGorditosLogo ? ' brand-logo--gorditos' : ''}`}
-              />
-            </button>
-            <HeaderAccessCode enabled={canRevealDailyCode} />
-          </div>
+              PVP
+            </span>
+          )}
+          {isRoutesUsage && (
+            <span className="header-mode-badge routes" title={t.routeEnvironmentHint}>
+              {t.tabRoutes}
+            </span>
+          )}
+          <HeaderAccessCode enabled={canRevealDailyCode} />
+        </div>
 
+        {isQuestsUsage && gameMode === 'seasonal' && (
+          <div className="header-season" title={t.gameModeHint.seasonal}>
+            <img
+              src={seasonalGameLogoSrc}
+              alt="Kord Breach Season 1"
+              className="header-season-logo"
+            />
+          </div>
+        )}
+
+        <div className="header-main">
+        <div className="header-primary">
           <div className="header-tabs">
             {isQuestsUsage && (
-              <>
-                <span
-                  className={`header-mode-badge${gameMode === 'seasonal' ? ' seasonal' : ''}`}
-                  title={t.gameModeHint[gameMode === 'pve' ? 'regular' : gameMode]}
-                >
-                  {gameMode === 'seasonal' ? 'SEASONAL' : 'PVP'}
-                </span>
-                <div className="segmented" role="tablist" aria-label={t.tabAll}>
-                  {!isLogsMode && (
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={viewTab === 'all'}
-                      className={`segmented-item${viewTab === 'all' ? ' active' : ''}`}
-                      onClick={() => {
-                        setViewTab('all');
-                        trackUsage('quest_tab', { tab: 'all' });
-                      }}
-                    >
-                      {t.tabAll}
-                    </button>
-                  )}
+              <div className="segmented" role="tablist" aria-label={t.tabAll}>
+                {!isLogsMode && (
                   <button
                     type="button"
                     role="tab"
-                    aria-selected={viewTab === 'active'}
-                    className={`segmented-item${viewTab === 'active' ? ' active' : ''}`}
+                    aria-selected={viewTab === 'all'}
+                    className={`segmented-item${viewTab === 'all' ? ' active' : ''}`}
                     onClick={() => {
-                      setViewTab('active');
-                      trackUsage('quest_tab', { tab: 'active' });
+                      setViewTab('all');
+                      trackUsage('quest_tab', { tab: 'all' });
                     }}
                   >
-                    {t.tabActive}
-                    {startedCount > 0 && <span className="seg-count">{startedCount}</span>}
+                    {t.tabAll}
                   </button>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={viewTab === 'completed'}
-                    className={`segmented-item${viewTab === 'completed' ? ' active' : ''}`}
-                    onClick={() => {
-                      setViewTab('completed');
-                      setSelectedId(null);
-                      trackUsage('quest_tab', { tab: 'completed' });
-                    }}
-                  >
-                    {t.tabCompleted}
-                    {completedCount > 0 && <span className="seg-count">{completedCount}</span>}
-                  </button>
-                </div>
-
-                {!isLogsMode && viewTab === 'all' && (
-                  <div className="segmented segmented-sub" role="tablist" aria-label={t.tabAll}>
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={allQuestTab === 'story'}
-                      className={`segmented-item${allQuestTab === 'story' ? ' active' : ''}`}
-                      onClick={() => handleQuestTabChange('story')}
-                    >
-                      {t.tabStory}
-                      <span className="seg-count">{storyNodes.length + storyApiTasks.length}</span>
-                    </button>
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={allQuestTab === 'side'}
-                      className={`segmented-item${allQuestTab === 'side' ? ' active' : ''}`}
-                      onClick={() => handleQuestTabChange('side')}
-                    >
-                      {t.tabSideQuest}
-                      <span className="seg-count">{sideTasks.length}</span>
-                    </button>
-                  </div>
                 )}
-              </>
-            )}
-            {isRoutesUsage && (
-              <span className="header-mode-badge routes" title={t.routeEnvironmentHint}>
-                {t.tabRoutes} · {t.routeEnvironmentSeasonal}
-              </span>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={viewTab === 'active'}
+                  className={`segmented-item${viewTab === 'active' ? ' active' : ''}`}
+                  onClick={() => {
+                    setViewTab('active');
+                    trackUsage('quest_tab', { tab: 'active' });
+                  }}
+                >
+                  {t.tabActive}
+                  {startedCount > 0 && <span className="seg-count">{startedCount}</span>}
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={viewTab === 'completed'}
+                  className={`segmented-item${viewTab === 'completed' ? ' active' : ''}`}
+                  onClick={() => {
+                    setViewTab('completed');
+                    setSelectedId(null);
+                    trackUsage('quest_tab', { tab: 'completed' });
+                  }}
+                >
+                  {t.tabCompleted}
+                  {completedCount > 0 && <span className="seg-count">{completedCount}</span>}
+                </button>
+              </div>
             )}
           </div>
 
           <div className="header-right">
-            <div className="header-controls-top">
-              {isQuestsUsage && (
-                <>
-                  {!isLogsMode && (
-                    <>
-                      <label className="header-level" title={t.playerLevel}>
-                        <span className="header-level-label">Lv</span>
-                        <input
-                          type="number"
-                          min={0}
-                          max={79}
-                          value={progress.playerLevel}
-                          onChange={(e) => setPlayerLevel(Number(e.target.value))}
-                        />
-                      </label>
-                      <button
-                        type="button"
-                        className={`btn-trader-levels${showTraderLevels ? ' active' : ''}`}
-                        onClick={() => setShowTraderLevels((v) => !v)}
-                        aria-pressed={showTraderLevels}
-                        title={t.traderLevels}
-                      >
-                        LL
-                      </button>
-                    </>
-                  )}
-                  <DataSourceControl
-                    dataSource={dataSource}
-                    onChangeDataSource={(next) => {
-                      setDataSource(next);
-                      trackUsage('data_source_changed', { source: next });
-                    }}
-                    status={logSync.status}
-                    folderName={logSync.folderName}
-                    lastSyncedAt={logSync.lastSyncedAt}
-                    errorMessage={logSync.errorMessage}
-                    sessionCount={logSync.sessionCount}
-                    totalSessionCount={logSync.totalSessionCount}
-                    taskCount={Object.keys(logSync.taskStatusMap).length}
-                    wipeVersion={logSync.wipeVersion}
-                    unmatchedTaskIds={unmatchedLogTaskIds}
-                    unmatchedTaskStates={unmatchedLogTaskStates}
-                    breakpoints={logSync.breakpoints}
-                    wipeStartSelection={logSync.wipeStartSelection}
-                    resolvedWipeStartSession={logSync.resolvedWipeStartSession}
-                    onChangeWipeStart={logSync.setWipeStart}
-                    knownProfiles={logSync.knownProfiles}
-                    activeProfileId={logSync.activeProfileId}
-                    onAssignProfileMode={logSync.assignProfileMode}
-                    canLivePoll={logSync.canLivePoll}
-                    locale={locale}
-                    t={t}
-                    onConnect={() => {
-                      trackUsage('logs_connect');
-                      void logSync.connect();
-                    }}
-                    onReconnect={logSync.reconnect}
-                    onDisconnect={() => {
-                      trackUsage('logs_disconnect');
-                      logSync.disconnect();
-                    }}
-                  />
-                </>
+            <div className="lang-flags" role="group" aria-label={t.language}>
+              <button
+                type="button"
+                className={`lang-flag${lang === 'es' ? ' active' : ''}`}
+                onClick={() => {
+                  setLang('es');
+                  trackUsage('language_changed', { lang: 'es' });
+                }}
+                aria-pressed={lang === 'es'}
+                title="Español"
+              >
+                <img src="/flags/es.svg" alt="Español" />
+              </button>
+              <button
+                type="button"
+                className={`lang-flag${lang === 'en' ? ' active' : ''}`}
+                onClick={() => {
+                  setLang('en');
+                  trackUsage('language_changed', { lang: 'en' });
+                }}
+                aria-pressed={lang === 'en'}
+                title="English"
+              >
+                <img src="/flags/en.svg" alt="English" />
+              </button>
+            </div>
+            <HeaderAppMenu
+              menuLabel={t.headerAppMenu}
+              adminLabel={t.openAdminPanel}
+              wipeLabel={t.wipeAll}
+              canAccessAdmin={canAccessAdmin}
+              onWipeAll={handleWipeAll}
+            />
+          </div>
+        </div>
+
+        {isQuestsUsage && (
+          <div className="header-secondary">
+            <div className="header-secondary-left">
+              {!isLogsMode && (
+                <div className="header-secondary-progress" aria-label={t.playerLevel}>
+                  <label className="header-level" title={t.playerLevel}>
+                    <span className="header-level-label">Lv</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={79}
+                      value={progress.playerLevel}
+                      onChange={(e) => setPlayerLevel(Number(e.target.value))}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    className={`btn-trader-levels${showTraderLevels ? ' active' : ''}`}
+                    onClick={() => setShowTraderLevels((v) => !v)}
+                    aria-pressed={showTraderLevels}
+                    title={t.traderLevels}
+                  >
+                    LL
+                  </button>
+                </div>
               )}
-              <div className="lang-flags" role="group" aria-label={t.language}>
-                <button
-                  type="button"
-                  className={`lang-flag${lang === 'es' ? ' active' : ''}`}
-                  onClick={() => {
-                    setLang('es');
-                    trackUsage('language_changed', { lang: 'es' });
-                  }}
-                  aria-pressed={lang === 'es'}
-                  title="Español"
-                >
-                  <img src="/flags/es.svg" alt="Español" />
-                </button>
-                <button
-                  type="button"
-                  className={`lang-flag${lang === 'en' ? ' active' : ''}`}
-                  onClick={() => {
-                    setLang('en');
-                    trackUsage('language_changed', { lang: 'en' });
-                  }}
-                  aria-pressed={lang === 'en'}
-                  title="English"
-                >
-                  <img src="/flags/en.svg" alt="English" />
-                </button>
-              </div>
-              <div className="header-actions">
-                {canAccessAdmin ? (
-                  <a className="btn btn-admin-panel" href="/admin" title={t.openAdminPanel}>
-                    {t.openAdminPanel}
-                  </a>
-                ) : null}
-                <button type="button" className="btn btn-wipe" onClick={handleWipeAll}>
-                  {t.wipeAll}
-                </button>
-              </div>
+
+              {!isLogsMode && viewTab === 'all' && (
+                <div className="segmented segmented-sub" role="tablist" aria-label={t.tabAll}>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={allQuestTab === 'story'}
+                    className={`segmented-item${allQuestTab === 'story' ? ' active' : ''}`}
+                    onClick={() => handleQuestTabChange('story')}
+                  >
+                    {t.tabStory}
+                    <span className="seg-count">{storyNodes.length + storyApiTasks.length}</span>
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={allQuestTab === 'side'}
+                    className={`segmented-item${allQuestTab === 'side' ? ' active' : ''}`}
+                    onClick={() => handleQuestTabChange('side')}
+                  >
+                    {t.tabSideQuest}
+                    <span className="seg-count">{sideTasks.length}</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="header-secondary-right">
+              <DataSourceControl
+                dataSource={dataSource}
+                onChangeDataSource={(next) => {
+                  setDataSource(next);
+                  trackUsage('data_source_changed', { source: next });
+                }}
+                status={logSync.status}
+                folderName={logSync.folderName}
+                lastSyncedAt={logSync.lastSyncedAt}
+                errorMessage={logSync.errorMessage}
+                sessionCount={logSync.sessionCount}
+                totalSessionCount={logSync.totalSessionCount}
+                taskCount={Object.keys(logSync.taskStatusMap).length}
+                wipeVersion={logSync.wipeVersion}
+                unmatchedTaskIds={unmatchedLogTaskIds}
+                unmatchedTaskStates={unmatchedLogTaskStates}
+                breakpoints={logSync.breakpoints}
+                wipeStartSelection={logSync.wipeStartSelection}
+                resolvedWipeStartSession={logSync.resolvedWipeStartSession}
+                onChangeWipeStart={logSync.setWipeStart}
+                knownProfiles={logSync.knownProfiles}
+                activeProfileId={logSync.activeProfileId}
+                onAssignProfileMode={logSync.assignProfileMode}
+                canLivePoll={logSync.canLivePoll}
+                locale={locale}
+                t={t}
+                onConnect={() => {
+                  trackUsage('logs_connect');
+                  void logSync.connect();
+                }}
+                onReconnect={logSync.reconnect}
+                onDisconnect={() => {
+                  trackUsage('logs_disconnect');
+                  logSync.disconnect();
+                }}
+              />
             </div>
           </div>
+        )}
         </div>
       </header>
       )}
@@ -951,24 +975,14 @@ export default function App() {
         lastUpdateLabel={t.footerLastUpdate}
         logoutLabel={t.footerLogout}
         onLogout={siteLogout}
-        notices={(usingStaleCache || isLogsLocked) ? (
-          <>
-            {usingStaleCache && (
-              <p className="footer-notice footer-notice--warn">
-                {t.staleCacheNotice}
-                {apiError ? ` ${t.staleCacheNoticeDetail(apiError)}` : ''}{' '}
-                <button type="button" className="link-btn" onClick={() => reload()}>
-                  {t.retry}
-                </button>
-              </p>
-            )}
-            {isLogsLocked && (
-              <p className="footer-notice">{t.logsReadOnlyNotice}</p>
-            )}
-            {isLogsLocked && Object.keys(logSync.taskStatusMap).length === 0 && (
-              <p className="footer-notice footer-notice--warn">{t.logsNoEventsHint}</p>
-            )}
-          </>
+        notices={usingStaleCache ? (
+          <p className="footer-notice footer-notice--warn">
+            {t.staleCacheNotice}
+            {apiError ? ` ${t.staleCacheNoticeDetail(apiError)}` : ''}{' '}
+            <button type="button" className="link-btn" onClick={() => reload()}>
+              {t.retry}
+            </button>
+          </p>
         ) : undefined}
       />
       <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} t={t} />

@@ -123,6 +123,45 @@ function labelForColor(colorLabels: RouteColorLabels | undefined, color: string)
   return colorLabels?.[color]?.trim() ?? '';
 }
 
+/** Subtareas de mapa ocultas por el usuario (checkbox), por mapKey. */
+const HIDDEN_QUEST_MARKERS_KEY = 'efg-hidden-quest-markers:v1';
+
+function readHiddenQuestMarkers(mapKey: string): Set<string> {
+  try {
+    const raw = localStorage.getItem(HIDDEN_QUEST_MARKERS_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const list = parsed[mapKey];
+    if (!Array.isArray(list)) return new Set();
+    return new Set(list.filter((id): id is string => typeof id === 'string' && id.length > 0));
+  } catch {
+    return new Set();
+  }
+}
+
+function writeHiddenQuestMarkers(mapKey: string, ids: Set<string>): void {
+  try {
+    const raw = localStorage.getItem(HIDDEN_QUEST_MARKERS_KEY);
+    const parsed =
+      raw && raw.trim()
+        ? (JSON.parse(raw) as Record<string, unknown>)
+        : {};
+    const next: Record<string, string[]> = {};
+    if (parsed && typeof parsed === 'object') {
+      for (const [key, value] of Object.entries(parsed)) {
+        if (Array.isArray(value)) {
+          next[key] = value.filter((id): id is string => typeof id === 'string');
+        }
+      }
+    }
+    if (ids.size === 0) delete next[mapKey];
+    else next[mapKey] = [...ids];
+    localStorage.setItem(HIDDEN_QUEST_MARKERS_KEY, JSON.stringify(next));
+  } catch {
+    // ignore quota / private mode
+  }
+}
+
 function personalPointTitle(
   point: RoutePoint,
   index: number,
@@ -188,8 +227,10 @@ export function MapViewerModal({
   const [mapTooltip, setMapTooltip] = useState<(MapFloatingTooltipData & { id: string }) | null>(
     null,
   );
-  /** Marcadores de misión ocultos con el checkbox de la leyenda. */
-  const [hiddenQuestMarkerIds, setHiddenQuestMarkerIds] = useState<Set<string>>(() => new Set());
+  /** Marcadores de misión ocultos con el checkbox de la leyenda (persistido por mapa). */
+  const [hiddenQuestMarkerIds, setHiddenQuestMarkerIds] = useState<Set<string>>(() =>
+    readHiddenQuestMarkers(mapKey),
+  );
   /** Resaltado al hacer hover sobre el checkbox de un punto. */
   const [highlightedMarkerId, setHighlightedMarkerId] = useState<string | null>(null);
   const [imageSize, setImageSize] = useState({ width: 0, height: 0 });
@@ -210,10 +251,42 @@ export function MapViewerModal({
   const imageWrapRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
   const legendPointRefs = useRef<Map<string, HTMLLabelElement>>(new Map());
-  const arrowDrawEnabled = Boolean(onAddRouteArrow) && !placingTaskId;
+  /** Modo explícito: por defecto el arrastre panea el mapa; solo con esto se dibuja flecha. */
+  const [arrowDrawMode, setArrowDrawMode] = useState(false);
+  const [leftLegendCollapsed, setLeftLegendCollapsed] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 1100px)').matches,
+  );
+  const [rightLegendCollapsed, setRightLegendCollapsed] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 1100px)').matches,
+  );
+  const canDrawArrows = Boolean(onAddRouteArrow) && !placingTaskId;
+  const arrowDrawEnabled = canDrawArrows && arrowDrawMode;
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1100px)');
+    const onChange = () => {
+      if (mq.matches) {
+        setLeftLegendCollapsed(true);
+        setRightLegendCollapsed(true);
+      }
+    };
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
+  const persistHiddenQuestMarkers = useCallback(
+    (updater: (prev: Set<string>) => Set<string>) => {
+      setHiddenQuestMarkerIds((prev) => {
+        const next = updater(prev);
+        writeHiddenQuestMarkers(mapKey, next);
+        return next;
+      });
+    },
+    [mapKey],
+  );
 
   const hideQuestMarker = useCallback((markerId: string) => {
-    setHiddenQuestMarkerIds((prev) => {
+    persistHiddenQuestMarkers((prev) => {
       if (prev.has(markerId)) return prev;
       const next = new Set(prev);
       next.add(markerId);
@@ -221,7 +294,7 @@ export function MapViewerModal({
     });
     setHighlightedMarkerId(null);
     setMapTooltip(null);
-  }, []);
+  }, [persistHiddenQuestMarkers]);
 
   const highlightLegendPoint = useCallback((markerId: string) => {
     setHighlightedMarkerId(markerId);
@@ -294,9 +367,14 @@ export function MapViewerModal({
   }, [markers, tasksById]);
 
   useEffect(() => {
-    setHiddenQuestMarkerIds(new Set());
+    setHiddenQuestMarkerIds(readHiddenQuestMarkers(mapKey));
     setHighlightedMarkerId(null);
+    setArrowDrawMode(false);
   }, [mapKey]);
+
+  useEffect(() => {
+    if (placingTaskId) setArrowDrawMode(false);
+  }, [placingTaskId]);
 
   const markerTaskIds = useMemo(
     () => new Set(markers.map((m) => m.taskId)),
@@ -375,12 +453,8 @@ export function MapViewerModal({
     clientToPercent: clientToMapPercent,
     onComplete: (fromLeft, fromTop, toLeft, toTop) => {
       onAddRouteArrow?.(fromLeft, fromTop, toLeft, toTop);
+      setArrowDrawMode(false);
     },
-    onTap: onAddRoutePoint
-      ? (left, top) => {
-          onAddRoutePoint(left, top);
-        }
-      : undefined,
   });
 
   const updateImageSize = useCallback(() => {
@@ -415,6 +489,10 @@ export function MapViewerModal({
         setImageModal(null);
         return;
       }
+      if (arrowDrawMode) {
+        setArrowDrawMode(false);
+        return;
+      }
       if (placingTaskId) {
         setPlacingTaskId(null);
         return;
@@ -427,7 +505,7 @@ export function MapViewerModal({
       document.removeEventListener('keydown', onKeyDown);
       document.body.style.overflow = '';
     };
-  }, [imageModal, onClose, placingTaskId]);
+  }, [arrowDrawMode, imageModal, onClose, placingTaskId]);
 
   const handleMapClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (shouldSuppressClick() || shouldSuppressArrowClick()) return;
@@ -487,13 +565,27 @@ export function MapViewerModal({
             </button>
           </div>
         )}
+        {arrowDrawMode && (
+          <div className="map-modal-place-banner map-modal-place-banner--arrow">
+            <span>{t.routesDrawArrowHint}</span>
+            <button
+              type="button"
+              className="btn btn-ghost map-modal-place-cancel"
+              onClick={() => setArrowDrawMode(false)}
+            >
+              {t.routesDrawArrowCancel}
+            </button>
+          </div>
+        )}
         <div className="map-modal-body">
           <div
             ref={setMapAreaRef}
-            className={`map-modal-map-area${mapClickable ? ' map-modal-map-area--placing' : ''}${zoom > 1 ? ' map-modal-map-area--zoomed' : ''}${isPanning ? ' is-panning' : ''}${arrowDraft ? ' is-drawing-arrow' : ''}`}
+            className={`map-modal-map-area${mapClickable ? ' map-modal-map-area--placing' : ''}${zoom > 1 ? ' map-modal-map-area--zoomed' : ''}${isPanning ? ' is-panning' : ''}${arrowDrawEnabled ? ' is-drawing-arrow' : ''}`}
             onPointerDown={(event) => {
-              drawHandlers.onPointerDown?.(event);
-              // Pan con rueda/Alt (o izquierdo si no hay dibujo de flechas).
+              if (arrowDrawEnabled) {
+                drawHandlers.onPointerDown?.(event);
+              }
+              // Pan con izquierdo por defecto; en modo flecha, rueda/Alt.
               if (!arrowDrawEnabled || event.button !== 0 || event.altKey) {
                 panHandlers.onPointerDown?.(event);
               }
@@ -524,6 +616,8 @@ export function MapViewerModal({
                   src={mapUrl}
                   alt={mapName}
                   className="map-modal-image"
+                  draggable={false}
+                  onDragStart={(event) => event.preventDefault()}
                   onLoad={updateImageSize}
                 />
                 {getMapZoneAnnotations(mapKey).map((zone) => (
@@ -805,15 +899,36 @@ export function MapViewerModal({
             )}
           </div>
           {hasLeftLegend && (
-            <aside className="map-modal-legend map-modal-legend--left">
+            <aside
+              className={`map-modal-legend map-modal-legend--left${leftLegendCollapsed ? ' is-collapsed' : ''}`}
+            >
+              <button
+                type="button"
+                className="map-modal-legend-toggle"
+                onClick={() => setLeftLegendCollapsed((v) => !v)}
+                aria-expanded={!leftLegendCollapsed}
+                title={leftLegendCollapsed ? t.mapExpandPanel : t.mapCollapsePanel}
+                aria-label={leftLegendCollapsed ? t.mapExpandPanel : t.mapCollapsePanel}
+              >
+                <span aria-hidden>{leftLegendCollapsed ? '›' : '‹'}</span>
+              </button>
+              <div className="map-modal-legend-body">
               {(routePoints.length > 0 || canEditRoutePoints) && (
-                <div className="map-modal-legend-section">
-                  <h4>{t.routesPersonalSection}</h4>
+                <section className="map-modal-legend-panel map-modal-legend-panel--points">
+                  <header className="map-modal-legend-panel-head">
+                    <h4>{t.routesPersonalSection}</h4>
+                    <span
+                      className="map-modal-legend-count"
+                      aria-label={`${routePoints.length}`}
+                    >
+                      {routePoints.length}
+                    </span>
+                  </header>
                   {canEditRoutePoints && (
                     <p className="map-modal-place-hint">{t.mapRoutePointsEditHint}</p>
                   )}
                   {routePoints.length === 0 ? (
-                    <p className="map-modal-place-hint">{t.routesNoPoints}</p>
+                    <p className="map-modal-place-hint map-modal-place-hint--empty">{t.routesNoPoints}</p>
                   ) : (
                     <ol className="map-modal-route-points map-modal-route-points--editable">
                       {routePoints.map((point, index) => {
@@ -891,42 +1006,77 @@ export function MapViewerModal({
                       })}
                     </ol>
                   )}
-                </div>
+                </section>
               )}
               {(routeArrows.length > 0 || onAddRouteArrow) && (
-                <div className="map-modal-legend-section">
-                  <h4>{t.routesArrows(routeArrows.length)}</h4>
+                <section className="map-modal-legend-panel map-modal-legend-panel--arrows">
+                  <header className="map-modal-legend-panel-head">
+                    <h4>{t.routesArrowsSection}</h4>
+                    <span className="map-modal-legend-count" aria-label={t.routesArrows(routeArrows.length)}>
+                      {routeArrows.length}
+                    </span>
+                  </header>
+                  {onAddRouteArrow ? (
+                    <button
+                      type="button"
+                      className={`btn map-modal-arrow-draw-btn${arrowDrawMode ? ' is-active' : ''}`}
+                      disabled={!canDrawArrows && !arrowDrawMode}
+                      onClick={() => setArrowDrawMode((prev) => !prev)}
+                    >
+                      <span className="map-modal-arrow-draw-btn-icon" aria-hidden>↗</span>
+                      {arrowDrawMode ? t.routesDrawArrowActive : t.routesDrawArrow}
+                    </button>
+                  ) : null}
+                  {arrowDrawMode ? (
+                    <p className="map-modal-place-hint">{t.routesDrawArrowHint}</p>
+                  ) : null}
                   {routeArrows.length === 0 ? (
-                    <p className="map-modal-place-hint">{t.routesNoArrows}</p>
+                    <p className="map-modal-place-hint map-modal-place-hint--empty">{t.routesNoArrows}</p>
                   ) : (
-                    <ol className="map-modal-route-points">
+                    <ol className="map-modal-route-points map-modal-route-points--arrows">
                       {routeArrows.map((arrow, index) => (
-                        <li key={arrow.id}>
+                        <li key={arrow.id} className="map-modal-route-point-row">
                           <span className="route-arrow-list-icon" aria-hidden>
                             ↗
                           </span>
                           <span>{t.routesArrowLabel(index + 1)}</span>
                           {onRemoveRouteArrow && (
-                            <button
-                              type="button"
-                              className="btn btn-ghost map-marker-clear"
-                              aria-label={t.routesRemoveArrow}
-                              title={t.routesRemoveArrow}
-                              onClick={() => onRemoveRouteArrow(arrow.id)}
-                            >
-                              ×
-                            </button>
+                            <div className="map-modal-route-point-actions">
+                              <button
+                                type="button"
+                                className="btn-icon-action"
+                                aria-label={t.routesRemoveArrow}
+                                title={t.routesRemoveArrow}
+                                onClick={() => onRemoveRouteArrow(arrow.id)}
+                              >
+                                ×
+                              </button>
+                            </div>
                           )}
                         </li>
                       ))}
                     </ol>
                   )}
-                </div>
+                </section>
               )}
+              </div>
             </aside>
           )}
           {hasRightLegend && (
-            <aside className="map-modal-legend map-modal-legend--right">
+            <aside
+              className={`map-modal-legend map-modal-legend--right${rightLegendCollapsed ? ' is-collapsed' : ''}`}
+            >
+              <button
+                type="button"
+                className="map-modal-legend-toggle"
+                onClick={() => setRightLegendCollapsed((v) => !v)}
+                aria-expanded={!rightLegendCollapsed}
+                title={rightLegendCollapsed ? t.mapExpandPanel : t.mapCollapsePanel}
+                aria-label={rightLegendCollapsed ? t.mapExpandPanel : t.mapCollapsePanel}
+              >
+                <span aria-hidden>{rightLegendCollapsed ? '‹' : '›'}</span>
+              </button>
+              <div className="map-modal-legend-body">
               {(fixedRoutePoints.length > 0 || mapExtracts.length > 0) && (
                 <div className="map-modal-legend-section">
                   <h4>
@@ -1029,7 +1179,7 @@ export function MapViewerModal({
                                         type="checkbox"
                                         checked={hidden}
                                         onChange={() => {
-                                          setHiddenQuestMarkerIds((prev) => {
+                                          persistHiddenQuestMarkers((prev) => {
                                             const next = new Set(prev);
                                             if (next.has(point.id)) next.delete(point.id);
                                             else next.add(point.id);
@@ -1077,27 +1227,60 @@ export function MapViewerModal({
                   <h4>{t.mapMarkersNoLocation(tasksWithoutMarkers.length)}</h4>
                   <p className="map-modal-place-hint">{t.mapPlaceSelectHint}</p>
                   <ul className="map-modal-legend-list">
-                    {tasksWithoutMarkers.map((task) => (
-                      <li key={task.id}>
-                        <button
-                          type="button"
-                          className={`map-modal-place-btn${placingTaskId === task.id ? ' is-active' : ''}`}
-                          onClick={() => {
-                            setPlacingTaskId((current) =>
-                              current === task.id ? null : task.id,
+                    {tasksWithoutMarkers.map((task) => {
+                      const tooltipId = `place:${task.id}`;
+                      const description = [
+                        ...new Set(
+                          task.objectives
+                            .map((obj) => obj.description.trim())
+                            .filter(Boolean),
+                        ),
+                      ].join('\n');
+                      return (
+                        <li
+                          key={task.id}
+                          onMouseEnter={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            setMapTooltip({
+                              id: tooltipId,
+                              x: rect.left + rect.width / 2,
+                              y: rect.top,
+                              title: task.name,
+                              subtitle: task.trader.name,
+                              description: description || undefined,
+                              iconSrc: getTraderImagePath(task.trader),
+                              iconAlt: task.trader.name,
+                              items: getQuestItemRequirements(task),
+                              anyItemLabel: t.anyItem,
+                            });
+                          }}
+                          onMouseLeave={() => {
+                            setMapTooltip((current) =>
+                              current?.id === tooltipId ? null : current,
                             );
                           }}
                         >
-                          <strong>{task.name}</strong>
-                          {placingTaskId === task.id && (
-                            <span>{t.mapPlaceClickHint}</span>
-                          )}
-                        </button>
-                      </li>
-                    ))}
+                          <button
+                            type="button"
+                            className={`map-modal-place-btn${placingTaskId === task.id ? ' is-active' : ''}`}
+                            onClick={() => {
+                              setPlacingTaskId((current) =>
+                                current === task.id ? null : task.id,
+                              );
+                            }}
+                          >
+                            <strong>{task.name}</strong>
+                            {placingTaskId === task.id && (
+                              <span>{t.mapPlaceClickHint}</span>
+                            )}
+                          </button>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               )}
+              </div>
             </aside>
           )}
         </div>

@@ -54,6 +54,9 @@ export interface Translations {
   confirmReset: string;
   wipeAll: string;
   confirmWipeAll: string;
+  headerAppMenu: string;
+  logsPanelTitle: string;
+  logsPanelManage: string;
   footerVisits: (n: number) => string;
   footerOnline: (n: number) => string;
   footerLastUpdate: string;
@@ -81,6 +84,9 @@ export interface Translations {
   kbReportSessionError: string;
   kbReportNetworkError: string;
   kbReportSubmitError: string;
+  adminDashboardTitle: string;
+  adminNavDashboard: string;
+  adminNavRoutes: string;
   adminReportsTitle: string;
   adminReportsHint: string;
   adminReportsFilter: string;
@@ -88,6 +94,9 @@ export interface Translations {
   adminReportsAccepted: string;
   adminReportsRejected: string;
   adminReportsRefresh: string;
+  adminRefresh: string;
+  adminForceSync: string;
+  adminSyncing: string;
   adminReportsEmpty: string;
   adminReportsSelect: string;
   adminReportsAccept: string;
@@ -137,8 +146,13 @@ export interface Translations {
   routesRemovePoint: string;
   routesRemoveArrow: string;
   routesArrows: (n: number) => string;
+  routesArrowsSection: string;
   routesArrowLabel: (n: number) => string;
   routesNoArrows: string;
+  routesDrawArrow: string;
+  routesDrawArrowActive: string;
+  routesDrawArrowCancel: string;
+  routesDrawArrowHint: string;
   routesPointLabelPlaceholder: string;
   routesFixedSection: string;
   routesPersonalSection: string;
@@ -250,6 +264,8 @@ export interface Translations {
   mapPlaceBanner: (taskName: string) => string;
   mapPlaceCancel: string;
   mapRoutePointsEditHint: string;
+  mapCollapsePanel: string;
+  mapExpandPanel: string;
   mapMarkerManual: string;
   mapClearCustomMarker: string;
   close: string;
@@ -269,7 +285,6 @@ export interface Translations {
   logsErrorPrefix: string;
   logsNoSessionsFoundError: string;
   logsRetry: string;
-  logsReadOnlyNotice: string;
   logsPathHint: string;
   logsStats: (sessions: number, totalSessions: number, tasks: number, version: string | null) => string;
   logsNoEventsHint: string;
@@ -361,6 +376,9 @@ export const translations: Record<Lang, Translations> = {
     invalidJson: 'JSON inválido',
     confirmReset: '¿Borrar todo el progreso?',
     wipeAll: 'Wipe All',
+    headerAppMenu: 'Menú de la app',
+    logsPanelTitle: 'Sincronización de logs',
+    logsPanelManage: 'Gestionar logs',
     confirmWipeAll:
       'Se borrarán todos los datos guardados en el navegador (progreso de misiones, campaña Story, idioma, etc.). Esta acción no se puede deshacer.\n\n¿Continuar?',
     footerVisits: (n) => `${n.toLocaleString('es-ES')} visita${n === 1 ? '' : 's'} única${n === 1 ? '' : 's'}`,
@@ -391,6 +409,9 @@ export const translations: Record<Lang, Translations> = {
     kbReportSessionError: 'Sesión no válida. Vuelve a iniciar sesión.',
     kbReportNetworkError: 'Error de red. Inténtalo de nuevo.',
     kbReportSubmitError: 'No se pudo enviar el reporte.',
+    adminDashboardTitle: 'Panel de administración',
+    adminNavDashboard: 'Panel',
+    adminNavRoutes: 'Rutas fijas',
     adminReportsTitle: 'Reportes',
     adminReportsHint: 'Propuestas de Documentos KordBreach enviadas por usuarios.',
     adminReportsFilter: 'Estado del reporte',
@@ -398,6 +419,9 @@ export const translations: Record<Lang, Translations> = {
     adminReportsAccepted: 'Aceptados',
     adminReportsRejected: 'Rechazados',
     adminReportsRefresh: 'Actualizar',
+    adminRefresh: 'Actualizar',
+    adminForceSync: 'Forzar sync',
+    adminSyncing: 'Sincronizando…',
     adminReportsEmpty: 'No hay reportes en este estado.',
     adminReportsSelect: 'Selecciona un reporte de la lista.',
     adminReportsAccept: 'Aceptar',
@@ -436,7 +460,7 @@ export const translations: Record<Lang, Translations> = {
     routesOpenMap: 'Abrir mapa',
     routesBackToMaps: 'Todos los mapas',
     routesDrawHint:
-      'Elige un color y haz clic en el mapa para añadir puntos. Arrastra para dibujar una flecha. Arrastra un pin para moverlo; clic en pin/flecha para eliminar.',
+      'Elige un color y haz clic en el mapa para añadir puntos. Arrastra el mapa con zoom; usa «Crear flecha» para dibujar una. Arrastra un pin para moverlo; clic en pin/flecha para eliminar.',
     routesPointColor: 'Color del jugador',
     routesCustomColor: 'Personalizado',
     routesPlayerNamePlaceholder: 'Nombre del jugador',
@@ -449,8 +473,13 @@ export const translations: Record<Lang, Translations> = {
     routesRemovePoint: 'Eliminar punto',
     routesRemoveArrow: 'Eliminar flecha',
     routesArrows: (n) => `${n} flecha${n === 1 ? '' : 's'}`,
+    routesArrowsSection: 'Flechas',
     routesArrowLabel: (n) => `Flecha ${n}`,
     routesNoArrows: 'Sin flechas en este mapa.',
+    routesDrawArrow: 'Crear flecha',
+    routesDrawArrowActive: 'Dibujando flecha…',
+    routesDrawArrowCancel: 'Cancelar flecha',
+    routesDrawArrowHint: 'Arrastra en el mapa para dibujar la flecha. Al soltar se guarda y vuelve el pan.',
     routesPointLabelPlaceholder: 'Marker',
     routesFixedSection: 'Puntos fijos',
     routesPersonalSection: 'Tus puntos',
@@ -567,7 +596,9 @@ export const translations: Record<Lang, Translations> = {
     mapPlaceBanner: (name) => `Coloca «${name}» en el mapa`,
     mapPlaceCancel: 'Cancelar',
     mapRoutePointsEditHint:
-      'Clic para añadir un punto. Arrastra para dibujar una flecha. Clic en un pin o flecha para eliminarlos.',
+      'Clic en el mapa para añadir un punto. Clic en un pin para eliminarlo. Con zoom, arrastra para panear.',
+    mapCollapsePanel: 'Ocultar panel',
+    mapExpandPanel: 'Mostrar panel',
     mapMarkerManual: 'Ubicación manual',
     mapClearCustomMarker: 'Quitar ubicación manual',
     close: 'Cerrar',
@@ -591,7 +622,6 @@ export const translations: Record<Lang, Translations> = {
       + 'Probablemente no es la carpeta "Logs" correcta: revisa que hayas entrado dentro de ella '
       + '(no en una carpeta padre ni en una subcarpeta de sesión concreta) y vuelve a intentarlo.',
     logsRetry: 'Reintentar',
-    logsReadOnlyNotice: 'Modo Logs activo: el estado de las misiones detectadas en los logs se sincroniza automáticamente y no se puede editar. Las misiones sin eventos en los logs (anteriores a las sesiones guardadas) se pueden marcar manualmente como respaldo.',
     logsPathHint:
       'Ruta habitual de los Logs de Tarkov:\n\n'
       + '• Steam: ...\\steamapps\\common\\Escape From Tarkov\\Logs\n'
@@ -713,6 +743,9 @@ export const translations: Record<Lang, Translations> = {
     invalidJson: 'Invalid JSON',
     confirmReset: 'Delete all progress?',
     wipeAll: 'Wipe All',
+    headerAppMenu: 'App menu',
+    logsPanelTitle: 'Logs sync',
+    logsPanelManage: 'Manage logs',
     confirmWipeAll:
       'All data stored in the browser will be deleted (quest progress, Story campaign, language, etc.). This cannot be undone.\n\nContinue?',
     footerVisits: (n) => `${n.toLocaleString('en-US')} unique visit${n === 1 ? '' : 's'}`,
@@ -743,6 +776,9 @@ export const translations: Record<Lang, Translations> = {
     kbReportSessionError: 'Invalid session. Please sign in again.',
     kbReportNetworkError: 'Network error. Please try again.',
     kbReportSubmitError: 'Could not submit the report.',
+    adminDashboardTitle: 'Admin panel',
+    adminNavDashboard: 'Dashboard',
+    adminNavRoutes: 'Fixed routes',
     adminReportsTitle: 'Reports',
     adminReportsHint: 'KordBreach Documents points submitted by users.',
     adminReportsFilter: 'Report status',
@@ -750,6 +786,9 @@ export const translations: Record<Lang, Translations> = {
     adminReportsAccepted: 'Accepted',
     adminReportsRejected: 'Rejected',
     adminReportsRefresh: 'Refresh',
+    adminRefresh: 'Refresh',
+    adminForceSync: 'Force sync',
+    adminSyncing: 'Syncing…',
     adminReportsEmpty: 'No reports in this status.',
     adminReportsSelect: 'Select a report from the list.',
     adminReportsAccept: 'Accept',
@@ -788,7 +827,7 @@ export const translations: Record<Lang, Translations> = {
     routesOpenMap: 'Open map',
     routesBackToMaps: 'All maps',
     routesDrawHint:
-      'Pick a color and click the map to add points. Drag to draw an arrow. Drag a pin to move it; click a pin/arrow to remove it.',
+      'Pick a color and click the map to add points. Drag to pan when zoomed; use “Draw arrow” to create one. Drag a pin to move it; click a pin/arrow to remove it.',
     routesPointColor: 'Player color',
     routesCustomColor: 'Custom',
     routesPlayerNamePlaceholder: 'Player name',
@@ -801,8 +840,13 @@ export const translations: Record<Lang, Translations> = {
     routesRemovePoint: 'Remove point',
     routesRemoveArrow: 'Remove arrow',
     routesArrows: (n) => `${n} arrow${n === 1 ? '' : 's'}`,
+    routesArrowsSection: 'Arrows',
     routesArrowLabel: (n) => `Arrow ${n}`,
     routesNoArrows: 'No arrows on this map.',
+    routesDrawArrow: 'Draw arrow',
+    routesDrawArrowActive: 'Drawing arrow…',
+    routesDrawArrowCancel: 'Cancel arrow',
+    routesDrawArrowHint: 'Drag on the map to draw the arrow. On release it is saved and pan returns.',
     routesPointLabelPlaceholder: 'Marker',
     routesFixedSection: 'Fixed points',
     routesPersonalSection: 'Your points',
@@ -919,7 +963,9 @@ export const translations: Record<Lang, Translations> = {
     mapPlaceBanner: (name) => `Place «${name}» on the map`,
     mapPlaceCancel: 'Cancel',
     mapRoutePointsEditHint:
-      'Click to add a point. Drag to draw an arrow. Click a pin or arrow to remove it.',
+      'Click the map to add a point. Click a pin to remove it. When zoomed, drag to pan.',
+    mapCollapsePanel: 'Hide panel',
+    mapExpandPanel: 'Show panel',
     mapMarkerManual: 'Manual location',
     mapClearCustomMarker: 'Remove manual location',
     close: 'Close',
@@ -943,7 +989,6 @@ export const translations: Record<Lang, Translations> = {
       + 'This usually means it is not the right "Logs" folder: make sure you opened it directly '
       + '(not a parent folder or a specific session subfolder) and try again.',
     logsRetry: 'Retry',
-    logsReadOnlyNotice: 'Logs mode active: quests detected in the logs sync automatically and cannot be edited. Quests with no log events (predating the saved sessions) can be marked manually as a fallback.',
     logsPathHint:
       'Typical Tarkov Logs folder path:\n\n'
       + '• Steam: ...\\steamapps\\common\\Escape From Tarkov\\Logs\n'

@@ -36,42 +36,40 @@ export function AppFooter({
   return (
     <footer className={`app-footer${notices ? ' app-footer--with-notices' : ''}`}>
       {notices && <div className="app-footer-notices">{notices}</div>}
-      <div className="app-footer-meta">
-        <button type="button" className="app-footer-feedback" onClick={onOpenFeedback}>
-          {feedbackLabel}
-        </button>
-        <span aria-hidden="true">·</span>
-        <button type="button" className="app-footer-feedback" onClick={onOpenKbReport}>
-          {kbReportLabel}
-        </button>
-        <span aria-hidden="true">·</span>
-        {online != null && (
-          <>
-            <span className="app-footer-online" title={formatOnline(online)}>
+      <div className="app-footer-bar">
+        <div className="app-footer-group app-footer-group--meta">
+          <span className="app-footer-chip app-footer-version">v{APP_VERSION}</span>
+          <span className="app-footer-chip app-footer-updated" title={lastUpdateLabel}>
+            <span className="app-footer-updated-label">{lastUpdateLabel}</span>
+            <time dateTime={BUILD_TIME}>{formatBuildTime(BUILD_TIME, locale)}</time>
+          </span>
+        </div>
+
+        <div className="app-footer-group app-footer-group--status">
+          {online != null && (
+            <span className="app-footer-chip app-footer-online" title={formatOnline(online)}>
               <span className="app-footer-online-dot" aria-hidden="true" />
               {formatOnline(online)}
             </span>
-            <span aria-hidden="true">·</span>
-          </>
-        )}
-        {impressions != null && (
-          <>
-            <span className="app-footer-visits" title={formatVisits(impressions)}>
+          )}
+          {impressions != null && (
+            <span className="app-footer-chip app-footer-visits" title={formatVisits(impressions)}>
               {formatVisits(impressions)}
             </span>
-            <span aria-hidden="true">·</span>
-          </>
-        )}
-        <span>v{APP_VERSION}</span>
-        <span aria-hidden="true">·</span>
-        <span className="app-footer-updated">
-          <span className="app-footer-updated-label">{lastUpdateLabel}</span>
-          <time dateTime={BUILD_TIME}>{formatBuildTime(BUILD_TIME, locale)}</time>
-        </span>
-        <span aria-hidden="true">·</span>
-        <button type="button" className="app-footer-logout" onClick={onLogout}>
-          {logoutLabel}
-        </button>
+          )}
+        </div>
+
+        <div className="app-footer-group app-footer-group--actions">
+          <button type="button" className="app-footer-link" onClick={onOpenFeedback}>
+            {feedbackLabel}
+          </button>
+          <button type="button" className="app-footer-link" onClick={onOpenKbReport}>
+            {kbReportLabel}
+          </button>
+          <button type="button" className="app-footer-link app-footer-link--danger" onClick={onLogout}>
+            {logoutLabel}
+          </button>
+        </div>
       </div>
     </footer>
   );

@@ -10,6 +10,7 @@ import { useLanguage } from '../i18n/useLanguage';
 import { KB_MARKER_ICON_URL } from '../types/routes';
 import { getMapSvgUrl, ROUTE_MAPS } from '../utils/maps';
 import { AdminLoginCard } from './AdminLoginCard';
+import { AdminToolbar } from './AdminToolbar';
 
 function mapLabel(mapKey: string): string {
   return ROUTE_MAPS.find((m) => m.key === mapKey)?.name ?? mapKey;
@@ -92,15 +93,36 @@ export function AdminReportsPage() {
 
   return (
     <div className="admin-page admin-reports-page">
-      <header className="admin-toolbar">
-        <div className="admin-toolbar-main">
-          <a className="admin-brand" href="/" title={t.appTitle}>
-            <img src="/logo.png" alt={t.appTitle} className="admin-brand-logo" />
-          </a>
-          <div className="admin-toolbar-title">
-            <p className="admin-eyebrow">Admin</p>
-            <h1>{t.adminReportsTitle}</h1>
-          </div>
+      <AdminToolbar
+        section="reports"
+        title={t.adminReportsTitle}
+        appTitle={t.appTitle}
+        navDashboard={t.adminNavDashboard}
+        navRoutes={t.adminNavRoutes}
+        navReports={t.adminReportsNav}
+        logoutLabel={t.adminLogout}
+        onLogout={auth.logout}
+        actions={(
+          <button
+            type="button"
+            className="admin-tool-btn admin-tool-btn--ghost"
+            onClick={() => void load()}
+            disabled={loading}
+          >
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
+              <path
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M13.5 8A5.5 5.5 0 1 1 11.2 3.4M13.5 2.5v3.2h-3.2"
+              />
+            </svg>
+            <span>{t.adminReportsRefresh}</span>
+          </button>
+        )}
+        secondary={(
           <div className="segmented" role="tablist" aria-label={t.adminReportsFilter}>
             {(['pending', 'accepted', 'rejected'] as const).map((status) => (
               <button
@@ -119,24 +141,8 @@ export function AdminReportsPage() {
               </button>
             ))}
           </div>
-        </div>
-        <nav className="admin-toolbar-nav" aria-label="Admin">
-          <a className="admin-toolbar-nav-link" href="/admin">
-            {t.adminBackToDashboard}
-          </a>
-          <a className="admin-toolbar-nav-link" href="/admin/routes">
-            {t.adminRoutesTitle}
-          </a>
-        </nav>
-        <div className="admin-toolbar-actions">
-          <button type="button" className="btn" onClick={() => void load()} disabled={loading}>
-            {t.adminReportsRefresh}
-          </button>
-          <button type="button" className="btn btn-wipe" onClick={auth.logout}>
-            {t.adminLogout}
-          </button>
-        </div>
-      </header>
+        )}
+      />
 
       {error && <p className="admin-action-error">{error}</p>}
 

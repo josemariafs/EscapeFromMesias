@@ -14,6 +14,7 @@ import {
 } from '../types/routes';
 import { fileToCompressedDataUrl } from '../utils/routePointImage';
 import { AdminLoginCard } from './AdminLoginCard';
+import { AdminToolbar } from './AdminToolbar';
 import { RouteMapsView } from './RouteMapsView';
 
 export function AdminRoutesPage() {
@@ -198,15 +199,16 @@ export function AdminRoutesPage() {
 
   return (
     <div className="admin-routes-page">
-      <header className="admin-routes-toolbar">
-        <div className="admin-routes-toolbar-main">
-          <a className="admin-brand" href="/" title={t.appTitle}>
-            <img src="/logo.png" alt={t.appTitle} className="admin-brand-logo" />
-          </a>
-          <div className="admin-routes-toolbar-title">
-            <p className="admin-eyebrow">Admin</p>
-            <h1>{t.adminRoutesTitle}</h1>
-          </div>
+      <AdminToolbar
+        section="routes"
+        title={t.adminNavRoutes}
+        appTitle={t.appTitle}
+        navDashboard={t.adminNavDashboard}
+        navRoutes={t.adminNavRoutes}
+        navReports={t.adminReportsNav}
+        logoutLabel={t.adminLogout}
+        onLogout={handleLogout}
+        secondary={(
           <div className="segmented admin-env-segmented" role="tablist" aria-label={t.routeEnvironmentHint}>
             <button
               type="button"
@@ -227,21 +229,8 @@ export function AdminRoutesPage() {
               {t.routeEnvironmentSeasonal}
             </button>
           </div>
-        </div>
-        <nav className="admin-toolbar-nav" aria-label="Admin">
-          <a className="admin-toolbar-nav-link" href="/admin">
-            {t.adminBackToDashboard}
-          </a>
-          <a className="admin-toolbar-nav-link" href="/admin/reports">
-            {t.adminReportsNav}
-          </a>
-        </nav>
-        <div className="admin-routes-toolbar-actions">
-          <button type="button" className="btn btn-wipe" onClick={handleLogout}>
-            {t.adminLogout}
-          </button>
-        </div>
-      </header>
+        )}
+      />
       {actionError && <p className="admin-action-error">{actionError}</p>}
       <div className="admin-routes-body">
         <RouteMapsView

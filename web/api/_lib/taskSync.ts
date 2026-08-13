@@ -1,9 +1,13 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { gunzipSync, gzipSync } from 'node:zlib';
 import type { VercelRequest } from '@vercel/node';
-import { fetchTasksFromJson } from '../../src/api/tarkovJson';
-import type { GameMode, Task } from '../../src/types';
-import { MIN_VALID_TASK_COUNT, TASKS_CACHE_SCHEMA } from '../../src/types';
+import {
+  MIN_VALID_TASK_COUNT,
+  TASKS_CACHE_SCHEMA,
+  type GameMode,
+  type Task,
+} from './eftTypes.js';
+import { fetchTasksFromJson } from './tarkovJson.js';
 import { isAuthorized } from './auth.js';
 import { getDb } from './db.js';
 import { getMadridCivilDayKey, getMadridHour } from './siteAccess.js';

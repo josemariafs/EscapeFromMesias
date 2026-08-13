@@ -62,10 +62,11 @@ export function useSiteAuth() {
       setError(null);
       setKind(result.kind);
       setStatus('unlocked');
-      // Misma clave sirve para /admin sin volver a pedirla.
+      // Puente a /admin: guardar el token de sesión HMAC (no la clave en bruto).
       if (result.kind === 'admin') {
         try {
-          sessionStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, password);
+          const session = getStoredSiteSession();
+          if (session) sessionStorage.setItem(ADMIN_TOKEN_STORAGE_KEY, session);
         } catch {
           // ignore
         }

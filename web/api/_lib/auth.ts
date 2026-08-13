@@ -27,6 +27,17 @@ export function getAdminToken(): string | null {
   return token || null;
 }
 
+function decodeBearerToken(raw: string): string {
+  const value = raw.trim();
+  if (!value) return value;
+  try {
+    // Algunos clientes/proxies pueden percent-encode caracteres de la clave (&, !, …).
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
 export function isAuthorized(req: VercelRequest): boolean {
   const expected = getAdminToken();
   if (!expected) return false;
@@ -34,10 +45,10 @@ export function isAuthorized(req: VercelRequest): boolean {
   const header = req.headers.authorization;
   if (!header || typeof header !== 'string') return false;
 
-  const match = /^Bearer\s+(.+)$/i.exec(header.trim());
+  const match = /^Bearer\s+(\S+)/i.exec(header.trim());
   if (!match) return false;
 
-  const bearer = match[1];
+  const bearer = decodeBearerToken(match[1]);
   if (safeEqualStrings(bearer, expected)) return true;
 
   // Sesión de la app iniciada con ADMIN_TOKEN (HMAC), sin re-pedir la clave.

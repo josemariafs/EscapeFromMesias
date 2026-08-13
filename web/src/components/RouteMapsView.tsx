@@ -251,7 +251,9 @@ export function RouteMapsView({
   const dragMovedRef = useRef(false);
   const dragStateRef = useRef(dragState);
   dragStateRef.current = dragState;
-  const arrowDrawEnabled = Boolean(onAddArrow) && !isAdmin && !busy;
+  const [arrowDrawMode, setArrowDrawMode] = useState(false);
+  const canDrawArrows = Boolean(onAddArrow) && !isAdmin && !busy;
+  const arrowDrawEnabled = canDrawArrows && arrowDrawMode;
   const {
     containerRef: mapAreaRef,
     setContainerRef: setMapAreaRef,
@@ -306,11 +308,13 @@ export function RouteMapsView({
     clientToPercent: clientToMapPercent,
     onComplete: (fromLeft, fromTop, toLeft, toTop) => {
       onAddArrow?.(fromLeft, fromTop, toLeft, toTop);
-    },
-    onTap: (left, top) => {
-      onAddPoint(left, top);
+      setArrowDrawMode(false);
     },
   });
+
+  useEffect(() => {
+    setArrowDrawMode(false);
+  }, [selectedMapKey]);
 
   const beginMarkerDrag = useCallback((
     event: ReactPointerEvent<HTMLButtonElement>,
@@ -1188,6 +1192,20 @@ export function RouteMapsView({
               <div className="route-maps-points-header">
                 <h3>{t.routesArrows(arrows.length)}</h3>
               </div>
+              {onAddArrow ? (
+                <button
+                  type="button"
+                  className={`btn map-modal-arrow-draw-btn${arrowDrawMode ? ' is-active' : ''}`}
+                  disabled={!canDrawArrows && !arrowDrawMode}
+                  onClick={() => setArrowDrawMode((prev) => !prev)}
+                >
+                  <span className="map-modal-arrow-draw-btn-icon" aria-hidden>↗</span>
+                  {arrowDrawMode ? t.routesDrawArrowActive : t.routesDrawArrow}
+                </button>
+              ) : null}
+              {arrowDrawMode ? (
+                <p className="route-maps-empty">{t.routesDrawArrowHint}</p>
+              ) : null}
               {arrows.length === 0 ? (
                 <p className="route-maps-empty">{t.routesNoArrows}</p>
               ) : (
@@ -1218,10 +1236,12 @@ export function RouteMapsView({
       </aside>
 
       <div
-        className={`route-maps-canvas map-modal-map-area map-modal-map-area--placing${zoom > 1 ? ' map-modal-map-area--zoomed' : ''}${isPanning ? ' is-panning' : ''}${arrowDraft ? ' is-drawing-arrow' : ''}`}
+        className={`route-maps-canvas map-modal-map-area map-modal-map-area--placing${zoom > 1 ? ' map-modal-map-area--zoomed' : ''}${isPanning ? ' is-panning' : ''}${arrowDrawEnabled ? ' is-drawing-arrow' : ''}`}
         ref={setMapAreaRef}
         onPointerDown={(event) => {
-          drawHandlers.onPointerDown?.(event);
+          if (arrowDrawEnabled) {
+            drawHandlers.onPointerDown?.(event);
+          }
           if (!arrowDrawEnabled || event.button !== 0 || event.altKey) {
             panHandlers.onPointerDown?.(event);
           }
@@ -1243,6 +1263,7 @@ export function RouteMapsView({
             alt={selectedMap.name}
             onLoad={updateImageSize}
             draggable={false}
+            onDragStart={(event) => event.preventDefault()}
           />
           {/* Encima del SVG (mismo wrap, después del img) para no quedar tapado. */}
           {selectedMap && getMapZoneAnnotations(selectedMap.key).map((zone) => (

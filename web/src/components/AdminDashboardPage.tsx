@@ -14,7 +14,9 @@ import {
 } from '../api/adminDashboard';
 import { fetchVersionNews, saveVersionNews } from '../api/versionNews';
 import { useAdminAuth } from '../hooks/useAdminAuth';
+import { useLanguage } from '../i18n/useLanguage';
 import { AdminLoginCard } from './AdminLoginCard';
+import { AdminToolbar } from './AdminToolbar';
 
 type VisitMetric = 'visits' | 'uniqueVisitors';
 type DetailSection = 'overview' | 'changes' | 'sync' | 'usage';
@@ -552,6 +554,7 @@ function SyncChangeMissionDetail({ change }: { change: AdminChangeRow }) {
 }
 
 export function AdminDashboardPage() {
+  const { t } = useLanguage();
   const auth = useAdminAuth();
   const [data, setData] = useState<AdminDashboardData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -723,46 +726,59 @@ export function AdminDashboardPage() {
 
   return (
     <div className="admin-page">
-      <header className="admin-toolbar">
-        <div className="admin-toolbar-main">
-          <a className="admin-brand" href="/" title="Escape From Gorditos">
-            <img src="/logo.png" alt="Escape From Gorditos" className="admin-brand-logo" />
-          </a>
-          <div className="admin-toolbar-title">
-            <p className="admin-eyebrow">Admin</p>
-            <h1>Panel de administración</h1>
-          </div>
-        </div>
-        <nav className="admin-toolbar-nav" aria-label="Admin">
-          <a className="admin-toolbar-nav-link" href="/admin/routes">
-            Rutas fijas
-          </a>
-          <a className="admin-toolbar-nav-link" href="/admin/reports">
-            Reportes
-          </a>
-        </nav>
-        <div className="admin-toolbar-actions">
-          <button
-            type="button"
-            className="btn"
-            onClick={() => {
-              void load();
-              if (section === 'usage') void loadUsage();
-            }}
-            disabled={loading || usageLoading}
-          >
-            Actualizar
-          </button>
-          <button
-            type="button"
-            className="btn btn-start"
-            onClick={() => void handleForceSync()}
-            disabled={syncBusy}
-          >
-            {syncBusy ? 'Sincronizando…' : 'Forzar sync'}
-          </button>
-        </div>
-      </header>
+      <AdminToolbar
+        section="dashboard"
+        title={t.adminDashboardTitle}
+        appTitle={t.appTitle}
+        navDashboard={t.adminNavDashboard}
+        navRoutes={t.adminNavRoutes}
+        navReports={t.adminReportsNav}
+        logoutLabel={t.adminLogout}
+        onLogout={logout}
+        actions={(
+          <>
+            <button
+              type="button"
+              className="admin-tool-btn admin-tool-btn--ghost"
+              onClick={() => {
+                void load();
+                if (section === 'usage') void loadUsage();
+              }}
+              disabled={loading || usageLoading}
+            >
+              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
+                <path
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M13.5 8A5.5 5.5 0 1 1 11.2 3.4M13.5 2.5v3.2h-3.2"
+                />
+              </svg>
+              <span>{t.adminRefresh}</span>
+            </button>
+            <button
+              type="button"
+              className="admin-tool-btn admin-tool-btn--primary"
+              onClick={() => void handleForceSync()}
+              disabled={syncBusy}
+            >
+              <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden>
+                <path
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M2.5 8a5.5 5.5 0 0 1 9.4-3.9M13.5 8a5.5 5.5 0 0 1-9.4 3.9M11.5 2.2v2.9H8.6M4.5 13.8v-2.9h2.9"
+                />
+              </svg>
+              <span>{syncBusy ? t.adminSyncing : t.adminForceSync}</span>
+            </button>
+          </>
+        )}
+      />
 
       {error ? <p className="admin-banner admin-banner--error">{error}</p> : null}
       {syncMsg ? <p className="admin-banner">{syncMsg}</p> : null}

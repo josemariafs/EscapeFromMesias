@@ -5,7 +5,6 @@ import { ensureSchema, getDb } from '../_lib/db.js';
 import { applyCors, handleOptions, serverError } from '../_lib/http.js';
 import { getMadridCivilDayKey } from '../_lib/siteAccess.js';
 import { readDailyStats } from '../_lib/siteStatsDaily.js';
-import { ensureTaskSyncSchema } from '../_lib/taskSync.js';
 import {
   isUsageAccessFilter,
   readDailyTrafficByAccess,
@@ -55,16 +54,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
+  const view = typeof req.query.view === 'string' ? req.query.view.trim() : '';
+  // Ping de auth: sin tocar Turso (si la DB falla, no debe parecer "token inválido").
+  if (view === 'ping') {
+    applyCors(res);
+    res.setHeader('Cache-Control', 'no-store');
+    res.status(200).json({ ok: true });
+    return;
+  }
+
   try {
     await ensureSchema();
+    // Carga diferida: el ping de auth no debe depender de taskSync/tarkovJson.
+    const { ensureTaskSyncSchema } = await import('../_lib/taskSync.js');
     await ensureTaskSyncSchema();
-
-    const view = typeof req.query.view === 'string' ? req.query.view.trim() : '';
-    if (view === 'ping') {
-      applyCors(res);
-      res.status(200).json({ ok: true });
-      return;
-    }
 
     if (view === 'usage') {
       const raw = typeof req.query.accessKind === 'string' ? req.query.accessKind.trim() : '';

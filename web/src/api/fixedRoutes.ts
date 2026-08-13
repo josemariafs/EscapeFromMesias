@@ -58,10 +58,16 @@ export async function fetchFixedRoutes(
 export async function verifyAdminToken(token: string): Promise<void> {
   const res = await fetch('/api/admin/dashboard?view=ping', {
     headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
   });
-  if (!res.ok) {
-    throw new Error(await parseErrorMessage(res));
+  if (res.ok) return;
+  if (res.status === 401) {
+    throw new Error('unauthorized');
   }
+  if (res.status === 503) {
+    throw new Error('ADMIN_TOKEN no configurado en el servidor');
+  }
+  throw new Error(await parseErrorMessage(res));
 }
 
 export async function createFixedRoutePoint(

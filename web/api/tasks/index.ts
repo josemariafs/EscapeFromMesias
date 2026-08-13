@@ -6,7 +6,7 @@ import {
   readTaskSnapshot,
   type TaskSyncLang,
 } from '../_lib/taskSync.js';
-import type { GameMode } from '../../src/types';
+import type { GameMode } from '../_lib/eftTypes.js';
 
 function parseGameMode(value: unknown): GameMode | null {
   if (value === 'regular' || value === 'pve' || value === 'seasonal') return value;

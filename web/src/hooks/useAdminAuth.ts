@@ -27,20 +27,25 @@ function clearToken(): void {
   }
 }
 
-/** Token bridge: clave admin en bruto o sesión de sitio kind=admin. */
+/**
+ * Candidatos para Authorization en /admin.
+ * Prioriza la sesión HMAC de la app (kind=admin): evita fallos con caracteres
+ * especiales del ADMIN_TOKEN en bruto y reutiliza el login ya hecho.
+ */
 function readBridgeCandidates(): string[] {
   const out: string[] = [];
-  const stored = readStoredToken().trim();
-  if (stored) out.push(stored);
 
   try {
     if (getStoredSiteKind() === 'admin') {
       const site = getStoredSiteSession()?.trim() ?? '';
-      if (site && !out.includes(site)) out.push(site);
+      if (site) out.push(site);
     }
   } catch {
     /* ignore */
   }
+
+  const stored = readStoredToken().trim();
+  if (stored && !out.includes(stored)) out.push(stored);
 
   return out;
 }
@@ -81,7 +86,8 @@ export function useAdminAuth() {
         }
       }
 
-      clearToken();
+      // No borrar ADMIN_TOKEN_STORAGE_KEY si la sesión de sitio sigue siendo admin:
+      // puede ser un fallo puntual; el usuario aún puede reintentar.
       if (!cancelled) {
         setToken('');
         setStatus('locked');
@@ -106,8 +112,15 @@ export function useAdminAuth() {
       setToken(next);
       setStatus('unlocked');
       setLoginValue('');
-    } catch {
-      setLoginError('Token inválido o ADMIN_TOKEN no configurado.');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : '';
+      if (msg === 'unauthorized') {
+        setLoginError('Token inválido.');
+      } else if (msg.includes('ADMIN_TOKEN')) {
+        setLoginError(msg);
+      } else {
+        setLoginError(msg || 'Token inválido o ADMIN_TOKEN no configurado.');
+      }
     } finally {
       setLoggingIn(false);
     }

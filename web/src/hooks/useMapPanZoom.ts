@@ -115,6 +115,9 @@ export function useMapPanZoom(resetKey: unknown, options: UseMapPanZoomOptions =
     const target = event.target as HTMLElement | null;
     if (target?.closest('button, a, input, label')) return;
 
+    // Evita el drag nativo de <img>/SVG, que dispara pointercancel y mata el pan.
+    event.preventDefault();
+
     stopWindowDragTracking();
 
     const drag: DragState = {
