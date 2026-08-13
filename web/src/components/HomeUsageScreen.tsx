@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { Translations } from '../i18n/translations';
 import { DailyCodeModal } from './DailyCodeModal';
+import { VersionNewsCrt } from './VersionNewsCrt';
 
 export type HomeUsageChoice = 'pvp' | 'seasonal' | 'routes';
 
@@ -208,6 +209,8 @@ export function HomeUsageScreen({
           Weekly access code
         </button>
       )}
+
+      <VersionNewsCrt t={t} />
 
       <DailyCodeModal open={dailyOpen} onClose={() => setDailyOpen(false)} />
     </div>

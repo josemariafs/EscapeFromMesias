@@ -1,5 +1,5 @@
 :root {
-  /* Paleta alineada al home: verdes/teal muy suaves (sin azules fríos). */
+  /* Paleta alineada al home: verdes/teal muy suaves (sin azules frÃ­os). */
   --bg: #0a0a0b;
   --bg-elevated: #121214;
   --bg-card: #18181a;
@@ -276,7 +276,7 @@ body {
   box-sizing: border-box;
   background: linear-gradient(180deg, #141416 0%, #080809 100%);
   border-bottom: 1px solid var(--border);
-  /* visible: los menús del header (wipe start, perfiles) deben poder salir del alto fijo */
+  /* visible: los menÃºs del header (wipe start, perfiles) deben poder salir del alto fijo */
   overflow: visible;
 }
 
@@ -769,7 +769,7 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2rem;
+  gap: 1.5rem;
   width: 100%;
   height: 100%;
   min-height: 0;
@@ -952,6 +952,219 @@ a.home-usage-card {
   outline-offset: 2px;
 }
 
+/* —— Version news CRT panel (home) —— */
+.version-news-crt {
+  flex: 0 1 auto;
+  display: flex;
+  width: min(72rem, 100%);
+  min-height: clamp(8.5rem, 24vh, 15rem);
+  max-height: clamp(10.5rem, 28vh, 17rem);
+  margin-top: 0.25rem;
+}
+
+.version-news-crt-bezel {
+  flex: 1;
+  display: flex;
+  padding: 0.55rem;
+  border: 1px solid #2a2e30;
+  background:
+    linear-gradient(160deg, #1c1e20 0%, #0c0e10 45%, #141618 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 10px 32px rgba(0, 0, 0, 0.55);
+}
+
+.version-news-crt-screen {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid #1a3a32;
+  background: #020806;
+  color: #7dffb0;
+  font-family: "IBM Plex Mono", "Cascadia Mono", "Consolas", "Courier New", monospace;
+  box-shadow:
+    inset 0 0 40px rgba(0, 0, 0, 0.65),
+    inset 0 0 80px rgba(20, 120, 70, 0.12);
+}
+
+/* Efectos CRT solo en el fondo; el texto va encima sin filter/opacidad. */
+.version-news-crt-fx {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.version-news-crt-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 70% at 50% 40%, rgba(24, 72, 56, 0.42), transparent 70%),
+    #020806;
+  animation: version-news-crt-bg-pulse 2.8s steps(1, end) infinite;
+}
+
+.version-news-crt-scanlines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.28) 0px,
+    rgba(0, 0, 0, 0.28) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  opacity: 0.7;
+  animation: version-news-crt-scan 5.5s linear infinite;
+}
+
+.version-news-crt-flicker {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      to bottom,
+      rgba(140, 255, 190, 0.18) 0%,
+      transparent 30%,
+      rgba(0, 0, 0, 0.35) 50%,
+      transparent 70%,
+      rgba(120, 255, 180, 0.14) 100%
+    );
+  animation: version-news-crt-flicker 1.85s steps(2, end) infinite;
+}
+
+.version-news-crt-sweep {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 28%;
+  top: -30%;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(120, 255, 180, 0.08) 40%,
+    rgba(180, 255, 210, 0.22) 50%,
+    rgba(120, 255, 180, 0.08) 60%,
+    transparent 100%
+  );
+  animation: version-news-crt-sweep 3.4s linear infinite;
+}
+
+.version-news-crt-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 78% 72% at 50% 48%,
+    transparent 45%,
+    rgba(0, 0, 0, 0.55) 100%
+  );
+}
+
+.version-news-crt-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  padding: 0.85rem 1.05rem 0.95rem;
+  color: #7dffb0;
+  text-shadow:
+    0 0 2px rgba(80, 255, 160, 0.55),
+    0 0 12px rgba(40, 200, 120, 0.25);
+}
+
+.version-news-crt-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-shrink: 0;
+  margin-bottom: 0.65rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid rgba(90, 220, 140, 0.28);
+}
+
+.version-news-crt-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #a8ffd0;
+}
+
+.version-news-crt-version {
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  color: #5cb888;
+  white-space: nowrap;
+}
+
+.version-news-crt-body {
+  margin: 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: min(18vh, 10rem);
+  overflow: auto;
+  font-size: clamp(0.82rem, 1.6vw, 0.95rem);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #8affc0;
+}
+
+.version-news-crt-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.version-news-crt-body::-webkit-scrollbar-thumb {
+  background: rgba(90, 200, 140, 0.35);
+}
+
+@keyframes version-news-crt-scan {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 48px; }
+}
+
+@keyframes version-news-crt-flicker {
+  0%, 100% { opacity: 0.55; }
+  4% { opacity: 0.12; }
+  6% { opacity: 0.85; }
+  8% { opacity: 0.2; }
+  11% { opacity: 0.7; }
+  38% { opacity: 0.5; }
+  40% { opacity: 0.05; }
+  42% { opacity: 0.9; }
+  44% { opacity: 0.25; }
+  47% { opacity: 0.65; }
+  72% { opacity: 0.45; }
+  74% { opacity: 0.08; }
+  76% { opacity: 1; }
+  78% { opacity: 0.18; }
+  81% { opacity: 0.6; }
+}
+
+@keyframes version-news-crt-bg-pulse {
+  0%, 100% { filter: brightness(1) contrast(1.05); }
+  7% { filter: brightness(0.65) contrast(1.2); }
+  9% { filter: brightness(1.25) contrast(1.1); }
+  11% { filter: brightness(0.8) contrast(1.15); }
+  14% { filter: brightness(1) contrast(1.05); }
+  51% { filter: brightness(1) contrast(1.05); }
+  53% { filter: brightness(0.5) contrast(1.3); }
+  55% { filter: brightness(1.3) contrast(1.12); }
+  58% { filter: brightness(0.88) contrast(1.1); }
+  61% { filter: brightness(1) contrast(1.05); }
+}
+
+@keyframes version-news-crt-sweep {
+  0% { transform: translateY(0); opacity: 0.55; }
+  70% { opacity: 0.85; }
+  100% { transform: translateY(420%); opacity: 0.4; }
+}
+
 @media (max-width: 900px) {
   .home-usage-strip,
   .home-usage-strip--with-admin {
@@ -966,6 +1179,15 @@ a.home-usage-card {
 
   .home-usage-card:last-child {
     border-bottom: 0;
+  }
+
+  .version-news-crt {
+    min-height: 8rem;
+    max-height: 13rem;
+  }
+
+  .version-news-crt-body {
+    max-height: 10rem;
   }
 }
 
@@ -1119,7 +1341,7 @@ a.home-usage-card {
   justify-content: flex-end;
   gap: 0.4rem 0.5rem;
   min-width: 0;
-  /* Sin max-width artificial: el antiguo 22rem hacía que reloj/perfil
+  /* Sin max-width artificial: el antiguo 22rem hacÃ­a que reloj/perfil
      se pintaran encima de las banderas (overflow visible). */
 }
 
@@ -1515,8 +1737,8 @@ a.home-usage-card {
   color: var(--text);
 }
 
-/* Modo Logs: las misiones con un evento real detectado en los logs bloquean su edición manual.
-   Las que no tienen ningún evento (fuera de la ventana de sesiones que conserva el juego) se
+/* Modo Logs: las misiones con un evento real detectado en los logs bloquean su ediciÃ³n manual.
+   Las que no tienen ningÃºn evento (fuera de la ventana de sesiones que conserva el juego) se
    pueden seguir editando a mano como respaldo. */
 .task-actions.log-locked button,
 .detail-actions.log-locked button,
@@ -1801,7 +2023,7 @@ a.home-usage-card {
   position: relative;
   line-height: 0;
   flex-shrink: 0;
-  /* Aísla el SVG para que las anotaciones hermanas puedan quedar encima. */
+  /* AÃ­sla el SVG para que las anotaciones hermanas puedan quedar encima. */
   isolation: isolate;
 }
 
@@ -1819,7 +2041,7 @@ a.home-usage-card {
   pointer-events: none;
 }
 
-/* Capa de marcadores fuera del transform de zoom → nítidos y tamaño constante */
+/* Capa de marcadores fuera del transform de zoom â nÃ­tidos y tamaÃ±o constante */
 .map-modal-markers--overlay {
   z-index: 2;
   overflow: visible;
@@ -2006,7 +2228,7 @@ a.home-usage-card {
   background: #111;
 }
 
-/* Pins SVG de extracción: que se vea el icono completo. */
+/* Pins SVG de extracciÃ³n: que se vea el icono completo. */
 .map-floating-tooltip-icon[src*='extract-'] {
   object-fit: contain;
   object-position: center;
@@ -3653,7 +3875,7 @@ table.task-table td.task-table-cell-trader {
 }
 
 .task-table-collapsible summary::before {
-  content: '▸';
+  content: 'â¸';
   display: inline-block;
   color: var(--accent);
   transition: transform 0.15s;
@@ -4935,6 +5157,71 @@ table.task-table td.task-table-cell-trader {
   box-sizing: border-box;
 }
 
+.admin-version-news {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 1rem 1.1rem 1.05rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: linear-gradient(165deg, var(--bg-card) 0%, var(--bg-elevated) 100%);
+  box-shadow: var(--shadow-card);
+}
+
+.admin-version-news-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.admin-version-news h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.admin-version-news .admin-muted {
+  margin: 0;
+  max-width: 42rem;
+}
+
+.admin-version-news-input {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 8rem;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #0a0c0d;
+  color: #c8e6d8;
+  font: inherit;
+  font-family: "IBM Plex Mono", "Cascadia Mono", "Consolas", "Courier New", monospace;
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.admin-version-news-input:focus {
+  outline: 2px solid rgba(120, 200, 160, 0.45);
+  outline-offset: 1px;
+}
+
+.admin-version-news-input:disabled {
+  opacity: 0.65;
+}
+
+.admin-version-news-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
 .admin-stat-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
@@ -5226,7 +5513,7 @@ table.task-table td.task-table-cell-trader {
   letter-spacing: -0.02em;
 }
 
-/* Tooltips genéricos del panel admin (sustituyen title nativo). */
+/* Tooltips genÃ©ricos del panel admin (sustituyen title nativo). */
 [data-admin-tip] {
   position: relative;
 }
@@ -5758,7 +6045,7 @@ table.task-table td.task-table-cell-trader {
   }
 }
 
-/* —— Site login: TV static / interference —— */
+/* ââ Site login: TV static / interference ââ */
 .tv-login {
   --tv-phosphor: #9dffb0;
   --tv-phosphor-dim: #3d7a4a;
@@ -6086,7 +6373,7 @@ table.task-table td.task-table-cell-trader {
   margin-top: 0.25rem;
 }
 
-/* —— CRT channel-change between main views (0.7s) —— */
+/* ââ CRT channel-change between main views (0.7s) ââ */
 .crt-transition {
   position: fixed;
   inset: 0;
@@ -6234,7 +6521,7 @@ table.task-table td.task-table-cell-trader {
   75% { transform: translateY(3px); }
 }
 
-/* —— Feedback modal —— */
+/* ââ Feedback modal ââ */
 .feedback-modal-backdrop {
   position: fixed;
   inset: 0;
@@ -6409,3 +6696,302 @@ table.task-table td.task-table-cell-trader {
   margin-top: 0.25rem;
 }
 
+
+/*  KB Document report modal + admin reports  */
+.kb-report-modal {
+  width: min(92vw, 1180px);
+  max-height: min(94vh, 980px);
+}
+
+.kb-report-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow-y: auto;
+}
+
+.kb-report-top-row,
+.kb-report-bottom-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  align-items: start;
+}
+
+@media (max-width: 720px) {
+  .kb-report-top-row,
+  .kb-report-bottom-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.kb-report-hint {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.kb-report-fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.kb-report-fieldset legend {
+  margin-bottom: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--text-muted);
+}
+
+.kb-report-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+}
+
+.kb-report-field-label {
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: var(--text-muted);
+}
+
+.kb-report-field select,
+.kb-report-field input[type='text'] {
+  width: 100%;
+  padding: 0.45rem 0.55rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  font: inherit;
+}
+
+.kb-report-map-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.kb-report-map-area {
+  position: relative;
+  width: 100%;
+  height: min(52vh, 520px);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #0a0a0a;
+  cursor: crosshair;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+}
+
+.kb-report-map-area.is-zoomed {
+  cursor: grab;
+}
+
+.kb-report-map-area.is-panning {
+  cursor: grabbing;
+}
+
+.kb-report-map-wrap {
+  position: relative;
+  line-height: 0;
+  flex-shrink: 0;
+}
+
+.kb-report-map-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+  pointer-events: none;
+}
+
+.kb-report-map-pin {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  width: 28px;
+  height: 28px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.kb-report-map-pin img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.65));
+}
+
+.kb-report-image-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.kb-report-image-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.kb-report-image-preview {
+  width: min(100%, 280px);
+  max-height: 180px;
+  object-fit: contain;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: #111;
+}
+
+.admin-reports-page .admin-reports-body {
+  display: grid;
+  grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+  gap: 0.75rem;
+  padding: 0.75rem 1rem 1rem;
+  min-height: 0;
+  flex: 1;
+}
+
+.admin-reports-list {
+  min-height: 0;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  padding: 0.5rem;
+}
+
+.admin-reports-list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.admin-reports-item {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.55rem 0.6rem;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  background: var(--bg-card);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+}
+
+.admin-reports-item strong {
+  font-size: 0.86rem;
+}
+
+.admin-reports-item span {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.admin-reports-item.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.admin-reports-item-date {
+  opacity: 0.85;
+}
+
+.admin-reports-empty {
+  margin: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.admin-reports-detail {
+  min-height: 0;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  padding: 0.85rem;
+}
+
+.admin-reports-detail-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin-bottom: 0.75rem;
+}
+
+.admin-reports-detail-header h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1.1rem;
+}
+
+.admin-reports-detail-header p {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.admin-reports-detail-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.admin-reports-preview {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 0.75rem;
+}
+
+.admin-reports-map,
+.admin-reports-image {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #0a0a0a;
+  overflow: hidden;
+  min-height: 220px;
+}
+
+.admin-reports-map img,
+.admin-reports-image img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.admin-reports-map-pin {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  width: 30px;
+  height: 30px;
+  pointer-events: none;
+}
+
+.admin-reports-map-pin img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.7));
+}
+
+@media (max-width: 900px) {
+  .admin-reports-page .admin-reports-body,
+  .admin-reports-preview {
+    grid-template-columns: 1fr;
+  }
+}

@@ -10,6 +10,8 @@ interface AppFooterProps {
   formatOnline: (n: number) => string;
   feedbackLabel: string;
   onOpenFeedback: () => void;
+  kbReportLabel: string;
+  onOpenKbReport: () => void;
   lastUpdateLabel: string;
   logoutLabel: string;
   onLogout: () => void;
@@ -22,6 +24,8 @@ export function AppFooter({
   formatOnline,
   feedbackLabel,
   onOpenFeedback,
+  kbReportLabel,
+  onOpenKbReport,
   lastUpdateLabel,
   logoutLabel,
   onLogout,
@@ -35,6 +39,10 @@ export function AppFooter({
       <div className="app-footer-meta">
         <button type="button" className="app-footer-feedback" onClick={onOpenFeedback}>
           {feedbackLabel}
+        </button>
+        <span aria-hidden="true">·</span>
+        <button type="button" className="app-footer-feedback" onClick={onOpenKbReport}>
+          {kbReportLabel}
         </button>
         <span aria-hidden="true">·</span>
         {online != null && (

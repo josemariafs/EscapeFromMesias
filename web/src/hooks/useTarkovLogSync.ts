@@ -11,6 +11,7 @@ import {
 } from '../utils/logProfileModes';
 import {
   buildTaskStatusMap,
+  clientVersionFamily,
   extractTaskEventsFromLogText,
   getLatestProfileSelectEvent,
   type ProfileSelectEvent,
@@ -69,11 +70,12 @@ function readStoredWipeStart(): string | null {
 
 /**
  * Recorre las sesiones en orden cronológico leyendo application.log y construye:
- * - la lista de "breakpoints" (puntos donde cambia la versión del cliente detectada), y
+ * - la lista de "breakpoints" (puntos donde cambia la familia major.minor del cliente
+ *   o el ProfileId), y
  * - el perfil/versión activo resuelto para cada sesión (heredando el último conocido).
- * OJO: no todo cambio de versión es un wipe real (los parches/hotfixes también la cambian);
- * por eso se ofrece la lista completa para que el usuario pueda elegir el punto correcto,
- * en vez de asumir que el último cambio de versión es siempre el inicio de temporada.
+ *
+ * Parches como `1.1.0.0` y `1.1.0.1` se agrupan en `1.1` (misma temporada / sesión lógica).
+ * El usuario sigue pudiendo elegir el punto de inicio; el automático usa la última familia.
  */
 async function scanWipeBreakpoints(
   folders: SessionFolderInfo[],
@@ -86,11 +88,13 @@ async function scanWipeBreakpoints(
     const text = await folders[i].readApplicationText();
     const event = getLatestProfileSelectEvent(text);
     if (event) {
-      if (!lastKnown || event.version !== lastKnown.version || event.profileId !== lastKnown.profileId) {
+      const family = clientVersionFamily(event.version);
+      const lastFamily = lastKnown ? clientVersionFamily(lastKnown.version) : null;
+      if (!lastKnown || family !== lastFamily || event.profileId !== lastKnown.profileId) {
         breakpoints.push({
           session: folders[i].name,
           timestamp: folders[i].timestamp,
-          version: event.version,
+          version: family,
           profileId: event.profileId,
         });
       }

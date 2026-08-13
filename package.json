@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "deploy:prod": "node scripts/deploy-prod.mjs"
+  },
   "dependencies": {
     "bmad-method": "^6.10.0"
   }

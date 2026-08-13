@@ -6,7 +6,9 @@ export const DATA_SOURCE_STORAGE_KEY = 'efg-data-source';
 
 function readStoredDataSource(): DataSourceMode {
   const stored = localStorage.getItem(DATA_SOURCE_STORAGE_KEY);
-  return stored === 'logs' ? 'logs' : 'localStorage';
+  if (stored === 'localStorage') return 'localStorage';
+  // Por defecto Logs (también si aún no hay preferencia guardada).
+  return 'logs';
 }
 
 export function useDataSource() {

@@ -17,6 +17,8 @@ export interface Translations {
   homeCardTagRegular: string;
   homeCardTagSeasonal: string;
   homeCardTagAdmin: string;
+  versionNewsTitle: string;
+  versionNewsEmpty: string;
   homeBack: string;
   subtitle: (n: number) => string;
   loading: string;
@@ -57,6 +59,40 @@ export interface Translations {
   footerLastUpdate: string;
   footerLogout: string;
   feedbackButton: string;
+  kbReportFooterButton: string;
+  kbReportTitle: string;
+  kbReportHint: string;
+  kbReportEnvironment: string;
+  kbReportMap: string;
+  kbReportPlaceHint: string;
+  kbReportMapMissing: string;
+  kbReportLabel: string;
+  kbReportLabelPlaceholder: string;
+  kbReportImage: string;
+  kbReportImageUpload: string;
+  kbReportImageReplace: string;
+  kbReportImageClear: string;
+  kbReportImageError: string;
+  kbReportNeedPin: string;
+  kbReportNeedImage: string;
+  kbReportSubmit: string;
+  kbReportSending: string;
+  kbReportSuccess: string;
+  kbReportSessionError: string;
+  kbReportNetworkError: string;
+  kbReportSubmitError: string;
+  adminReportsTitle: string;
+  adminReportsHint: string;
+  adminReportsFilter: string;
+  adminReportsPending: string;
+  adminReportsAccepted: string;
+  adminReportsRejected: string;
+  adminReportsRefresh: string;
+  adminReportsEmpty: string;
+  adminReportsSelect: string;
+  adminReportsAccept: string;
+  adminReportsReject: string;
+  adminReportsNav: string;
   feedbackTitle: string;
   feedbackFieldTitle: string;
   feedbackFieldTitlePlaceholder: string;
@@ -274,6 +310,8 @@ export const translations: Record<Lang, Translations> = {
     homeCardTagRegular: 'REGULAR',
     homeCardTagSeasonal: 'SEASONAL',
     homeCardTagAdmin: 'PANEL',
+    versionNewsTitle: 'Novedades de versión',
+    versionNewsEmpty: 'Sin novedades registradas para esta versión.',
     homeBack: 'Inicio',
     subtitle: (n) => `Tracker de misiones · ${n} quests · datos de tarkov.dev`,
     loading: 'Cargando misiones desde tarkov.dev…',
@@ -330,6 +368,41 @@ export const translations: Record<Lang, Translations> = {
     footerLastUpdate: 'Última actualización',
     footerLogout: 'Salir',
     feedbackButton: 'Reportar/Feedback',
+    kbReportFooterButton: 'Report KB Document Marker',
+    kbReportTitle: 'Nuevo punto KordBreach',
+    kbReportHint:
+      'Elige mapa y entorno, coloca el marcador, adjunta una captura y envíalo. Un admin lo revisará antes de publicarlo.',
+    kbReportEnvironment: 'Entorno',
+    kbReportMap: 'Mapa',
+    kbReportPlaceHint: 'Haz clic en el mapa para colocar el marcador',
+    kbReportMapMissing: 'No hay imagen disponible para este mapa.',
+    kbReportLabel: 'Etiqueta (opcional)',
+    kbReportLabelPlaceholder: 'Ej. 212 ROOM',
+    kbReportImage: 'Imagen del documento',
+    kbReportImageUpload: 'Subir imagen',
+    kbReportImageReplace: 'Cambiar imagen',
+    kbReportImageClear: 'Quitar imagen',
+    kbReportImageError: 'No se pudo procesar la imagen.',
+    kbReportNeedPin: 'Coloca un marcador en el mapa.',
+    kbReportNeedImage: 'Adjunta una imagen del documento.',
+    kbReportSubmit: 'Enviar',
+    kbReportSending: 'Enviando…',
+    kbReportSuccess: 'Enviado. El admin lo revisará en Reportes.',
+    kbReportSessionError: 'Sesión no válida. Vuelve a iniciar sesión.',
+    kbReportNetworkError: 'Error de red. Inténtalo de nuevo.',
+    kbReportSubmitError: 'No se pudo enviar el reporte.',
+    adminReportsTitle: 'Reportes',
+    adminReportsHint: 'Propuestas de Documentos KordBreach enviadas por usuarios.',
+    adminReportsFilter: 'Estado del reporte',
+    adminReportsPending: 'Pendientes',
+    adminReportsAccepted: 'Aceptados',
+    adminReportsRejected: 'Rechazados',
+    adminReportsRefresh: 'Actualizar',
+    adminReportsEmpty: 'No hay reportes en este estado.',
+    adminReportsSelect: 'Selecciona un reporte de la lista.',
+    adminReportsAccept: 'Aceptar',
+    adminReportsReject: 'Rechazar',
+    adminReportsNav: 'Reportes',
     feedbackTitle: 'Reportar / Feedback',
     feedbackFieldTitle: 'Título',
     feedbackFieldTitlePlaceholder: 'Resumen breve',
@@ -589,6 +662,8 @@ export const translations: Record<Lang, Translations> = {
     homeCardTagRegular: 'REGULAR',
     homeCardTagSeasonal: 'SEASONAL',
     homeCardTagAdmin: 'PANEL',
+    versionNewsTitle: 'Version news',
+    versionNewsEmpty: 'No news recorded for this version.',
     homeBack: 'Home',
     subtitle: (n) => `Quest tracker · ${n} quests · data from tarkov.dev`,
     loading: 'Loading quests from tarkov.dev…',
@@ -645,6 +720,41 @@ export const translations: Record<Lang, Translations> = {
     footerLastUpdate: 'Last update',
     footerLogout: 'Sign out',
     feedbackButton: 'Report/Feedback',
+    kbReportFooterButton: 'Report KB Document Marker',
+    kbReportTitle: 'New KordBreach point',
+    kbReportHint:
+      'Pick a map and environment, place the marker, attach a screenshot, then submit. An admin will review it before publishing.',
+    kbReportEnvironment: 'Environment',
+    kbReportMap: 'Map',
+    kbReportPlaceHint: 'Click the map to place the marker',
+    kbReportMapMissing: 'No image available for this map.',
+    kbReportLabel: 'Label (optional)',
+    kbReportLabelPlaceholder: 'e.g. 212 ROOM',
+    kbReportImage: 'Document image',
+    kbReportImageUpload: 'Upload image',
+    kbReportImageReplace: 'Replace image',
+    kbReportImageClear: 'Remove image',
+    kbReportImageError: 'Could not process the image.',
+    kbReportNeedPin: 'Place a marker on the map.',
+    kbReportNeedImage: 'Attach a document image.',
+    kbReportSubmit: 'Submit',
+    kbReportSending: 'Sending…',
+    kbReportSuccess: 'Submitted. An admin will review it in Reports.',
+    kbReportSessionError: 'Invalid session. Please sign in again.',
+    kbReportNetworkError: 'Network error. Please try again.',
+    kbReportSubmitError: 'Could not submit the report.',
+    adminReportsTitle: 'Reports',
+    adminReportsHint: 'KordBreach Documents points submitted by users.',
+    adminReportsFilter: 'Report status',
+    adminReportsPending: 'Pending',
+    adminReportsAccepted: 'Accepted',
+    adminReportsRejected: 'Rejected',
+    adminReportsRefresh: 'Refresh',
+    adminReportsEmpty: 'No reports in this status.',
+    adminReportsSelect: 'Select a report from the list.',
+    adminReportsAccept: 'Accept',
+    adminReportsReject: 'Reject',
+    adminReportsNav: 'Reports',
     feedbackTitle: 'Report / Feedback',
     feedbackFieldTitle: 'Title',
     feedbackFieldTitlePlaceholder: 'Short summary',

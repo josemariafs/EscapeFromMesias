@@ -9,6 +9,7 @@ import {
   type AdminUsageAccessFilter,
   type AdminUsageData,
 } from '../api/adminDashboard';
+import { fetchVersionNews, saveVersionNews } from '../api/versionNews';
 import { useAdminAuth } from '../hooks/useAdminAuth';
 import { AdminLoginCard } from './AdminLoginCard';
 
@@ -375,8 +376,27 @@ export function AdminDashboardPage() {
   const [usageLoading, setUsageLoading] = useState(false);
   const [usageError, setUsageError] = useState<string | null>(null);
   const [usageAccessFilter, setUsageAccessFilter] = useState<UsageAccessFilter>('all');
+  const [versionNewsDraft, setVersionNewsDraft] = useState('');
+  const [versionNewsSavedAt, setVersionNewsSavedAt] = useState<string | null>(null);
+  const [versionNewsLoading, setVersionNewsLoading] = useState(false);
+  const [versionNewsSaving, setVersionNewsSaving] = useState(false);
+  const [versionNewsMsg, setVersionNewsMsg] = useState<string | null>(null);
 
   const { token, status, logout } = auth;
+
+  const loadVersionNews = useCallback(async () => {
+    setVersionNewsLoading(true);
+    setVersionNewsMsg(null);
+    try {
+      const data = await fetchVersionNews();
+      setVersionNewsDraft(typeof data.news === 'string' ? data.news : '');
+      setVersionNewsSavedAt(data.updatedAt);
+    } catch (err) {
+      setVersionNewsMsg(err instanceof Error ? err.message : 'Error al cargar novedades');
+    } finally {
+      setVersionNewsLoading(false);
+    }
+  }, []);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -409,12 +429,33 @@ export function AdminDashboardPage() {
   }, [token, logout, usageAccessFilter]);
 
   useEffect(() => {
-    if (status === 'unlocked') void load();
-  }, [status, load]);
+    if (status === 'unlocked') {
+      void load();
+      void loadVersionNews();
+    }
+  }, [status, load, loadVersionNews]);
 
   useEffect(() => {
     if (status === 'unlocked' && section === 'usage') void loadUsage();
   }, [status, section, loadUsage]);
+
+  const handleSaveVersionNews = async () => {
+    if (!token) return;
+    setVersionNewsSaving(true);
+    setVersionNewsMsg(null);
+    try {
+      const data = await saveVersionNews(token, versionNewsDraft);
+      setVersionNewsDraft(data.news);
+      setVersionNewsSavedAt(data.updatedAt);
+      setVersionNewsMsg('Novedades de versión guardadas. Visibles en la home para todos.');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error al guardar novedades';
+      setVersionNewsMsg(msg);
+      if (/unauthor/i.test(msg) || /401/.test(msg)) logout();
+    } finally {
+      setVersionNewsSaving(false);
+    }
+  };
 
   const series = useMemo(
     () => fillDailySeries(data?.dailyVisits ?? [], 30),
@@ -494,6 +535,9 @@ export function AdminDashboardPage() {
           <a className="admin-toolbar-nav-link" href="/admin/routes">
             Rutas fijas
           </a>
+          <a className="admin-toolbar-nav-link" href="/admin/reports">
+            Reportes
+          </a>
         </nav>
         <div className="admin-toolbar-actions">
           <button
@@ -522,6 +566,47 @@ export function AdminDashboardPage() {
       {syncMsg ? <p className="admin-banner">{syncMsg}</p> : null}
 
       <main className="admin-dashboard">
+        <section className="admin-version-news" aria-labelledby="admin-version-news-title">
+          <div className="admin-version-news-head">
+            <div>
+              <h2 id="admin-version-news-title">Novedades de versión</h2>
+              <p className="admin-muted">
+                Texto del panel CRT en la home. Se guarda en Turso y se muestra al instante,
+                sin depender del deploy.
+              </p>
+            </div>
+            <button
+              type="button"
+              className="btn btn-start"
+              onClick={() => void handleSaveVersionNews()}
+              disabled={versionNewsSaving || versionNewsLoading}
+            >
+              {versionNewsSaving ? 'Guardando…' : 'Guardar novedades'}
+            </button>
+          </div>
+          <textarea
+            className="admin-version-news-input"
+            value={versionNewsDraft}
+            onChange={(e) => setVersionNewsDraft(e.target.value)}
+            rows={8}
+            maxLength={4000}
+            disabled={versionNewsLoading || versionNewsSaving}
+            placeholder="Ej.&#10;• Flechas en mapas&#10;• Reportes KB Document&#10;• …"
+            spellCheck
+          />
+          <div className="admin-version-news-meta">
+            <span>{versionNewsDraft.length}/4000</span>
+            <span>
+              {versionNewsLoading
+                ? 'Cargando…'
+                : versionNewsSavedAt
+                  ? `Última guardada: ${formatWhen(versionNewsSavedAt)}`
+                  : 'Aún no hay novedades guardadas'}
+            </span>
+          </div>
+          {versionNewsMsg ? <p className="admin-banner">{versionNewsMsg}</p> : null}
+        </section>
+
         <section className="admin-stat-grid">
           <article className="admin-stat-card">
             <span className="admin-stat-label">Hoy</span>

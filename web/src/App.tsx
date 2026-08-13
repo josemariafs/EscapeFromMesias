@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActiveTasksView } from './components/ActiveTasksView';
 import { AppFooter } from './components/AppFooter';
+import { KbDocumentReportModal } from './components/KbDocumentReportModal';
 import { DataSourceControl } from './components/DataSourceControl';
 import { CrtViewTransition } from './components/CrtViewTransition';
 import { FeedbackModal } from './components/FeedbackModal';
@@ -62,6 +63,7 @@ export default function App() {
   const { active: crtActive, playId: crtPlayId, transitionTo } = useCrtViewTransition();
   const [appUsage, setAppUsage] = useState<AppUsage>('home');
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [kbReportOpen, setKbReportOpen] = useState(false);
   /** Routes y Seasonal comparten mapas; PVP Zone (regular) tiene los suyos. */
   const routeEnvironment: RouteEnvironment =
     appUsage === 'routes' || gameMode === 'seasonal' ? 'seasonal' : 'regular';
@@ -349,7 +351,9 @@ export default function App() {
         return;
       }
       setGameMode(choice === 'seasonal' ? 'seasonal' : 'regular');
-      setViewTab(isLogsMode ? 'active' : 'all');
+      // PVP Regular / Seasonal: Logs es la fuente por defecto al entrar.
+      setDataSource('logs');
+      setViewTab('active');
       setAppUsage('quests');
     });
   };
@@ -380,11 +384,19 @@ export default function App() {
         formatOnline={t.footerOnline}
         feedbackLabel={t.feedbackButton}
         onOpenFeedback={() => setFeedbackOpen(true)}
+        kbReportLabel={t.kbReportFooterButton}
+        onOpenKbReport={() => setKbReportOpen(true)}
         lastUpdateLabel={t.footerLastUpdate}
         logoutLabel={t.footerLogout}
         onLogout={siteLogout}
       />
       <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} t={t} />
+      <KbDocumentReportModal
+        open={kbReportOpen}
+        onClose={() => setKbReportOpen(false)}
+        defaultEnvironment={routeEnvironment}
+        t={t}
+      />
     </>
   );
 
@@ -934,6 +946,8 @@ export default function App() {
         formatOnline={t.footerOnline}
         feedbackLabel={t.feedbackButton}
         onOpenFeedback={() => setFeedbackOpen(true)}
+        kbReportLabel={t.kbReportFooterButton}
+        onOpenKbReport={() => setKbReportOpen(true)}
         lastUpdateLabel={t.footerLastUpdate}
         logoutLabel={t.footerLogout}
         onLogout={siteLogout}
@@ -958,6 +972,12 @@ export default function App() {
         ) : undefined}
       />
       <FeedbackModal open={feedbackOpen} onClose={() => setFeedbackOpen(false)} t={t} />
+      <KbDocumentReportModal
+        open={kbReportOpen}
+        onClose={() => setKbReportOpen(false)}
+        defaultEnvironment={routeEnvironment}
+        t={t}
+      />
     </div>
   );
 }

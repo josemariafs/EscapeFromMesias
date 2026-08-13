@@ -232,6 +232,9 @@ export function AdminRoutesPage() {
           <a className="admin-toolbar-nav-link" href="/admin">
             {t.adminBackToDashboard}
           </a>
+          <a className="admin-toolbar-nav-link" href="/admin/reports">
+            {t.adminReportsNav}
+          </a>
         </nav>
         <div className="admin-routes-toolbar-actions">
           <button type="button" className="btn btn-wipe" onClick={handleLogout}>

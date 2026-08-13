@@ -102,6 +102,16 @@ export interface ProfileSelectEvent {
 }
 
 /**
+ * Familia de versión del cliente: major.minor (p. ej. `1.1.0.1` → `1.1`).
+ * Parches/hotfixes de la misma temporada comparten familia y se agrupan.
+ */
+export function clientVersionFamily(version: string): string {
+  const parts = version.trim().split('.').filter(Boolean);
+  if (parts.length >= 2) return `${parts[0]}.${parts[1]}`;
+  return version.trim();
+}
+
+/**
  * Extrae los eventos "selección de perfil" de un archivo application.log, en orden
  * cronológico. Permite identificar con qué versión del juego (temporada/wipe) y con qué
  * perfil se jugó cada sesión.

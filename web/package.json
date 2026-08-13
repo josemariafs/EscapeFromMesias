@@ -8,6 +8,7 @@
     "dev:full": "npx vercel dev --listen 3000",
     "build": "node scripts/resolve-app-version.mjs && tsc -b && vite build",
     "version:resolve": "node scripts/resolve-app-version.mjs",
+    "deploy:prod": "node ../scripts/deploy-prod.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },
