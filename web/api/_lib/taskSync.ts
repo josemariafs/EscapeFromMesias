@@ -22,8 +22,255 @@ const RETRY_GAP_MS = 50 * 60 * 1000;
 const SYNC_DAY_RETENTION_DAYS = 14;
 /** Historial de cambios de dataset (sin payloads). */
 const SNAPSHOT_CHANGE_RETENTION_DAYS = 90;
+/** Máx. entradas listadas por tipo en el diff (el conteo total sí se guarda). */
+const DIFF_LIST_LIMIT = 40;
+/** Máx. líneas de cambio por misión actualizada. */
+const DIFF_FIELD_LIMIT = 8;
 
 export type TaskSyncDayStatus = 'pending' | 'success' | 'failed';
+
+export interface TaskDiffEntry {
+  id: string;
+  name: string;
+  changes?: string[];
+}
+
+export interface TaskSnapshotDiff {
+  added: TaskDiffEntry[];
+  removed: TaskDiffEntry[];
+  updated: TaskDiffEntry[];
+  addedCount: number;
+  removedCount: number;
+  updatedCount: number;
+  truncated: boolean;
+}
+
+let taskSchemaReady: Promise<void> | null = null;
+
+async function ensureTaskTableColumn(
+  table: string,
+  column: string,
+  ddl: string,
+): Promise<void> {
+  const db = getDb();
+  const info = await db.execute(`PRAGMA table_info(${table})`);
+  const hasColumn = info.rows.some((row) => {
+    const name = (row as { name?: unknown }).name;
+    return name === column;
+  });
+  if (!hasColumn) {
+    await db.execute(ddl);
+  }
+}
+
+/** Tablas de sync/snapshots + columnas de diff (idempotente). */
+export async function ensureTaskSyncSchema(): Promise<void> {
+  if (!taskSchemaReady) {
+    taskSchemaReady = (async () => {
+      const db = getDb();
+      await db.batch(
+        [
+          `CREATE TABLE IF NOT EXISTS task_snapshots (
+            game_mode TEXT NOT NULL,
+            lang TEXT NOT NULL,
+            schema_version INTEGER NOT NULL,
+            source TEXT NOT NULL,
+            payload_gz TEXT NOT NULL,
+            content_hash TEXT,
+            task_count INTEGER NOT NULL,
+            fetched_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            changed_at TEXT,
+            PRIMARY KEY (game_mode, lang)
+          )`,
+          `CREATE TABLE IF NOT EXISTS task_sync_days (
+            day_key TEXT PRIMARY KEY,
+            attempts INTEGER NOT NULL DEFAULT 0,
+            status TEXT NOT NULL,
+            last_attempt_at TEXT,
+            last_success_at TEXT,
+            last_error TEXT,
+            updated_combinations INTEGER NOT NULL DEFAULT 0
+          )`,
+          `CREATE TABLE IF NOT EXISTS task_snapshot_changes (
+            id TEXT PRIMARY KEY,
+            game_mode TEXT NOT NULL,
+            lang TEXT NOT NULL,
+            content_hash TEXT NOT NULL,
+            previous_hash TEXT,
+            task_count INTEGER NOT NULL,
+            previous_task_count INTEGER,
+            diff_json TEXT,
+            source TEXT NOT NULL,
+            detected_at TEXT NOT NULL
+          )`,
+          `CREATE INDEX IF NOT EXISTS idx_task_snapshot_changes_detected
+            ON task_snapshot_changes(detected_at DESC)`,
+        ],
+        'write',
+      );
+      await ensureTaskTableColumn(
+        'task_snapshot_changes',
+        'previous_task_count',
+        'ALTER TABLE task_snapshot_changes ADD COLUMN previous_task_count INTEGER',
+      );
+      await ensureTaskTableColumn(
+        'task_snapshot_changes',
+        'diff_json',
+        'ALTER TABLE task_snapshot_changes ADD COLUMN diff_json TEXT',
+      );
+    })().catch((err) => {
+      taskSchemaReady = null;
+      throw err;
+    });
+  }
+  await taskSchemaReady;
+}
+
+function summarizeTask(task: Task): TaskDiffEntry {
+  return { id: task.id, name: task.name || task.normalizedName || task.id };
+}
+
+function describeTaskFieldChanges(prev: Task, next: Task): string[] {
+  const out: string[] = [];
+  const push = (line: string) => {
+    if (out.length < DIFF_FIELD_LIMIT) out.push(line);
+  };
+
+  if (prev.name !== next.name) {
+    push(`nombre: «${prev.name}» → «${next.name}»`);
+  }
+  if (prev.minPlayerLevel !== next.minPlayerLevel) {
+    push(`nivel mínimo: ${prev.minPlayerLevel ?? '—'} → ${next.minPlayerLevel ?? '—'}`);
+  }
+  if (prev.experience !== next.experience) {
+    push(`experiencia: ${prev.experience} → ${next.experience}`);
+  }
+  if (prev.kappaRequired !== next.kappaRequired) {
+    push(`kappa: ${String(prev.kappaRequired)} → ${String(next.kappaRequired)}`);
+  }
+  if (prev.factionName !== next.factionName) {
+    push(`facción: ${prev.factionName ?? '—'} → ${next.factionName ?? '—'}`);
+  }
+  if (prev.trader?.name !== next.trader?.name) {
+    push(`trader: ${prev.trader?.name ?? '—'} → ${next.trader?.name ?? '—'}`);
+  }
+  if ((prev.map?.name ?? null) !== (next.map?.name ?? null)) {
+    push(`mapa: ${prev.map?.name ?? '—'} → ${next.map?.name ?? '—'}`);
+  }
+  if (prev.wikiLink !== next.wikiLink) {
+    push('enlace wiki actualizado');
+  }
+
+  const prevReqs = (prev.taskRequirements ?? [])
+    .map((r) => r.task?.name ?? r.task?.id)
+    .filter(Boolean)
+    .join(', ');
+  const nextReqs = (next.taskRequirements ?? [])
+    .map((r) => r.task?.name ?? r.task?.id)
+    .filter(Boolean)
+    .join(', ');
+  if (prevReqs !== nextReqs) {
+    push(`prerrequisitos: ${prevReqs || '—'} → ${nextReqs || '—'}`);
+  }
+
+  const prevObj = new Map((prev.objectives ?? []).map((o) => [o.id, o]));
+  const nextObj = new Map((next.objectives ?? []).map((o) => [o.id, o]));
+  for (const [id, nObj] of nextObj) {
+    const pObj = prevObj.get(id);
+    if (!pObj) {
+      push(`+ objetivo: ${nObj.description || nObj.type || id}`);
+      continue;
+    }
+    if (pObj.description !== nObj.description) {
+      push(`objetivo «${pObj.description || id}» → «${nObj.description || id}»`);
+    } else if (
+      pObj.type !== nObj.type
+      || pObj.count !== nObj.count
+      || pObj.optional !== nObj.optional
+    ) {
+      push(`objetivo «${nObj.description || id}» (tipo/cantidad/opcional)`);
+    }
+  }
+  for (const [id, pObj] of prevObj) {
+    if (!nextObj.has(id)) {
+      push(`− objetivo: ${pObj.description || pObj.type || id}`);
+    }
+  }
+
+  if (out.length === 0) {
+    push('contenido interno distinto (recompensas u otros campos)');
+  }
+  return out;
+}
+
+/** Compara listas de misiones y produce un resumen compacto para el admin. */
+export function diffTaskLists(previous: Task[], next: Task[]): TaskSnapshotDiff {
+  const prevMap = new Map(previous.map((t) => [t.id, t]));
+  const nextMap = new Map(next.map((t) => [t.id, t]));
+
+  const addedAll: TaskDiffEntry[] = [];
+  const removedAll: TaskDiffEntry[] = [];
+  const updatedAll: TaskDiffEntry[] = [];
+
+  for (const task of next) {
+    const prev = prevMap.get(task.id);
+    if (!prev) {
+      addedAll.push(summarizeTask(task));
+      continue;
+    }
+    if (JSON.stringify(prev) !== JSON.stringify(task)) {
+      updatedAll.push({
+        ...summarizeTask(task),
+        changes: describeTaskFieldChanges(prev, task),
+      });
+    }
+  }
+  for (const task of previous) {
+    if (!nextMap.has(task.id)) {
+      removedAll.push(summarizeTask(task));
+    }
+  }
+
+  const truncated =
+    addedAll.length > DIFF_LIST_LIMIT
+    || removedAll.length > DIFF_LIST_LIMIT
+    || updatedAll.length > DIFF_LIST_LIMIT;
+
+  return {
+    added: addedAll.slice(0, DIFF_LIST_LIMIT),
+    removed: removedAll.slice(0, DIFF_LIST_LIMIT),
+    updated: updatedAll.slice(0, DIFF_LIST_LIMIT),
+    addedCount: addedAll.length,
+    removedCount: removedAll.length,
+    updatedCount: updatedAll.length,
+    truncated,
+  };
+}
+
+async function readStoredTasks(
+  gameMode: GameMode,
+  lang: TaskSyncLang,
+): Promise<{ hash: string | null; tasks: Task[] } | null> {
+  const db = getDb();
+  const result = await db.execute({
+    sql: `SELECT content_hash, payload_gz FROM task_snapshots
+          WHERE game_mode = ? AND lang = ?`,
+    args: [gameMode, lang],
+  });
+  const row = result.rows[0] as { content_hash?: string | null; payload_gz?: string } | undefined;
+  if (!row?.payload_gz) return null;
+  try {
+    const tasks = decompressTasks(row.payload_gz);
+    const hash =
+      typeof row.content_hash === 'string' && row.content_hash.length > 0
+        ? row.content_hash
+        : hashTasks(tasks);
+    return { hash, tasks };
+  } catch {
+    return null;
+  }
+}
 
 export interface TaskSnapshotMeta {
   gameMode: GameMode;
@@ -291,9 +538,13 @@ export async function upsertTaskSnapshot(
     throw new Error(`Lista incompleta (${tasks.length} misiones).`);
   }
 
+  await ensureTaskSyncSchema();
+
   const now = new Date().toISOString();
   const contentHash = hashTasks(tasks);
-  const previousHash = await readStoredContentHash(gameMode, lang);
+  const previous = await readStoredTasks(gameMode, lang);
+  const previousHash = previous?.hash ?? null;
+  const previousTasks = previous?.tasks ?? [];
   const db = getDb();
 
   if (previousHash && previousHash === contentHash) {
@@ -317,6 +568,8 @@ export async function upsertTaskSnapshot(
     };
   }
 
+  const diff = diffTaskLists(previousTasks, tasks);
+  const previousTaskCount = previousTasks.length;
   const payloadGz = compressTasks(tasks);
   await db.execute({
     sql: `INSERT INTO task_snapshots (
@@ -348,8 +601,9 @@ export async function upsertTaskSnapshot(
 
   await db.execute({
     sql: `INSERT INTO task_snapshot_changes (
-            id, game_mode, lang, content_hash, previous_hash, task_count, source, detected_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            id, game_mode, lang, content_hash, previous_hash, task_count,
+            previous_task_count, diff_json, source, detected_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       `tsc_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
       gameMode,
@@ -357,6 +611,8 @@ export async function upsertTaskSnapshot(
       contentHash,
       previousHash,
       tasks.length,
+      previousTaskCount,
+      JSON.stringify(diff),
       source,
       now,
     ],
@@ -451,10 +707,39 @@ async function syncOne(
  * - Si el contenido es idéntico, solo se actualiza la fecha.
  * - Se purgan metadatos de sync con más de 14 días.
  */
+async function syncAllCombinations(): Promise<SyncCombinationResult[]> {
+  const jobs: { gameMode: GameMode; lang: TaskSyncLang }[] = [];
+  for (const gameMode of TASK_SYNC_MODES) {
+    for (const lang of TASK_SYNC_LANGS) {
+      jobs.push({ gameMode, lang });
+    }
+  }
+
+  // Paralelismo limitado: más rápido que secuencial, sin saturar tarkov.dev.
+  const results: SyncCombinationResult[] = new Array(jobs.length);
+  const concurrency = 3;
+  let next = 0;
+
+  async function worker(): Promise<void> {
+    while (next < jobs.length) {
+      const idx = next;
+      next += 1;
+      const job = jobs[idx];
+      results[idx] = await syncOne(job.gameMode, job.lang);
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, jobs.length) }, () => worker()),
+  );
+  return results;
+}
+
 export async function runTaskSync(options: {
   force?: boolean;
   now?: Date;
 }): Promise<{ skipped: true; decision: SyncDecision } | { skipped: false; run: SyncRunResult }> {
+  await ensureTaskSyncSchema();
   const decision = await decideSyncRun(options);
   if (!decision.shouldRun) {
     return { skipped: true, decision };
@@ -464,13 +749,20 @@ export async function runTaskSync(options: {
   const previous = await readSyncDay(decision.dayKey);
   const attempt = decision.attempts + 1;
   const startedAt = now.toISOString();
-  const results: SyncCombinationResult[] = [];
 
-  for (const gameMode of TASK_SYNC_MODES) {
-    for (const lang of TASK_SYNC_LANGS) {
-      results.push(await syncOne(gameMode, lang));
-    }
-  }
+  // Registrar el intento al inicio: si Vercel corta por timeout, el Detalle
+  // sigue mostrando que se lanzó (pending) en lugar de parecer que no pasó nada.
+  await writeSyncDay({
+    day_key: decision.dayKey,
+    attempts: attempt,
+    status: 'pending',
+    last_attempt_at: startedAt,
+    last_success_at: previous?.last_success_at ?? null,
+    last_error: previous?.last_error ?? null,
+    updated_combinations: previous?.updated_combinations ?? 0,
+  });
+
+  const results = await syncAllCombinations();
 
   const okResults = results.filter((r) => r.ok);
   const updated = okResults.filter((r) => !r.unchanged).length;
@@ -481,13 +773,14 @@ export async function runTaskSync(options: {
   const error = allOk
     ? null
     : failed.map((f) => `${f.gameMode}/${f.lang}: ${f.error ?? 'error'}`).join(' | ');
+  const finishedAt = new Date().toISOString();
 
   await writeSyncDay({
     day_key: decision.dayKey,
     attempts: attempt,
     status,
     last_attempt_at: startedAt,
-    last_success_at: allOk ? startedAt : previous?.last_success_at ?? null,
+    last_success_at: allOk ? finishedAt : previous?.last_success_at ?? null,
     last_error: error,
     updated_combinations: updated,
   });

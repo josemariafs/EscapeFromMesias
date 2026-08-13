@@ -267,6 +267,81 @@ function accessKindClause(accessKind: UsageAccessFilter | null): {
   return { sql: ' AND access_kind = ?', args: [accessKind] };
 }
 
+export type DailyTrafficAccessKey = UsageAccessKind | 'unknown';
+
+export interface DailyTrafficByAccessRow {
+  dayKey: string;
+  visits: number;
+  uniqueVisitors: number;
+  byAccess: Record<DailyTrafficAccessKey, { visits: number; uniqueVisitors: number }>;
+}
+
+function emptyAccessBuckets(): Record<
+  DailyTrafficAccessKey,
+  { visits: number; uniqueVisitors: number }
+> {
+  return {
+    public: { visits: 0, uniqueVisitors: 0 },
+    private: { visits: 0, uniqueVisitors: 0 },
+    daily: { visits: 0, uniqueVisitors: 0 },
+    legacy: { visits: 0, uniqueVisitors: 0 },
+    admin: { visits: 0, uniqueVisitors: 0 },
+    unknown: { visits: 0, uniqueVisitors: 0 },
+  };
+}
+
+function normalizeTrafficAccessKey(raw: unknown): DailyTrafficAccessKey {
+  const value = typeof raw === 'string' ? raw.trim() : '';
+  if (isUsageAccessKind(value)) return value;
+  return 'unknown';
+}
+
+/**
+ * Tráfico diario apilable por tipo de pass.
+ * Usa `app_session_start` (sesión con accessKind), no el contador global sin tipar.
+ */
+export async function readDailyTrafficByAccess(days = 30): Promise<DailyTrafficByAccessRow[]> {
+  const db = getDb();
+  const from = dayKeyDaysAgo(Math.max(1, days) - 1);
+  const result = await db.execute({
+    sql: `SELECT day_key,
+                 COALESCE(NULLIF(TRIM(access_kind), ''), 'unknown') AS access_kind,
+                 COUNT(*) AS visits,
+                 COUNT(DISTINCT visitor_id) AS unique_visitors
+          FROM usage_events
+          WHERE day_key >= ?
+            AND event_name = 'app_session_start'
+          GROUP BY day_key, COALESCE(NULLIF(TRIM(access_kind), ''), 'unknown')
+          ORDER BY day_key ASC`,
+    args: [from],
+  });
+
+  const map = new Map<string, DailyTrafficByAccessRow>();
+  for (const row of result.rows) {
+    const r = row as Record<string, unknown>;
+    const dayKey = String(r.day_key);
+    const kind = normalizeTrafficAccessKey(r.access_kind);
+    const visits = num(r.visits);
+    const uniqueVisitors = num(r.unique_visitors);
+    let entry = map.get(dayKey);
+    if (!entry) {
+      entry = {
+        dayKey,
+        visits: 0,
+        uniqueVisitors: 0,
+        byAccess: emptyAccessBuckets(),
+      };
+      map.set(dayKey, entry);
+    }
+    entry.byAccess[kind] = { visits, uniqueVisitors };
+    entry.visits += visits;
+    // Suma de únicos por pass (un visitante con 2 passes el mismo día cuenta 2).
+    entry.uniqueVisitors += uniqueVisitors;
+  }
+
+  return [...map.values()].sort((a, b) => a.dayKey.localeCompare(b.dayKey));
+}
+
 export async function readUsageAdminSnapshot(
   days = 30,
   accessKind: UsageAccessFilter | null = null,

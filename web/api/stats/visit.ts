@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { ensureSchema, getDb } from '../_lib/db.js';
+import { isAuthorized, unauthorizedBody } from '../_lib/auth.js';
+import { ensureSchema, getDb, getVersionNews, setVersionNews } from '../_lib/db.js';
 import { applyCors, handleOptions, readJsonBody, serverError } from '../_lib/http.js';
 import { pruneDailyStats, recordDailyVisit } from '../_lib/siteStatsDaily.js';
 import {
@@ -12,11 +13,13 @@ import {
 const VISITOR_ID_RE = /^[a-zA-Z0-9_-]{8,80}$/;
 const SESSION_ID_RE = /^[a-zA-Z0-9_-]{8,80}$/;
 const MAX_EVENTS = 25;
+const MAX_NEWS_CHARS = 4000;
 
 interface VisitBody {
   visitorId?: string;
   sessionId?: string;
   events?: IncomingUsageEvent[];
+  news?: string;
 }
 
 async function readImpressions(): Promise<number> {
@@ -63,12 +66,57 @@ async function handleUsagePost(req: VercelRequest, res: VercelResponse): Promise
   res.status(200).json({ accepted });
 }
 
-/** Visitas (GET/POST) y telemetría de uso (POST con `events`). */
+function queryView(req: VercelRequest): string {
+  const raw = Array.isArray(req.query.view) ? req.query.view[0] : req.query.view;
+  return typeof raw === 'string' ? raw.trim() : '';
+}
+
+/**
+ * Visitas (GET/POST), telemetría de uso (POST con `events`)
+ * y novedades de versión (?view=version-news: GET público / PUT admin).
+ *
+ * Nota: version-news vive aquí para no superar el límite de 12 funciones del plan Hobby.
+ */
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (handleOptions(req, res)) return;
 
   try {
     await ensureSchema();
+    const view = queryView(req);
+
+    if (view === 'version-news') {
+      if (req.method === 'GET') {
+        const data = await getVersionNews();
+        applyCors(res);
+        res.setHeader('Cache-Control', 'no-store');
+        res.status(200).json(data);
+        return;
+      }
+
+      if (req.method === 'PUT') {
+        if (!isAuthorized(req)) {
+          applyCors(res);
+          res.status(401).json(unauthorizedBody());
+          return;
+        }
+        const body = readJsonBody<VisitBody>(req);
+        const news = typeof body.news === 'string' ? body.news : '';
+        if (news.length > MAX_NEWS_CHARS) {
+          applyCors(res);
+          res.status(400).json({ error: `News must be at most ${MAX_NEWS_CHARS} characters` });
+          return;
+        }
+        const data = await setVersionNews(news);
+        applyCors(res);
+        res.status(200).json(data);
+        return;
+      }
+
+      applyCors(res);
+      res.status(405).json({ error: 'Method not allowed' });
+      return;
+    }
+
     const db = getDb();
 
     if (req.method === 'GET') {

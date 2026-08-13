@@ -42,6 +42,22 @@ export interface AdminSnapshotRow {
   changedAt: string | null;
 }
 
+export interface AdminTaskDiffEntry {
+  id: string;
+  name: string;
+  changes?: string[];
+}
+
+export interface AdminTaskSnapshotDiff {
+  added: AdminTaskDiffEntry[];
+  removed: AdminTaskDiffEntry[];
+  updated: AdminTaskDiffEntry[];
+  addedCount: number;
+  removedCount: number;
+  updatedCount: number;
+  truncated: boolean;
+}
+
 export interface AdminChangeRow {
   id: string;
   gameMode: string;
@@ -49,14 +65,31 @@ export interface AdminChangeRow {
   contentHash: string;
   previousHash: string | null;
   taskCount: number;
+  previousTaskCount: number | null;
+  diff: AdminTaskSnapshotDiff | null;
   source: string;
   detectedAt: string;
+}
+
+export type AdminAccessKindKey =
+  | 'public'
+  | 'private'
+  | 'daily'
+  | 'legacy'
+  | 'admin'
+  | 'unknown';
+
+export interface AdminDailyAccessBucket {
+  visits: number;
+  uniqueVisitors: number;
 }
 
 export interface AdminDailyVisitRow {
   dayKey: string;
   visits: number;
   uniqueVisitors: number;
+  /** Desglose por tipo de pass (sesiones app_session_start). */
+  byAccess?: Partial<Record<AdminAccessKindKey, AdminDailyAccessBucket>>;
 }
 
 export interface AdminDashboardData {
@@ -84,12 +117,46 @@ export async function fetchAdminDashboard(token: string): Promise<AdminDashboard
   return (await res.json()) as AdminDashboardData;
 }
 
-export async function forceTaskSync(token: string): Promise<unknown> {
+export async function forceTaskSync(token: string): Promise<{
+  ok?: boolean;
+  skipped?: boolean;
+  decision?: { reason?: string; dayKey?: string };
+  run?: {
+    dayKey?: string;
+    attempt?: number;
+    status?: string;
+    updated?: number;
+    unchanged?: number;
+    error?: string;
+  };
+}> {
   const res = await fetch('/api/cron/sync-tasks?force=1', {
+    method: 'GET',
     headers: { Authorization: `Bearer ${token}` },
+    cache: 'no-store',
   });
-  if (!res.ok) throw new Error(await parseErrorMessage(res));
-  return res.json();
+  if (!res.ok) {
+    const msg = await parseErrorMessage(res);
+    if (res.status === 504 || /timeout|timed out|FUNCTION_INVOCATION/i.test(msg)) {
+      throw new Error(
+        'Timeout del sync en Vercel. Revisa Detalle: puede haber quedado en pending. Reintenta.',
+      );
+    }
+    throw new Error(msg);
+  }
+  return (await res.json()) as {
+    ok?: boolean;
+    skipped?: boolean;
+    decision?: { reason?: string; dayKey?: string };
+    run?: {
+      dayKey?: string;
+      attempt?: number;
+      status?: string;
+      updated?: number;
+      unchanged?: number;
+      error?: string;
+    };
+  };
 }
 
 export type AdminUsageAccessKind = 'public' | 'private' | 'daily' | 'legacy' | 'admin';

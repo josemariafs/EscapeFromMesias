@@ -3,8 +3,11 @@ export interface VersionNews {
   updatedAt: string | null;
 }
 
+/** GET público / PUT admin vía stats/visit (límite Hobby de funciones). */
+const VERSION_NEWS_URL = '/api/stats/visit?view=version-news';
+
 export async function fetchVersionNews(): Promise<VersionNews> {
-  const res = await fetch('/api/version-news', { cache: 'no-store' });
+  const res = await fetch(VERSION_NEWS_URL, { cache: 'no-store' });
   if (!res.ok) {
     throw new Error(`version-news ${res.status}`);
   }
@@ -12,7 +15,7 @@ export async function fetchVersionNews(): Promise<VersionNews> {
 }
 
 export async function saveVersionNews(token: string, news: string): Promise<VersionNews> {
-  const res = await fetch('/api/version-news', {
+  const res = await fetch(VERSION_NEWS_URL, {
     method: 'PUT',
     headers: {
       Authorization: `Bearer ${token}`,

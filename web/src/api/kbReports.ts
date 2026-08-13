@@ -90,10 +90,10 @@ export async function reviewKbDocumentReport(
   reportId: string,
   action: 'accept' | 'reject',
 ): Promise<KbDocumentReport> {
-  const res = await fetch(`/api/kb-reports/${encodeURIComponent(reportId)}`, {
-    method: 'POST',
+  const res = await fetch('/api/kb-reports', {
+    method: 'PATCH',
     headers: authHeaders(token),
-    body: JSON.stringify({ action }),
+    body: JSON.stringify({ id: reportId, action }),
   });
   if (!res.ok) {
     const data = (await res.json().catch(() => null)) as { error?: string } | null;

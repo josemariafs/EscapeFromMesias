@@ -5,7 +5,12 @@ import { ensureSchema, getDb } from '../_lib/db.js';
 import { applyCors, handleOptions, serverError } from '../_lib/http.js';
 import { getMadridCivilDayKey } from '../_lib/siteAccess.js';
 import { readDailyStats } from '../_lib/siteStatsDaily.js';
-import { isUsageAccessFilter, readUsageAdminSnapshot } from '../_lib/usageLogs.js';
+import { ensureTaskSyncSchema } from '../_lib/taskSync.js';
+import {
+  isUsageAccessFilter,
+  readDailyTrafficByAccess,
+  readUsageAdminSnapshot,
+} from '../_lib/usageLogs.js';
 
 const ONLINE_WINDOW_MS = 60_000;
 
@@ -52,6 +57,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     await ensureSchema();
+    await ensureTaskSyncSchema();
 
     const view = typeof req.query.view === 'string' ? req.query.view.trim() : '';
     if (view === 'ping') {
@@ -85,6 +91,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       online,
       fixedPoints,
       changes7d,
+      dailyStats,
       dailyVisits,
       todayStats,
       yesterdayStats,
@@ -100,6 +107,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
       ]),
       readDailyStats(30),
+      readDailyTrafficByAccess(30),
       db.execute({
         sql: `SELECT visits, unique_visitors FROM site_daily_stats WHERE day_key = ?`,
         args: [today],
@@ -124,10 +132,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         args: [],
       }),
       db.execute({
-        sql: `SELECT id, game_mode, lang, content_hash, previous_hash, task_count, source, detected_at
+        sql: `SELECT id, game_mode, lang, content_hash, previous_hash, task_count,
+                     previous_task_count, diff_json, source, detected_at
               FROM task_snapshot_changes
               ORDER BY detected_at DESC
-              LIMIT 50`,
+              LIMIT 120`,
         args: [],
       }),
     ]);
@@ -139,7 +148,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const visitsYesterday = num(ydayRow?.visits);
     const uniquesYesterday = num(ydayRow?.unique_visitors);
 
-    const weekSlice = dailyVisits.filter((d) => d.dayKey >= weekAgo);
+    const weekSlice = dailyStats.filter((d) => d.dayKey >= weekAgo);
     const visits7d = weekSlice.reduce((sum, d) => sum + d.visits, 0);
     const uniques7d = weekSlice.reduce((sum, d) => sum + d.uniqueVisitors, 0);
     const avgVisits7d = weekSlice.length > 0 ? visits7d / weekSlice.length : 0;
@@ -174,6 +183,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const changes = changesResult.rows.map((row) => {
       const r = row as Record<string, unknown>;
+      let diff: unknown = null;
+      if (typeof r.diff_json === 'string' && r.diff_json.trim()) {
+        try {
+          diff = JSON.parse(r.diff_json);
+        } catch {
+          diff = null;
+        }
+      }
+      const previousTaskCount =
+        r.previous_task_count == null ? null : Number(r.previous_task_count);
       return {
         id: String(r.id),
         gameMode: String(r.game_mode),
@@ -181,6 +200,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         contentHash: String(r.content_hash ?? ''),
         previousHash: r.previous_hash ? String(r.previous_hash) : null,
         taskCount: Number(r.task_count) || 0,
+        previousTaskCount: Number.isFinite(previousTaskCount) ? previousTaskCount : null,
+        diff,
         source: String(r.source ?? ''),
         detectedAt: String(r.detected_at ?? ''),
       };

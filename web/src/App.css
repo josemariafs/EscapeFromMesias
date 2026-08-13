@@ -1,5 +1,5 @@
 :root {
-  /* Paleta alineada al home: verdes/teal muy suaves (sin azules frÃ­os). */
+  /* Paleta alineada al home: verdes/teal muy suaves (sin azules frÃÂ­os). */
   --bg: #0a0a0b;
   --bg-elevated: #121214;
   --bg-card: #18181a;
@@ -276,7 +276,7 @@ body {
   box-sizing: border-box;
   background: linear-gradient(180deg, #141416 0%, #080809 100%);
   border-bottom: 1px solid var(--border);
-  /* visible: los menÃºs del header (wipe start, perfiles) deben poder salir del alto fijo */
+  /* visible: los menÃÂºs del header (wipe start, perfiles) deben poder salir del alto fijo */
   overflow: visible;
 }
 
@@ -952,7 +952,7 @@ a.home-usage-card {
   outline-offset: 2px;
 }
 
-/* —— Version news CRT panel (home) —— */
+/* ââ Version news CRT panel (home) ââ */
 .version-news-crt {
   flex: 0 1 auto;
   display: flex;
@@ -1341,7 +1341,7 @@ a.home-usage-card {
   justify-content: flex-end;
   gap: 0.4rem 0.5rem;
   min-width: 0;
-  /* Sin max-width artificial: el antiguo 22rem hacÃ­a que reloj/perfil
+  /* Sin max-width artificial: el antiguo 22rem hacÃÂ­a que reloj/perfil
      se pintaran encima de las banderas (overflow visible). */
 }
 
@@ -1737,8 +1737,8 @@ a.home-usage-card {
   color: var(--text);
 }
 
-/* Modo Logs: las misiones con un evento real detectado en los logs bloquean su ediciÃ³n manual.
-   Las que no tienen ningÃºn evento (fuera de la ventana de sesiones que conserva el juego) se
+/* Modo Logs: las misiones con un evento real detectado en los logs bloquean su ediciÃÂ³n manual.
+   Las que no tienen ningÃÂºn evento (fuera de la ventana de sesiones que conserva el juego) se
    pueden seguir editando a mano como respaldo. */
 .task-actions.log-locked button,
 .detail-actions.log-locked button,
@@ -2023,7 +2023,7 @@ a.home-usage-card {
   position: relative;
   line-height: 0;
   flex-shrink: 0;
-  /* AÃ­sla el SVG para que las anotaciones hermanas puedan quedar encima. */
+  /* AÃÂ­sla el SVG para que las anotaciones hermanas puedan quedar encima. */
   isolation: isolate;
 }
 
@@ -2041,7 +2041,7 @@ a.home-usage-card {
   pointer-events: none;
 }
 
-/* Capa de marcadores fuera del transform de zoom â nÃ­tidos y tamaÃ±o constante */
+/* Capa de marcadores fuera del transform de zoom Ã¢ÂÂ nÃÂ­tidos y tamaÃÂ±o constante */
 .map-modal-markers--overlay {
   z-index: 2;
   overflow: visible;
@@ -2228,7 +2228,7 @@ a.home-usage-card {
   background: #111;
 }
 
-/* Pins SVG de extracciÃ³n: que se vea el icono completo. */
+/* Pins SVG de extracciÃÂ³n: que se vea el icono completo. */
 .map-floating-tooltip-icon[src*='extract-'] {
   object-fit: contain;
   object-position: center;
@@ -3875,7 +3875,7 @@ table.task-table td.task-table-cell-trader {
 }
 
 .task-table-collapsible summary::before {
-  content: 'â¸';
+  content: 'Ã¢ÂÂ¸';
   display: inline-block;
   color: var(--accent);
   transition: transform 0.15s;
@@ -5419,9 +5419,41 @@ table.task-table td.task-table-cell-trader {
   opacity: 0.8;
 }
 
-.admin-chart-bar.is-active {
+.admin-chart-bar.is-active,
+.admin-chart-bar-stack.is-active {
   opacity: 1;
   filter: brightness(1.12);
+}
+
+.admin-chart-bar-stack {
+  stroke: rgba(0, 0, 0, 0.25);
+  stroke-width: 0.4;
+}
+
+.admin-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem 0.9rem;
+  margin: 0.55rem 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.admin-chart-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.admin-chart-legend-swatch,
+.admin-chart-tooltip-swatch {
+  display: inline-block;
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 2px;
+  flex-shrink: 0;
 }
 
 .admin-chart-hit {
@@ -5493,12 +5525,20 @@ table.task-table td.task-table-cell-trader {
 .admin-chart-tooltip-stats {
   margin: 0;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.45rem 0.85rem;
+  grid-template-columns: 1fr auto;
+  gap: 0.35rem 0.85rem;
+  align-items: center;
+}
+
+.admin-chart-tooltip-stats > div {
+  display: contents;
 }
 
 .admin-chart-tooltip-stats dt {
   margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   font-size: 0.65rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -5513,7 +5553,7 @@ table.task-table td.task-table-cell-trader {
   letter-spacing: -0.02em;
 }
 
-/* Tooltips genÃ©ricos del panel admin (sustituyen title nativo). */
+/* Tooltips genÃÂ©ricos del panel admin (sustituyen title nativo). */
 [data-admin-tip] {
   position: relative;
 }
@@ -5730,6 +5770,119 @@ table.task-table td.task-table-cell-trader {
 
 .admin-table code {
   font-size: 0.75rem;
+}
+
+.admin-sync-row.is-clickable {
+  cursor: pointer;
+}
+
+.admin-sync-row.is-open td {
+  background: rgba(201, 162, 39, 0.08);
+}
+
+.admin-sync-row.is-clickable:hover td {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.admin-sync-day-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.admin-sync-chevron {
+  display: inline-block;
+  width: 0.85rem;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+.admin-sync-updated {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-sync-detail-row td {
+  padding: 0;
+  border-bottom: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.admin-sync-detail {
+  padding: 0.75rem 0.85rem 0.9rem;
+}
+
+.admin-sync-detail-title {
+  margin: 0 0 0.55rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.admin-table--nested {
+  font-size: 0.78rem;
+}
+
+.admin-table--nested th {
+  font-size: 0.66rem;
+}
+
+.admin-table--nested tbody tr:hover td {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.admin-sync-change-row {
+  cursor: pointer;
+}
+
+.admin-sync-change-row.is-open td {
+  background: rgba(94, 196, 168, 0.08);
+}
+
+.admin-sync-mission-row td {
+  padding: 0;
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.admin-sync-missions {
+  padding: 0.7rem 0.85rem 0.85rem;
+}
+
+.admin-sync-missions-summary {
+  margin: 0 0 0.65rem;
+  font-size: 0.76rem;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.admin-sync-missions-block {
+  margin-top: 0.55rem;
+}
+
+.admin-sync-missions-block h4 {
+  margin: 0 0 0.3rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.admin-sync-missions-block ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--text);
+  font-size: 0.78rem;
+}
+
+.admin-sync-missions-block > ul > li {
+  margin: 0.2rem 0;
+}
+
+.admin-sync-missions-changes {
+  margin: 0.15rem 0 0.25rem;
+  padding-left: 1rem;
+  color: var(--text-muted);
+  font-size: 0.74rem;
 }
 
 .admin-cell-source,
@@ -6045,7 +6198,7 @@ table.task-table td.task-table-cell-trader {
   }
 }
 
-/* ââ Site login: TV static / interference ââ */
+/* Ã¢ÂÂÃ¢ÂÂ Site login: TV static / interference Ã¢ÂÂÃ¢ÂÂ */
 .tv-login {
   --tv-phosphor: #9dffb0;
   --tv-phosphor-dim: #3d7a4a;
@@ -6373,7 +6526,7 @@ table.task-table td.task-table-cell-trader {
   margin-top: 0.25rem;
 }
 
-/* ââ CRT channel-change between main views (0.7s) ââ */
+/* Ã¢ÂÂÃ¢ÂÂ CRT channel-change between main views (0.7s) Ã¢ÂÂÃ¢ÂÂ */
 .crt-transition {
   position: fixed;
   inset: 0;
@@ -6521,7 +6674,7 @@ table.task-table td.task-table-cell-trader {
   75% { transform: translateY(3px); }
 }
 
-/* ââ Feedback modal ââ */
+/* Ã¢ÂÂÃ¢ÂÂ Feedback modal Ã¢ÂÂÃ¢ÂÂ */
 .feedback-modal-backdrop {
   position: fixed;
   inset: 0;
@@ -6697,7 +6850,7 @@ table.task-table td.task-table-cell-trader {
 }
 
 
-/*  KB Document report modal + admin reports  */
+/* ÂÂ KB Document report modal + admin reports ÂÂ */
 .kb-report-modal {
   width: min(92vw, 1180px);
   max-height: min(94vh, 980px);

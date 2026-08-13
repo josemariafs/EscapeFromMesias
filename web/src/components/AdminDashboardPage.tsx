@@ -1,11 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   fetchAdminDashboard,
   fetchAdminUsage,
   forceTaskSync,
+  type AdminAccessKindKey,
+  type AdminChangeRow,
   type AdminDashboardData,
   type AdminDailyVisitRow,
   type AdminSnapshotRow,
+  type AdminTaskSnapshotDiff,
   type AdminUsageAccessFilter,
   type AdminUsageData,
 } from '../api/adminDashboard';
@@ -56,9 +59,52 @@ const ACCESS_KIND_LABELS: Record<string, string> = {
   unknown: 'Sin clasificar',
 };
 
+const ACCESS_STACK_ORDER: AdminAccessKindKey[] = [
+  'public',
+  'private',
+  'daily',
+  'legacy',
+  'admin',
+  'unknown',
+];
+
+const ACCESS_STACK_COLORS: Record<AdminAccessKindKey, string> = {
+  public: '#5ec4a8',
+  private: '#c9a227',
+  daily: '#6a9fd8',
+  legacy: '#8a8a90',
+  admin: '#d08050',
+  unknown: '#4a5560',
+};
+
 function accessKindLabel(kind: string | null | undefined): string {
   if (!kind) return 'Sin clasificar';
   return ACCESS_KIND_LABELS[kind] ?? kind;
+}
+
+function emptyAccessBuckets(): NonNullable<AdminDailyVisitRow['byAccess']> {
+  return {
+    public: { visits: 0, uniqueVisitors: 0 },
+    private: { visits: 0, uniqueVisitors: 0 },
+    daily: { visits: 0, uniqueVisitors: 0 },
+    legacy: { visits: 0, uniqueVisitors: 0 },
+    admin: { visits: 0, uniqueVisitors: 0 },
+    unknown: { visits: 0, uniqueVisitors: 0 },
+  };
+}
+
+function dayMetric(day: AdminDailyVisitRow, metric: VisitMetric): number {
+  return metric === 'visits' ? day.visits : day.uniqueVisitors;
+}
+
+function dayAccessMetric(
+  day: AdminDailyVisitRow,
+  kind: AdminAccessKindKey,
+  metric: VisitMetric,
+): number {
+  const bucket = day.byAccess?.[kind];
+  if (!bucket) return 0;
+  return metric === 'visits' ? bucket.visits : bucket.uniqueVisitors;
 }
 
 function shortVisitor(id: string): string {
@@ -111,6 +157,25 @@ function modeLabel(mode: string): string {
   return mode;
 }
 
+function toMadridDayKey(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return null;
+  return new Date(t).toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
+}
+
+function asTaskDiff(raw: AdminChangeRow['diff']): AdminTaskSnapshotDiff | null {
+  if (!raw || typeof raw !== 'object') return null;
+  return raw;
+}
+
+function taskCountDelta(change: AdminChangeRow): string {
+  if (change.previousTaskCount == null) return '—';
+  const delta = change.taskCount - change.previousTaskCount;
+  if (delta === 0) return '±0';
+  return delta > 0 ? `+${delta}` : String(delta);
+}
+
 function fillDailySeries(rows: AdminDailyVisitRow[], days = 30): AdminDailyVisitRow[] {
   const map = new Map(rows.map((r) => [r.dayKey, r]));
   const out: AdminDailyVisitRow[] = [];
@@ -118,7 +183,15 @@ function fillDailySeries(rows: AdminDailyVisitRow[], days = 30): AdminDailyVisit
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
     const key = d.toLocaleDateString('en-CA', { timeZone: 'Europe/Madrid' });
-    out.push(map.get(key) ?? { dayKey: key, visits: 0, uniqueVisitors: 0 });
+    const row = map.get(key);
+    out.push(
+      row
+        ? {
+            ...row,
+            byAccess: { ...emptyAccessBuckets(), ...(row.byAccess ?? {}) },
+          }
+        : { dayKey: key, visits: 0, uniqueVisitors: 0, byAccess: emptyAccessBuckets() },
+    );
   }
   return out;
 }
@@ -151,7 +224,7 @@ function VisitsChart({
   const padB = 28;
   const innerW = width - padL - padR;
   const innerH = height - padT - padB;
-  const values = series.map((d) => (metric === 'visits' ? d.visits : d.uniqueVisitors));
+  const values = series.map((d) => dayMetric(d, metric));
   const max = Math.max(1, ...values);
   const barGap = 3;
   const barW = Math.max(3, (innerW - barGap * (series.length - 1)) / series.length);
@@ -161,8 +234,14 @@ function VisitsChart({
     yPct: number;
   } | null>(null);
 
+  const activeKinds = useMemo(() => {
+    return ACCESS_STACK_ORDER.filter((kind) =>
+      series.some((day) => dayAccessMetric(day, kind, metric) > 0),
+    );
+  }, [series, metric]);
+
   const points = series.map((day, index) => {
-    const value = metric === 'visits' ? day.visits : day.uniqueVisitors;
+    const value = dayMetric(day, metric);
     const x = padL + index * (barW + barGap) + barW / 2;
     const y = padT + innerH - (value / max) * innerH;
     return { x, y, value, day, index };
@@ -173,6 +252,7 @@ function VisitsChart({
     .join(' ');
 
   const labelEvery = series.length > 20 ? 5 : series.length > 12 ? 3 : 2;
+  const stackKinds = activeKinds.length > 0 ? activeKinds : ACCESS_STACK_ORDER;
 
   return (
     <div className="admin-chart-wrap" onMouseLeave={() => setHover(null)}>
@@ -180,7 +260,7 @@ function VisitsChart({
         className="admin-chart"
         viewBox={`0 0 ${width} ${height}`}
         role="img"
-        aria-label={`Gráfico de ${metric === 'visits' ? 'visitas' : 'únicos'} diarios`}
+        aria-label={`Gráfico apilado de ${metric === 'visits' ? 'visitas' : 'únicos'} por tipo de acceso`}
       >
         {[0.25, 0.5, 0.75, 1].map((f) => {
           const y = padT + innerH * (1 - f);
@@ -201,29 +281,41 @@ function VisitsChart({
           className="admin-chart-axis"
         />
         {points.map((p) => {
-          const h = (p.value / max) * innerH;
           const active = hover?.day.dayKey === p.day.dayKey;
+          const x = padL + p.index * (barW + barGap);
+          let stacked = 0;
+          const segments = stackKinds
+            .map((kind) => {
+              const value = dayAccessMetric(p.day, kind, metric);
+              if (value <= 0) return null;
+              const h = (value / max) * innerH;
+              const y = padT + innerH - stacked - h;
+              stacked += h;
+              return { kind, value, h, y };
+            })
+            .filter((s): s is { kind: AdminAccessKindKey; value: number; h: number; y: number } => !!s);
+
           return (
-            <g key={p.day.dayKey}>
-              <rect
-                className={`admin-chart-bar admin-chart-bar--${metric}${active ? ' is-active' : ''}`}
-                x={padL + p.index * (barW + barGap)}
-                y={padT + innerH - h}
-                width={barW}
-                height={Math.max(p.value > 0 ? 2 : 0, h)}
-                rx={2}
-                onMouseEnter={() => {
-                  setHover({
-                    day: p.day,
-                    xPct: (p.x / width) * 100,
-                    yPct: (Math.max(padT, p.y) / height) * 100,
-                  });
-                }}
-              />
-              {/* Hit area más amplia para barras bajas / cero */}
+            <g key={p.day.dayKey} className={active ? 'is-active-stack' : undefined}>
+              {segments.map((seg, segIndex) => {
+                const isTop = segIndex === segments.length - 1;
+                const isBottom = segIndex === 0;
+                return (
+                  <rect
+                    key={seg.kind}
+                    className={`admin-chart-bar-stack${active ? ' is-active' : ''}`}
+                    x={x}
+                    y={seg.y}
+                    width={barW}
+                    height={Math.max(1, seg.h)}
+                    rx={isTop || isBottom ? 2 : 0}
+                    fill={ACCESS_STACK_COLORS[seg.kind]}
+                  />
+                );
+              })}
               <rect
                 className="admin-chart-hit"
-                x={padL + p.index * (barW + barGap) - 1}
+                x={x - 1}
                 y={padT}
                 width={barW + 2}
                 height={innerH}
@@ -258,6 +350,18 @@ function VisitsChart({
           />
         ) : null}
       </svg>
+      <ul className="admin-chart-legend" aria-label="Tipos de acceso">
+        {stackKinds.map((kind) => (
+          <li key={kind}>
+            <span
+              className="admin-chart-legend-swatch"
+              style={{ background: ACCESS_STACK_COLORS[kind] }}
+              aria-hidden
+            />
+            {accessKindLabel(kind)}
+          </li>
+        ))}
+      </ul>
       {hover ? (
         <div
           className={`admin-chart-tooltip${hover.xPct > 70 ? ' is-left' : ''}`}
@@ -267,13 +371,26 @@ function VisitsChart({
           <p className="admin-chart-tooltip-date">{hover.day.dayKey}</p>
           <dl className="admin-chart-tooltip-stats">
             <div>
-              <dt>Visitas</dt>
-              <dd>{hover.day.visits}</dd>
+              <dt>Total</dt>
+              <dd>{dayMetric(hover.day, metric)}</dd>
             </div>
-            <div>
-              <dt>Únicos</dt>
-              <dd>{hover.day.uniqueVisitors}</dd>
-            </div>
+            {stackKinds.map((kind) => {
+              const value = dayAccessMetric(hover.day, kind, metric);
+              if (value <= 0) return null;
+              return (
+                <div key={kind}>
+                  <dt>
+                    <span
+                      className="admin-chart-tooltip-swatch"
+                      style={{ background: ACCESS_STACK_COLORS[kind] }}
+                      aria-hidden
+                    />
+                    {accessKindLabel(kind)}
+                  </dt>
+                  <dd>{value}</dd>
+                </div>
+              );
+            })}
           </dl>
         </div>
       ) : null}
@@ -363,6 +480,77 @@ function SnapshotCards({ snapshots }: { snapshots: AdminSnapshotRow[] }) {
   );
 }
 
+function SyncChangeMissionDetail({ change }: { change: AdminChangeRow }) {
+  const diff = asTaskDiff(change.diff);
+  if (!diff) {
+    return (
+      <div className="admin-sync-missions">
+        <p className="admin-muted">
+          Sin detalle de misiones para este sync (registrado antes de guardar diffs).
+          El próximo sync con cambios sí incluirá el desglose.
+        </p>
+      </div>
+    );
+  }
+
+  const sections: {
+    key: 'added' | 'updated' | 'removed';
+    title: string;
+    count: number;
+    items: AdminTaskSnapshotDiff['added'];
+  }[] = [
+    { key: 'added', title: 'Añadidas', count: diff.addedCount, items: diff.added },
+    { key: 'updated', title: 'Actualizadas', count: diff.updatedCount, items: diff.updated },
+    { key: 'removed', title: 'Eliminadas', count: diff.removedCount, items: diff.removed },
+  ];
+
+  return (
+    <div className="admin-sync-missions">
+      <p className="admin-sync-missions-summary">
+        {modeLabel(change.gameMode)} · {change.lang.toUpperCase()} ·{' '}
+        {change.previousTaskCount ?? '?'} → {change.taskCount} misiones
+        {' · '}
+        +{diff.addedCount} / ∼{diff.updatedCount} / −{diff.removedCount}
+        {diff.truncated ? ' · lista truncada' : ''}
+      </p>
+      {sections.map((section) => {
+        if (section.count === 0) return null;
+        return (
+          <div key={section.key} className="admin-sync-missions-block">
+            <h4>
+              {section.title} ({section.count}
+              {section.items.length < section.count
+                ? `, mostrando ${section.items.length}`
+                : ''}
+              )
+            </h4>
+            <ul>
+              {section.items.map((item) => (
+                <li key={`${section.key}-${item.id}`}>
+                  <strong>{item.name || item.id}</strong>
+                  {section.key === 'updated' && item.changes && item.changes.length > 0 ? (
+                    <ul className="admin-sync-missions-changes">
+                      {item.changes.map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })}
+      {diff.addedCount === 0 && diff.updatedCount === 0 && diff.removedCount === 0 ? (
+        <p className="admin-muted">
+          El hash cambió pero no se detectaron diferencias por id de misión
+          (posible reordenación o cambio no tipado).
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 export function AdminDashboardPage() {
   const auth = useAdminAuth();
   const [data, setData] = useState<AdminDashboardData | null>(null);
@@ -381,6 +569,8 @@ export function AdminDashboardPage() {
   const [versionNewsLoading, setVersionNewsLoading] = useState(false);
   const [versionNewsSaving, setVersionNewsSaving] = useState(false);
   const [versionNewsMsg, setVersionNewsMsg] = useState<string | null>(null);
+  const [selectedSyncDay, setSelectedSyncDay] = useState<string | null>(null);
+  const [selectedSyncChangeId, setSelectedSyncChangeId] = useState<string | null>(null);
 
   const { token, status, logout } = auth;
 
@@ -467,27 +657,39 @@ export function AdminDashboardPage() {
     return series.reduce((best, d) => (d.visits > best.visits ? d : best), series[0]);
   }, [series]);
 
+  const syncDayChanges = useMemo(() => {
+    if (!selectedSyncDay || !data?.changes) return [];
+    return data.changes
+      .filter((c) => toMadridDayKey(c.detectedAt) === selectedSyncDay)
+      .sort((a, b) => Date.parse(b.detectedAt) - Date.parse(a.detectedAt));
+  }, [selectedSyncDay, data?.changes]);
+
   const handleForceSync = async () => {
     if (!token) return;
     setSyncBusy(true);
     setSyncMsg(null);
     try {
-      const result = await forceTaskSync(token) as {
-        skipped?: boolean;
-        run?: { updated?: number; unchanged?: number; status?: string };
-        decision?: { reason?: string };
-      };
+      const result = await forceTaskSync(token);
       if (result.skipped) {
         setSyncMsg(`Sync omitido: ${result.decision?.reason ?? 'skipped'}`);
       } else {
+        const day = result.run?.dayKey ?? 'hoy';
+        const errPart = result.run?.error ? ` · ${result.run.error}` : '';
         setSyncMsg(
-          `Sync ${result.run?.status ?? 'ok'}: ${result.run?.updated ?? 0} actualizados, `
-          + `${result.run?.unchanged ?? 0} sin cambios`,
+          `Sync ${result.run?.status ?? 'ok'} (${day}, intento ${result.run?.attempt ?? '?'}): `
+          + `${result.run?.updated ?? 0} actualizados, ${result.run?.unchanged ?? 0} sin cambios`
+          + errPart,
         );
       }
       await load();
     } catch (err) {
       setSyncMsg(err instanceof Error ? err.message : 'Error al sincronizar');
+      // Aunque falle (p. ej. timeout), refrescar: el intento puede haberse registrado.
+      try {
+        await load();
+      } catch {
+        /* ignore */
+      }
     } finally {
       setSyncBusy(false);
     }
@@ -668,7 +870,8 @@ export function AdminDashboardPage() {
               <div>
                 <h2>Tráfico diario</h2>
                 <p className="admin-muted">
-                  Pico: {peakDay ? `${peakDay.dayKey} (${peakDay.visits})` : '—'}
+                  Apilado por tipo de pass · Pico:{' '}
+                  {peakDay ? `${peakDay.dayKey} (${peakDay.visits})` : '—'}
                   {' · '}
                   Ayer: {s?.visitsYesterday ?? 0} visitas
                 </p>
@@ -1056,29 +1259,63 @@ export function AdminDashboardPage() {
                     <th>Cuándo</th>
                     <th>Modo</th>
                     <th>Lang</th>
-                    <th>Misiones</th>
+                    <th>Ant.</th>
+                    <th>Nuevas</th>
+                    <th>Δ</th>
+                    <th>+ / ∼ / −</th>
                     <th>Hash</th>
-                    <th>Anterior</th>
                   </tr>
                 </thead>
                 <tbody>
                   {(data?.changes.length ?? 0) === 0 ? (
                     <tr>
-                      <td colSpan={6} className="admin-muted">
+                      <td colSpan={8} className="admin-muted">
                         Sin cambios registrados. Solo se guardan cuando el contenido del dataset difiere.
                       </td>
                     </tr>
                   ) : (
-                    data?.changes.map((c) => (
-                      <tr key={c.id}>
-                        <td title={formatWhen(c.detectedAt)}>{formatRelative(c.detectedAt)}</td>
-                        <td>{modeLabel(c.gameMode)}</td>
-                        <td>{c.lang}</td>
-                        <td>{c.taskCount}</td>
-                        <td><code>{shortHash(c.contentHash)}</code></td>
-                        <td><code>{shortHash(c.previousHash)}</code></td>
-                      </tr>
-                    ))
+                    data?.changes.map((c) => {
+                      const openChange = selectedSyncChangeId === c.id;
+                      const diff = asTaskDiff(c.diff);
+                      return (
+                        <Fragment key={c.id}>
+                          <tr
+                            className={`admin-sync-change-row${openChange ? ' is-open' : ''}`}
+                            onClick={() => {
+                              setSelectedSyncChangeId((prev) => (prev === c.id ? null : c.id));
+                            }}
+                            title="Ver detalle de misiones"
+                          >
+                            <td title={formatWhen(c.detectedAt)}>{formatRelative(c.detectedAt)}</td>
+                            <td>
+                              <span className="admin-sync-day-cell">
+                                <span className="admin-sync-chevron" aria-hidden>
+                                  {openChange ? '▾' : '▸'}
+                                </span>
+                                {modeLabel(c.gameMode)}
+                              </span>
+                            </td>
+                            <td>{c.lang}</td>
+                            <td>{c.previousTaskCount ?? '—'}</td>
+                            <td>{c.taskCount}</td>
+                            <td>{taskCountDelta(c)}</td>
+                            <td>
+                              {diff
+                                ? `+${diff.addedCount} / ∼${diff.updatedCount} / −${diff.removedCount}`
+                                : '—'}
+                            </td>
+                            <td><code>{shortHash(c.contentHash)}</code></td>
+                          </tr>
+                          {openChange ? (
+                            <tr className="admin-sync-mission-row">
+                              <td colSpan={8}>
+                                <SyncChangeMissionDetail change={c} />
+                              </td>
+                            </tr>
+                          ) : null}
+                        </Fragment>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -1087,7 +1324,7 @@ export function AdminDashboardPage() {
 
           {section === 'sync' ? (
             <div className="admin-table-wrap">
-              <table className="admin-table">
+              <table className="admin-table admin-table--sync">
                 <thead>
                   <tr>
                     <th>Día</th>
@@ -1104,21 +1341,139 @@ export function AdminDashboardPage() {
                       <td colSpan={6} className="admin-muted">Aún no hay ejecuciones de sync registradas.</td>
                     </tr>
                   ) : (
-                    data?.syncDays.map((d) => (
-                      <tr key={d.dayKey}>
-                        <td>{d.dayKey}</td>
-                        <td>
-                          <span className={`admin-pill admin-pill--${d.status}`}>{d.status}</span>
-                        </td>
-                        <td>{d.attempts}</td>
-                        <td>{d.updatedCombinations}</td>
-                        <td title={formatWhen(d.lastSuccessAt)}>{formatRelative(d.lastSuccessAt)}</td>
-                        <td className="admin-cell-error">{d.lastError ?? '—'}</td>
-                      </tr>
-                    ))
+                    data?.syncDays.map((d) => {
+                      const open = selectedSyncDay === d.dayKey;
+                      return (
+                        <Fragment key={d.dayKey}>
+                          <tr
+                            className={`admin-sync-row${open ? ' is-open' : ''}${d.updatedCombinations > 0 ? ' is-clickable' : ''}`}
+                            onClick={() => {
+                              setSelectedSyncDay((prev) => {
+                                const next = prev === d.dayKey ? null : d.dayKey;
+                                if (next !== prev) setSelectedSyncChangeId(null);
+                                return next;
+                              });
+                            }}
+                            title={
+                              d.updatedCombinations > 0
+                                ? 'Ver detalle de actualizaciones'
+                                : 'Sin cambios de contenido ese día'
+                            }
+                          >
+                            <td>
+                              <span className="admin-sync-day-cell">
+                                <span className="admin-sync-chevron" aria-hidden>
+                                  {open ? '▾' : '▸'}
+                                </span>
+                                {d.dayKey}
+                              </span>
+                            </td>
+                            <td>
+                              <span className={`admin-pill admin-pill--${d.status}`}>{d.status}</span>
+                            </td>
+                            <td>{d.attempts}</td>
+                            <td>
+                              <strong className={d.updatedCombinations > 0 ? 'admin-sync-updated' : undefined}>
+                                {d.updatedCombinations}
+                              </strong>
+                            </td>
+                            <td title={formatWhen(d.lastSuccessAt)}>{formatRelative(d.lastSuccessAt)}</td>
+                            <td className="admin-cell-error">{d.lastError ?? '—'}</td>
+                          </tr>
+                          {open ? (
+                            <tr className="admin-sync-detail-row">
+                              <td colSpan={6}>
+                                <div className="admin-sync-detail">
+                                  <p className="admin-sync-detail-title">
+                                    Actualizaciones del {d.dayKey}
+                                    {' · '}
+                                    {d.updatedCombinations} combinaciones con contenido nuevo
+                                  </p>
+                                  {syncDayChanges.length === 0 ? (
+                                    <p className="admin-muted">
+                                      {d.updatedCombinations > 0
+                                        ? 'No hay filas de cambio en el historial reciente para este día (pueden haber expirado de la vista).'
+                                        : 'Ningún dataset cambió de contenido: solo se refrescaron fechas de comprobación.'}
+                                    </p>
+                                  ) : (
+                                    <table className="admin-table admin-table--nested">
+                                      <thead>
+                                        <tr>
+                                          <th>#</th>
+                                          <th>Modo</th>
+                                          <th>Lang</th>
+                                          <th>Ant.</th>
+                                          <th>Nuevas</th>
+                                          <th>Δ</th>
+                                          <th>+ / ∼ / −</th>
+                                          <th>Detectado</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {syncDayChanges.map((c, index) => {
+                                          const openChange = selectedSyncChangeId === c.id;
+                                          const diff = asTaskDiff(c.diff);
+                                          return (
+                                            <Fragment key={c.id}>
+                                              <tr
+                                                className={`admin-sync-change-row${openChange ? ' is-open' : ''}`}
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setSelectedSyncChangeId((prev) =>
+                                                    prev === c.id ? null : c.id,
+                                                  );
+                                                }}
+                                                title="Ver misiones añadidas / actualizadas / eliminadas"
+                                              >
+                                                <td>{index + 1}</td>
+                                                <td>
+                                                  <span className="admin-sync-day-cell">
+                                                    <span className="admin-sync-chevron" aria-hidden>
+                                                      {openChange ? '▾' : '▸'}
+                                                    </span>
+                                                    {modeLabel(c.gameMode)}
+                                                  </span>
+                                                </td>
+                                                <td>{c.lang}</td>
+                                                <td>{c.previousTaskCount ?? '—'}</td>
+                                                <td>{c.taskCount}</td>
+                                                <td>{taskCountDelta(c)}</td>
+                                                <td>
+                                                  {diff
+                                                    ? `+${diff.addedCount} / ∼${diff.updatedCount} / −${diff.removedCount}`
+                                                    : '—'}
+                                                </td>
+                                                <td title={formatWhen(c.detectedAt)}>
+                                                  {formatRelative(c.detectedAt)}
+                                                </td>
+                                              </tr>
+                                              {openChange ? (
+                                                <tr className="admin-sync-mission-row">
+                                                  <td colSpan={8}>
+                                                    <SyncChangeMissionDetail change={c} />
+                                                  </td>
+                                                </tr>
+                                              ) : null}
+                                            </Fragment>
+                                          );
+                                        })}
+                                      </tbody>
+                                    </table>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ) : null}
+                        </Fragment>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
+              <p className="admin-footnote">
+                Clic en el día y luego en un modo (p. ej. PvE) para ver misiones añadidas, actualizadas o eliminadas.
+                El detalle por misión solo está disponible en syncs posteriores a esta función.
+              </p>
             </div>
           ) : null}
         </section>

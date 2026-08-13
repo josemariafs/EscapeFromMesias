@@ -1,7 +1,17 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { ensureSchema } from '../_lib/db.js';
 import { applyCors, handleOptions, serverError } from '../_lib/http.js';
-import { isCronAuthorized, runTaskSync } from '../_lib/taskSync.js';
+import { ensureTaskSyncSchema, isCronAuthorized, runTaskSync } from '../_lib/taskSync.js';
+
+/** Hobby: hasta 60s. El sync de 6 combinaciones suele superar el default (10s). */
+export const config = {
+  maxDuration: 60,
+};
+
+function truthyQuery(value: string | string[] | undefined): boolean {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return raw === '1' || raw === 'true' || raw === 'yes';
+}
 
 /**
  * Cron diario de misiones (Europe/Madrid).
@@ -29,13 +39,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     await ensureSchema();
+    await ensureTaskSyncSchema();
     const force =
-      req.query.force === '1'
-      || req.query.force === 'true'
-      || (typeof req.body === 'object' && req.body != null && (req.body as { force?: unknown }).force === true);
+      truthyQuery(req.query.force)
+      || (typeof req.body === 'object'
+        && req.body != null
+        && (req.body as { force?: unknown }).force === true);
 
     const outcome = await runTaskSync({ force: Boolean(force) });
     applyCors(res);
+    res.setHeader('Cache-Control', 'no-store');
     res.status(200).json({ ok: true, ...outcome });
   } catch (err) {
     serverError(res, err);
