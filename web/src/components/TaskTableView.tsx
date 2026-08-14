@@ -3,6 +3,7 @@ import type { Task, TaskProgressState } from '../types';
 import type { Translations } from '../i18n/translations';
 import { getTraderImagePath } from '../utils/traderImages';
 import { getQuestItemRequirements, getRequiredLoyaltyLevel } from '../utils/unlock';
+import { getMapGroupLabel } from '../utils/maps';
 
 interface TaskTableViewProps {
   tasks: Task[];
@@ -35,7 +36,6 @@ export function TaskTableView({
 
   const buckets = useMemo(() => {
     const started: Task[] = [];
-    const available: Task[] = [];
     const completed: Task[] = [];
     const lockedFailed: Task[] = [];
 
@@ -43,10 +43,9 @@ export function TaskTableView({
       const state = taskStates[task.id] ?? 'locked';
       switch (state) {
         case 'started':
-          started.push(task);
-          break;
         case 'available':
-          available.push(task);
+          // En All, Available se agrupa con Active.
+          started.push(task);
           break;
         case 'completed':
           completed.push(task);
@@ -65,11 +64,10 @@ export function TaskTableView({
       return a.name.localeCompare(b.name);
     };
     started.sort(byTraderLoyaltyName);
-    available.sort(byTraderLoyaltyName);
     completed.sort(byTraderLoyaltyName);
     lockedFailed.sort(byTraderLoyaltyName);
 
-    return { started, available, completed, lockedFailed };
+    return { started, completed, lockedFailed };
   }, [tasks, taskStates]);
 
   const rowProps = {
@@ -88,12 +86,6 @@ export function TaskTableView({
     <div className="task-table-view">
       <div className="task-table-top">
         <TaskTableSection title={t.tableSectionActive} state="started" tasks={buckets.started} {...rowProps} />
-        <TaskTableSection
-          title={t.tableSectionAvailable}
-          state="available"
-          tasks={buckets.available}
-          {...rowProps}
-        />
       </div>
 
       <div className="task-table-bottom">
@@ -139,7 +131,7 @@ type SortDirection = 'asc' | 'desc';
 function getSortValue(task: Task, column: SortColumn, t: Translations): string {
   switch (column) {
     case 'map':
-      return task.map ? task.map.name : t.anyMap;
+      return task.map ? getMapGroupLabel(task.map) : t.anyMap;
     case 'trader':
       return task.trader.name;
     default:
@@ -326,7 +318,7 @@ function TaskTableRow({
           )}
         </span>
       </td>
-      {showMapColumn && <td>{task.map ? task.map.name : t.anyMap}</td>}
+      {showMapColumn && <td>{task.map ? getMapGroupLabel(task.map) : t.anyMap}</td>}
       <td className="task-table-cell-items">
         {requiredItems.length === 0 ? (
           '—'

@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import {
+  canRevealWeeklyCode,
   getSpanishAuthWeekKey,
   getWeeklyAccessCode,
   hasSiteAccessPasswords,
@@ -11,7 +12,7 @@ interface DailyCodeBody {
   token?: string;
 }
 
-/** Solo sesiones `public` pueden ver el código semanal activo. */
+/** Solo sesiones `public` y `mv` pueden ver el código semanal activo. */
 export default function handler(req: VercelRequest, res: VercelResponse) {
   if (handleOptions(req, res)) return;
 
@@ -37,7 +38,7 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  if (session.kind !== 'public') {
+  if (!canRevealWeeklyCode(session.kind)) {
     applyCors(res);
     res.status(403).json({ error: 'Forbidden' });
     return;

@@ -3,6 +3,7 @@ import type { Task, TaskProgressState } from '../types';
 import type { Translations } from '../i18n/translations';
 import { getTraderImagePath } from '../utils/traderImages';
 import { getQuestItemRequirements, getRequiredLoyaltyLevel } from '../utils/unlock';
+import { getMapGroupLabel } from '../utils/maps';
 
 interface TaskCardProps {
   task: Task;
@@ -15,6 +16,8 @@ interface TaskCardProps {
   onReset: () => void;
   /** true si el estado viene de un evento real detectado en los logs (modo Logs): no editable. */
   locked?: boolean;
+  /** false en modo Logs: no mostrar botones de progreso. */
+  showActions?: boolean;
 }
 
 export function TaskCard({
@@ -27,6 +30,7 @@ export function TaskCard({
   onComplete,
   onReset,
   locked = false,
+  showActions = true,
 }: TaskCardProps) {
   const requiredItems = getQuestItemRequirements(task);
   const traderImage = getTraderImagePath(task.trader);
@@ -70,7 +74,7 @@ export function TaskCard({
 
       <div className="task-meta">
         <span className="trader-tag">{task.trader.name}</span>
-        {task.map && <span className="map-tag">{task.map.name}</span>}
+        {task.map && <span className="map-tag">{getMapGroupLabel(task.map)}</span>}
       </div>
 
       {requiredItems.length > 0 && (
@@ -100,7 +104,7 @@ export function TaskCard({
         </div>
       )}
 
-      {(state === 'available' || state === 'started' || state === 'completed' || state === 'failed') && (
+      {showActions && (state === 'available' || state === 'started' || state === 'completed' || state === 'failed') && (
         <div className={`task-actions${locked ? ' log-locked' : ''}`}>
           {state === 'available' && (
             <button

@@ -5,6 +5,7 @@ import {
   getStoredSiteSession,
   loginWithPassword,
   verifySiteSession,
+  canRevealWeeklyCode,
   type SiteAuthKind,
 } from '../api/siteAuth';
 import { ADMIN_TOKEN_STORAGE_KEY } from '../types/routes';
@@ -97,7 +98,7 @@ export function useSiteAuth() {
   return {
     status,
     kind: kind ?? getStoredSiteKind(),
-    canRevealDailyCode: (kind ?? getStoredSiteKind()) === 'public',
+    canRevealDailyCode: canRevealWeeklyCode(kind ?? getStoredSiteKind()),
     error,
     failCount,
     submitting,

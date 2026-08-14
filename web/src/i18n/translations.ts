@@ -29,7 +29,9 @@ export interface Translations {
   staleCacheNotice: string;
   staleCacheNoticeDetail: (detail: string) => string;
   searchPlaceholder: string;
+  searchAllPlaceholder: string;
   allTraders: string;
+  allMaps: string;
   allStatuses: string;
   statusAvailable: string;
   statusStarted: string;
@@ -129,6 +131,7 @@ export interface Translations {
   tabRoutes: string;
   tabStory: string;
   tabSideQuest: string;
+  tabAllQuests: string;
   routesTitle: string;
   routesHint: string;
   routesOpenMap: string;
@@ -266,6 +269,9 @@ export interface Translations {
   mapRoutePointsEditHint: string;
   mapCollapsePanel: string;
   mapExpandPanel: string;
+  taskDetailMapLocations: string;
+  taskDetailMapMarkerCount: (count: number) => string;
+  taskDetailOpenMap: string;
   mapMarkerManual: string;
   mapClearCustomMarker: string;
   close: string;
@@ -289,7 +295,7 @@ export interface Translations {
   logsStats: (sessions: number, totalSessions: number, tasks: number, version: string | null) => string;
   logsNoEventsHint: string;
   logStateDetected: (state: string) => string;
-  logStateNotDetectedEditable: string;
+  logStateNotDetected: string;
   logLockedHint: string;
   logsUnmatchedIds: (n: number) => string;
   logsUnmatchedStatus: (completed: number, started: number, failed: number) => string;
@@ -342,7 +348,9 @@ export const translations: Record<Lang, Translations> = {
       'Ni GraphQL ni json.tarkov.dev respondieron: mostrando misiones offline empaquetadas.',
     staleCacheNoticeDetail: (detail) => `Detalle: ${detail}`,
     searchPlaceholder: 'Buscar misión o comerciante…',
+    searchAllPlaceholder: 'Buscar por nombre o descripción…',
     allTraders: 'Todos los comerciantes',
+    allMaps: 'Todos los mapas',
     allStatuses: 'Todos los estados',
     statusAvailable: 'Disponibles',
     statusStarted: 'En curso',
@@ -454,6 +462,7 @@ export const translations: Record<Lang, Translations> = {
     tabRoutes: 'Rutas',
     tabStory: 'Story',
     tabSideQuest: 'Side Quest',
+    tabAllQuests: 'Misiones',
     routesTitle: 'Rutas en el mapa',
     routesHint:
       'Dibuja puntos de ruta sobre cualquier mapa de Tarkov. Independiente de las misiones: solo para planear recorridos.',
@@ -599,6 +608,10 @@ export const translations: Record<Lang, Translations> = {
       'Clic en el mapa para añadir un punto. Clic en un pin para eliminarlo. Con zoom, arrastra para panear.',
     mapCollapsePanel: 'Ocultar panel',
     mapExpandPanel: 'Mostrar panel',
+    taskDetailMapLocations: 'Ubicaciones en el mapa',
+    taskDetailMapMarkerCount: (count) =>
+      count === 1 ? '1 ubicación' : `${count} ubicaciones`,
+    taskDetailOpenMap: 'Abrir mapa',
     mapMarkerManual: 'Ubicación manual',
     mapClearCustomMarker: 'Quitar ubicación manual',
     close: 'Cerrar',
@@ -642,7 +655,7 @@ export const translations: Record<Lang, Translations> = {
       + 'existe un archivo "notifications.log". Ten en cuenta que el juego solo conserva un número limitado '
       + 'de sesiones recientes: el progreso de partidas ya purgadas no se puede recuperar de los logs.',
     logStateDetected: (state) => `Detectado en logs: ${state}`,
-    logStateNotDetectedEditable: 'No detectado en los logs (misión anterior a las sesiones guardadas). Puedes marcarla manualmente; si el juego registra un evento real, tendrá prioridad.',
+    logStateNotDetected: 'No detectado en los logs (misión anterior a las sesiones guardadas). El progreso solo se actualiza con eventos del juego.',
     logLockedHint: 'Detectado en los logs: el estado lo controla el juego, no editable.',
     logsUnmatchedIds: (n) => `${n} ID(s) de misión sin coincidencia`,
     logsUnmatchedStatus: (completed, started, failed) => {
@@ -709,7 +722,9 @@ export const translations: Record<Lang, Translations> = {
       'Neither GraphQL nor json.tarkov.dev responded: showing bundled offline quests.',
     staleCacheNoticeDetail: (detail) => `Detail: ${detail}`,
     searchPlaceholder: 'Search quest or trader…',
+    searchAllPlaceholder: 'Search by name or description…',
     allTraders: 'All traders',
+    allMaps: 'All maps',
     allStatuses: 'All statuses',
     statusAvailable: 'Available',
     statusStarted: 'In progress',
@@ -821,6 +836,7 @@ export const translations: Record<Lang, Translations> = {
     tabRoutes: 'Routes',
     tabStory: 'Story',
     tabSideQuest: 'Side Quest',
+    tabAllQuests: 'Quests',
     routesTitle: 'Map routes',
     routesHint:
       'Draw route points on any Tarkov map. Separate from quests — just for planning your runs.',
@@ -966,6 +982,10 @@ export const translations: Record<Lang, Translations> = {
       'Click the map to add a point. Click a pin to remove it. When zoomed, drag to pan.',
     mapCollapsePanel: 'Hide panel',
     mapExpandPanel: 'Show panel',
+    taskDetailMapLocations: 'Map locations',
+    taskDetailMapMarkerCount: (count) =>
+      count === 1 ? '1 location' : `${count} locations`,
+    taskDetailOpenMap: 'Open map',
     mapMarkerManual: 'Manual location',
     mapClearCustomMarker: 'Remove manual location',
     close: 'Close',
@@ -1009,7 +1029,7 @@ export const translations: Record<Lang, Translations> = {
       + '"notifications.log" file. Note that the game only keeps a limited number of recent sessions: '
       + 'progress from already-purged sessions cannot be recovered from the logs.',
     logStateDetected: (state) => `Detected in logs: ${state}`,
-    logStateNotDetectedEditable: 'Not detected in logs (task predates the saved sessions). You can mark it manually; a real in-game event will always take priority.',
+    logStateNotDetected: 'Not detected in logs (task predates the saved sessions). Progress updates only from in-game events.',
     logLockedHint: 'Detected in logs: state is controlled by the game, not editable.',
     logsUnmatchedIds: (n) => `${n} unmatched quest ID(s)`,
     logsUnmatchedStatus: (completed, started, failed) => {

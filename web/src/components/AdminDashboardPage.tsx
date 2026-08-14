@@ -55,6 +55,7 @@ function eventLabel(name: string): string {
 const ACCESS_KIND_LABELS: Record<string, string> = {
   public: 'Clave pública',
   private: 'Clave privada',
+  mv: 'Clave MV',
   daily: 'Código semanal',
   legacy: 'Clave legacy',
   admin: 'Admin',
@@ -64,6 +65,7 @@ const ACCESS_KIND_LABELS: Record<string, string> = {
 const ACCESS_STACK_ORDER: AdminAccessKindKey[] = [
   'public',
   'private',
+  'mv',
   'daily',
   'legacy',
   'admin',
@@ -73,6 +75,7 @@ const ACCESS_STACK_ORDER: AdminAccessKindKey[] = [
 const ACCESS_STACK_COLORS: Record<AdminAccessKindKey, string> = {
   public: '#5ec4a8',
   private: '#c9a227',
+  mv: '#9b6bdb',
   daily: '#6a9fd8',
   legacy: '#8a8a90',
   admin: '#d08050',
@@ -88,6 +91,7 @@ function emptyAccessBuckets(): NonNullable<AdminDailyVisitRow['byAccess']> {
   return {
     public: { visits: 0, uniqueVisitors: 0 },
     private: { visits: 0, uniqueVisitors: 0 },
+    mv: { visits: 0, uniqueVisitors: 0 },
     daily: { visits: 0, uniqueVisitors: 0 },
     legacy: { visits: 0, uniqueVisitors: 0 },
     admin: { visits: 0, uniqueVisitors: 0 },
@@ -1015,6 +1019,7 @@ export function AdminDashboardPage() {
                     <option value="all">Todas</option>
                     <option value="public">Clave pública</option>
                     <option value="private">Clave privada</option>
+                    <option value="mv">Clave MV</option>
                     <option value="daily">Código semanal</option>
                     <option value="legacy">Clave legacy</option>
                     <option value="admin">Admin</option>
@@ -1026,6 +1031,7 @@ export function AdminDashboardPage() {
                     const kind: AdminUsageAccessFilter | null =
                       row.accessKind === 'public'
                       || row.accessKind === 'private'
+                      || row.accessKind === 'mv'
                       || row.accessKind === 'daily'
                       || row.accessKind === 'legacy'
                       || row.accessKind === 'admin'

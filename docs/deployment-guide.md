@@ -31,6 +31,7 @@ Set in Vercel Project → Settings → Environment Variables (Production / Previ
 - `ADMIN_TOKEN`
 - `PERMANENT_TOKEN_PUBLIC`
 - `PERMANENT_TOKEN_PRIVATE`
+- `PERMANENT_TOKEN_MV`
 - `CRON_SECRET` (if using Vercel Cron for task sync)
 
 ## CLI deploy (example)

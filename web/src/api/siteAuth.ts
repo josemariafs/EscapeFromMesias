@@ -1,4 +1,8 @@
-export type SiteAuthKind = 'public' | 'private' | 'daily' | 'legacy' | 'admin';
+export type SiteAuthKind = 'public' | 'private' | 'mv' | 'daily' | 'legacy' | 'admin';
+
+export function canRevealWeeklyCode(kind: SiteAuthKind | null | undefined): boolean {
+  return kind === 'public' || kind === 'mv';
+}
 
 const SITE_SESSION_KEY = 'efg-site-session';
 const SITE_KIND_KEY = 'efg-site-kind';
@@ -17,6 +21,7 @@ export function getStoredSiteKind(): SiteAuthKind | null {
     if (
       kind === 'public'
       || kind === 'private'
+      || kind === 'mv'
       || kind === 'daily'
       || kind === 'legacy'
       || kind === 'admin'

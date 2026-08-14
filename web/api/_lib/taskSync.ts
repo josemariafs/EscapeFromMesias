@@ -7,6 +7,7 @@ import {
   type GameMode,
   type Task,
 } from './eftTypes.js';
+import { enrichTasksWithZoneOverlay } from './enrichTaskZones.js';
 import { fetchTasksFromJson } from './tarkovJson.js';
 import { isAuthorized } from './auth.js';
 import { getDb } from './db.js';
@@ -660,7 +661,7 @@ export async function readTaskSnapshot(
     | undefined;
   if (!row?.payload_gz) return null;
 
-  const tasks = decompressTasks(row.payload_gz);
+  const tasks = enrichTasksWithZoneOverlay(decompressTasks(row.payload_gz));
   if (tasks.length < MIN_VALID_TASK_COUNT) {
     throw new Error(`Snapshot local incompleto (${tasks.length} misiones).`);
   }
@@ -685,7 +686,7 @@ async function syncOne(
   lang: TaskSyncLang,
 ): Promise<SyncCombinationResult> {
   try {
-    const tasks = await fetchTasksFromJson(lang, gameMode);
+    const tasks = enrichTasksWithZoneOverlay(await fetchTasksFromJson(lang, gameMode));
     const source = `json.tarkov.dev/${gameMode === 'seasonal' ? 'pvp-season' : gameMode}`;
     const meta = await upsertTaskSnapshot(gameMode, lang, tasks, source);
     return {

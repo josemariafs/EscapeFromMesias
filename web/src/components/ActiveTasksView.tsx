@@ -219,6 +219,7 @@ export function ActiveTasksView({
                     onComplete={() => onComplete(task.id)}
                     onReset={() => onReset(task.id)}
                     locked={lockedIds?.has(task.id) ?? false}
+                    showActions={showActionsColumn}
                   />
                 );
               })}

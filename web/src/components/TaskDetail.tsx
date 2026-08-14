@@ -1,8 +1,12 @@
-import type { Task, TaskProgressState } from '../types';
+import { useEffect, useMemo, useState } from 'react';
+import type { CustomMapMarkers, Task, TaskProgressState } from '../types';
 import type { Translations } from '../i18n/translations';
 import { getRequiredKeys, getRequiredLoyaltyLevel } from '../utils/unlock';
 import { getCompletedObjectiveSet } from '../utils/objectives';
+import { getMapSvgUrl, getTarkovDevMapUrl } from '../utils/maps';
+import { getTaskMapLocations } from '../utils/mapMarkers';
 import { TaskPrereqTooltip } from './TaskPrereqTooltip';
+import { MapViewerModal } from './MapViewerModal';
 
 interface TaskDetailProps {
   task: Task | null;
@@ -10,6 +14,7 @@ interface TaskDetailProps {
   tasksById: Map<string, Task>;
   taskStates: Record<string, TaskProgressState>;
   completedObjectives: Record<string, string[]>;
+  customMapMarkers?: CustomMapMarkers;
   t: Translations;
   locale: string;
   onStart: () => void;
@@ -27,6 +32,7 @@ export function TaskDetail({
   tasksById,
   taskStates,
   completedObjectives,
+  customMapMarkers = {},
   t,
   locale,
   onStart,
@@ -36,6 +42,28 @@ export function TaskDetail({
   isLogsMode = false,
   logRawState = null,
 }: TaskDetailProps) {
+  const [openMapKey, setOpenMapKey] = useState<string | null>(null);
+  const [openAccordionMaps, setOpenAccordionMaps] = useState<Set<string>>(() => new Set());
+
+  const mapLocations = useMemo(
+    () => (task ? getTaskMapLocations(task, customMapMarkers) : []),
+    [task, customMapMarkers],
+  );
+
+  const useMapAccordion = mapLocations.length >= 3;
+  const firstAccordionMapKey = useMapAccordion ? mapLocations[0]?.mapKey ?? null : null;
+
+  const openMapLocation = useMemo(
+    () => mapLocations.find((entry) => entry.mapKey === openMapKey) ?? null,
+    [mapLocations, openMapKey],
+  );
+  const openMapUrl = openMapLocation ? getMapSvgUrl(openMapLocation.mapKey) : null;
+
+  useEffect(() => {
+    setOpenMapKey(null);
+    setOpenAccordionMaps(firstAccordionMapKey ? new Set([firstAccordionMapKey]) : new Set());
+  }, [task?.id, firstAccordionMapKey]);
+
   if (!task) {
     return (
       <aside className="task-detail empty">
@@ -46,8 +74,7 @@ export function TaskDetail({
 
   const keys = getRequiredKeys(task);
   const doneObjectives = getCompletedObjectiveSet(completedObjectives, task.id);
-  const canTrackObjectives = state === 'started' || state === 'completed';
-  const locked = isLogsMode && logRawState != null;
+  const canTrackObjectives = !isLogsMode && (state === 'started' || state === 'completed');
   const loyaltyLevel = getRequiredLoyaltyLevel(task);
 
   return (
@@ -62,7 +89,7 @@ export function TaskDetail({
           </p>
           {isLogsMode && (
             <p className={`log-detection-hint${logRawState ? '' : ' log-detection-hint--warn'}`}>
-              {logRawState ? t.logStateDetected(t.state[logRawState]) : t.logStateNotDetectedEditable}
+              {logRawState ? t.logStateDetected(t.state[logRawState]) : t.logStateNotDetected}
             </p>
           )}
         </div>
@@ -90,6 +117,74 @@ export function TaskDetail({
         )}
         {task.kappaRequired && <div className="kappa-line">{t.kappaRequired}</div>}
       </div>
+
+      {mapLocations.length > 0 && (
+        <section className="detail-map-section" aria-label={t.taskDetailMapLocations}>
+          <h3>{t.taskDetailMapLocations}</h3>
+          <div className={`detail-map-list${useMapAccordion ? ' detail-map-list--accordion' : ''}`}>
+            {mapLocations.map((location) => {
+              const mapUrl = getMapSvgUrl(location.mapKey);
+              if (!mapUrl) return null;
+
+              const card = (
+                <button
+                  type="button"
+                  className="detail-map-card"
+                  onClick={() => setOpenMapKey(location.mapKey)}
+                  title={t.taskDetailOpenMap}
+                >
+                  <div className="detail-map-card-head">
+                    <strong>{location.mapName}</strong>
+                    <span>{t.taskDetailOpenMap}</span>
+                  </div>
+                  <div className="detail-map-preview">
+                    <div className="detail-map-preview-frame">
+                      <img src={mapUrl} alt="" draggable={false} />
+                      {location.markers.map((marker) => (
+                        <span
+                          key={marker.id}
+                          className={`detail-map-pin${marker.custom ? ' detail-map-pin--custom' : ''}`}
+                          style={{ left: `${marker.left}%`, top: `${marker.top}%` }}
+                          title={marker.objectiveDescription || t.mapMarkerManual}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </button>
+              );
+
+              if (!useMapAccordion) {
+                return <div key={location.mapKey}>{card}</div>;
+              }
+
+              return (
+                <details
+                  key={`${task.id}:${location.mapKey}`}
+                  className="detail-map-accordion"
+                  open={openAccordionMaps.has(location.mapKey)}
+                  onToggle={(event) => {
+                    const isOpen = event.currentTarget.open;
+                    setOpenAccordionMaps((prev) => {
+                      const next = new Set(prev);
+                      if (isOpen) next.add(location.mapKey);
+                      else next.delete(location.mapKey);
+                      return next;
+                    });
+                  }}
+                >
+                  <summary className="detail-map-accordion-summary">
+                    <span className="detail-map-accordion-title">{location.mapName}</span>
+                    <span className="detail-map-accordion-meta">
+                      {t.taskDetailMapMarkerCount(location.markers.length)}
+                    </span>
+                  </summary>
+                  <div className="detail-map-accordion-body">{card}</div>
+                </details>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {task.taskRequirements.length > 0 && (
         <section>
@@ -214,13 +309,12 @@ export function TaskDetail({
         </section>
       ) : null}
 
-      <div className={`detail-actions${locked ? ' log-locked' : ''}`}>
+      {!isLogsMode && (
+      <div className="detail-actions">
         {state === 'available' && (
           <button
             type="button"
             className="btn btn-start"
-            disabled={locked}
-            title={locked ? t.logLockedHint : undefined}
             onClick={onStart}
           >
             {t.markStarted}
@@ -230,8 +324,6 @@ export function TaskDetail({
           <button
             type="button"
             className="btn btn-complete"
-            disabled={locked}
-            title={locked ? t.logLockedHint : undefined}
             onClick={onComplete}
           >
             {t.markCompleted}
@@ -241,8 +333,6 @@ export function TaskDetail({
           <button
             type="button"
             className="btn btn-reset"
-            disabled={locked}
-            title={locked ? t.logLockedHint : undefined}
             onClick={onReset}
           >
             {t.resetProgress}
@@ -252,6 +342,26 @@ export function TaskDetail({
           <p className="locked-hint">{t.lockedHint}</p>
         )}
       </div>
+      )}
+      {isLogsMode && state === 'locked' && (
+        <p className="locked-hint">{t.lockedHint}</p>
+      )}
+
+      {openMapLocation && openMapUrl && (
+        <MapViewerModal
+          mapName={openMapLocation.mapName}
+          mapKey={openMapLocation.mapKey}
+          mapUrl={openMapUrl}
+          mapTasks={[task]}
+          completedObjectives={completedObjectives}
+          customMapMarkers={customMapMarkers}
+          tarkovDevUrl={getTarkovDevMapUrl(openMapLocation.mapKey)}
+          t={t}
+          onClose={() => setOpenMapKey(null)}
+          onSetCustomMapMarker={() => undefined}
+          onClearCustomMapMarker={() => undefined}
+        />
+      )}
     </aside>
   );
 }

@@ -853,13 +853,13 @@ body {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  width: min(36rem, 100%);
+  width: min(48rem, 100%);
   min-width: 0;
   margin: 0 0 0.35rem;
 }
 
 .view-filter-select {
-  flex: 0 1 14rem;
+  flex: 0 1 12rem;
   min-width: 0;
   height: 2rem;
   padding: 0.3rem 1.75rem 0.3rem 0.6rem;
@@ -3684,6 +3684,166 @@ button.route-map-marker {
   font-size: 0.9rem;
 }
 
+.detail-map-section {
+  margin-top: 0.85rem;
+}
+
+.detail-map-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.detail-map-list--accordion {
+  gap: 0.4rem;
+}
+
+.detail-map-accordion {
+  border: 1px solid rgba(201, 162, 39, 0.22);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+
+.detail-map-accordion-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.55rem 0.7rem;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.detail-map-accordion-summary::-webkit-details-marker {
+  display: none;
+}
+
+.detail-map-accordion-summary::before {
+  content: '\25B8';
+  flex-shrink: 0;
+  color: var(--accent, #c9a227);
+  font-size: 0.75rem;
+  line-height: 1;
+  transition: transform 0.15s ease;
+}
+
+.detail-map-accordion[open] > .detail-map-accordion-summary::before {
+  transform: rotate(90deg);
+}
+
+.detail-map-accordion-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.detail-map-accordion-meta {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  opacity: 0.7;
+}
+
+.detail-map-accordion-body {
+  padding: 0 0.45rem 0.45rem;
+}
+
+.detail-map-accordion-body .detail-map-card {
+  border-color: rgba(201, 162, 39, 0.18);
+}
+
+.detail-map-card {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.45rem;
+  border: 1px solid rgba(201, 162, 39, 0.28);
+  border-radius: 8px;
+  background:
+    linear-gradient(165deg, rgba(201, 162, 39, 0.08), transparent 45%),
+    rgba(0, 0, 0, 0.28);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.detail-map-card:hover {
+  border-color: rgba(201, 162, 39, 0.55);
+  background:
+    linear-gradient(165deg, rgba(201, 162, 39, 0.14), transparent 45%),
+    rgba(0, 0, 0, 0.35);
+}
+
+.detail-map-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0 0.15rem;
+}
+
+.detail-map-card-head strong {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.detail-map-card-head span {
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.detail-map-preview {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #0a0a0a;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.detail-map-preview-frame {
+  position: relative;
+  width: 100%;
+  line-height: 0;
+}
+
+.detail-map-preview img {
+  display: block;
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.detail-map-pin {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  background: #e5e200;
+  border: 1.5px solid #1a1a00;
+  box-shadow: 0 0 0 2px rgba(229, 226, 0, 0.35), 0 1px 4px rgba(0, 0, 0, 0.65);
+  pointer-events: none;
+}
+
+.detail-map-pin--custom {
+  background: #6ec4b6;
+  border-color: #0a1a18;
+  box-shadow: 0 0 0 2px rgba(110, 196, 182, 0.35), 0 1px 4px rgba(0, 0, 0, 0.65);
+}
+
 .log-detection-hint {
   margin: 0.3rem 0 0;
   font-size: 0.72rem;
@@ -4369,7 +4529,7 @@ button.route-map-marker {
 
 .task-table-top {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 1rem;
   align-items: start;
 }
@@ -4573,7 +4733,7 @@ table.task-table td.task-table-cell-trader {
 }
 
 .task-table-collapsible summary::before {
-  content: 'ÃÂ¢ÃÂÃÂ¸';
+  content: '\25B8';
   display: inline-block;
   color: var(--accent);
   transition: transform 0.15s;

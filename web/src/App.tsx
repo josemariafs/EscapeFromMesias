@@ -33,7 +33,8 @@ import { useTarkovLogSync } from './hooks/useTarkovLogSync';
 import { useTasks } from './hooks/useTasks';
 import { storylineData } from './utils/storylineData';
 import { recalculateStates, sortTasksForDisplay } from './utils/unlock';
-import { isSideTask, isStoryApiTask } from './utils/taskCategory';
+import { isStoryApiTask } from './utils/taskCategory';
+import { ANY_MAP_ID, getMapGroupKey, getMapGroupLabel, getTaskMaps } from './utils/maps';
 import { MIN_VALID_TASK_COUNT } from './types';
 import type { RouteEnvironment } from './types/routes';
 import {
@@ -157,48 +158,34 @@ export default function App() {
 
   const guardedStartTask = useCallback(
     (id: string) => {
-      if (!isLogsMode) {
-        startTask(id);
-        trackUsage('task_started', { taskId: id });
-        return;
-      }
-      if (logLockedIds?.has(id)) return;
-      logsOverrides.startOverride(id);
-      trackUsage('task_started', { taskId: id, source: 'logs_override' });
+      if (isLogsMode) return;
+      startTask(id);
+      trackUsage('task_started', { taskId: id });
     },
-    [isLogsMode, logLockedIds, startTask, logsOverrides],
+    [isLogsMode, startTask],
   );
   const guardedCompleteTask = useCallback(
     (id: string) => {
-      if (!isLogsMode) {
-        completeTask(id);
-        trackUsage('task_completed', { taskId: id });
-        return;
-      }
-      if (logLockedIds?.has(id)) return;
-      logsOverrides.completeOverride(id);
-      trackUsage('task_completed', { taskId: id, source: 'logs_override' });
+      if (isLogsMode) return;
+      completeTask(id);
+      trackUsage('task_completed', { taskId: id });
     },
-    [isLogsMode, logLockedIds, completeTask, logsOverrides],
+    [isLogsMode, completeTask],
   );
   const guardedResetTask = useCallback(
     (id: string) => {
-      if (!isLogsMode) {
-        resetTask(id);
-        trackUsage('task_reset', { taskId: id });
-        return;
-      }
-      if (logLockedIds?.has(id)) return;
-      logsOverrides.resetOverride(id);
-      trackUsage('task_reset', { taskId: id, source: 'logs_override' });
+      if (isLogsMode) return;
+      resetTask(id);
+      trackUsage('task_reset', { taskId: id });
     },
-    [isLogsMode, logLockedIds, resetTask, logsOverrides],
+    [isLogsMode, resetTask],
   );
 
   const [viewTab, setViewTab] = useState<ViewTab>('all');
   const [allQuestTab, setAllQuestTab] = useState<AllQuestTab>('side');
   const [search, setSearch] = useState('');
   const [traderFilter, setTraderFilter] = useState('all');
+  const [mapFilter, setMapFilter] = useState('all');
   const [chapterFilter, setChapterFilter] = useState<number | 'all'>(1);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showTraderLevels, setShowTraderLevels] = useState(false);
@@ -252,16 +239,37 @@ export default function App() {
     ? fixedRoutes.getPoints(selectedRouteMapKey)
     : [];
 
-  const sideTasks = useMemo(() => tasks.filter(isSideTask), [tasks]);
   const storyApiTasks = useMemo(() => tasks.filter(isStoryApiTask), [tasks]);
 
-  const sideTraders = useMemo(() => {
+  const allTraders = useMemo(() => {
     const map = new Map<string, { id: string; name: string }>();
-    for (const task of sideTasks) {
+    for (const task of tasks) {
       map.set(task.trader.id, { id: task.trader.id, name: task.trader.name });
     }
     return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, locale));
-  }, [sideTasks, locale]);
+  }, [tasks, locale]);
+
+  const allMaps = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const task of tasks) {
+      const taskMaps = getTaskMaps(task);
+      if (taskMaps.length === 0) {
+        map.set(ANY_MAP_ID, t.anyMap);
+        continue;
+      }
+      for (const gameMap of taskMaps) {
+        const key = getMapGroupKey(gameMap);
+        if (!map.has(key)) map.set(key, getMapGroupLabel(gameMap));
+      }
+    }
+    return [...map.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => {
+        if (a.id === ANY_MAP_ID) return 1;
+        if (b.id === ANY_MAP_ID) return -1;
+        return a.name.localeCompare(b.name, locale);
+      });
+  }, [tasks, locale, t.anyMap]);
 
   const startedCount = useMemo(
     () => tasks.filter((task) => (effectiveTaskStates[task.id] ?? 'locked') === 'started').length,
@@ -296,15 +304,29 @@ export default function App() {
 
   const filteredTasks = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const filtered = sideTasks.filter((task) => {
+    const matchesQuery = (task: (typeof tasks)[number]) => {
+      if (!q) return true;
+      if (task.name.toLowerCase().includes(q)) return true;
+      if (task.trader.name.toLowerCase().includes(q)) return true;
+      return task.objectives.some((obj) => {
+        if (obj.description.toLowerCase().includes(q)) return true;
+        if (obj.type.toLowerCase().includes(q)) return true;
+        return obj.maps.some((map) => map.name.toLowerCase().includes(q));
+      });
+    };
+    const matchesMap = (task: (typeof tasks)[number]) => {
+      if (mapFilter === 'all') return true;
+      const taskMaps = getTaskMaps(task);
+      if (mapFilter === ANY_MAP_ID) return taskMaps.length === 0;
+      return taskMaps.some((gameMap) => getMapGroupKey(gameMap) === mapFilter);
+    };
+    const filtered = tasks.filter((task) => {
       if (traderFilter !== 'all' && task.trader.id !== traderFilter) return false;
-      if (q && !task.name.toLowerCase().includes(q) && !task.trader.name.toLowerCase().includes(q)) {
-        return false;
-      }
-      return true;
+      if (!matchesMap(task)) return false;
+      return matchesQuery(task);
     });
     return sortTasksForDisplay(filtered, effectiveTaskStates, locale);
-  }, [sideTasks, effectiveTaskStates, search, traderFilter, locale]);
+  }, [tasks, effectiveTaskStates, search, traderFilter, mapFilter, locale]);
 
   const selectedStoryApiTask = storyApiTasks.find((task) => task.id === selectedId) ?? null;
 
@@ -322,6 +344,7 @@ export default function App() {
     setSelectedId(null);
     setSearch('');
     setTraderFilter('all');
+    setMapFilter('all');
     trackUsage('quest_category', { category: tab });
   };
 
@@ -366,14 +389,12 @@ export default function App() {
     if (mapKey) trackUsage('route_map_opened', { mapKey });
   };
 
-  // En modo Logs: Activas y Completadas (progreso desde logs).
+  // En modo Logs: permitir All / Active / Completed (sin Story ni niveles).
   useEffect(() => {
-    if (isLogsMode && viewTab !== 'active' && viewTab !== 'completed') {
-      setViewTab('active');
-      setSelectedId(null);
-    }
-    if (isLogsMode) setShowTraderLevels(false);
-  }, [isLogsMode, viewTab]);
+    if (!isLogsMode) return;
+    setShowTraderLevels(false);
+    setAllQuestTab('side');
+  }, [isLogsMode]);
 
   useEffect(() => {
     setSelectedRouteMapKey(null);
@@ -501,20 +522,20 @@ export default function App() {
           <div className="header-tabs">
             {isQuestsUsage && (
               <div className="segmented" role="tablist" aria-label={t.tabAll}>
-                {!isLogsMode && (
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={viewTab === 'all'}
-                    className={`segmented-item${viewTab === 'all' ? ' active' : ''}`}
-                    onClick={() => {
-                      setViewTab('all');
-                      trackUsage('quest_tab', { tab: 'all' });
-                    }}
-                  >
-                    {t.tabAll}
-                  </button>
-                )}
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={viewTab === 'all'}
+                  className={`segmented-item${viewTab === 'all' ? ' active' : ''}`}
+                  onClick={() => {
+                    setViewTab('all');
+                    if (isLogsMode) setAllQuestTab('side');
+                    trackUsage('quest_tab', { tab: 'all' });
+                  }}
+                >
+                  {t.tabAll}
+                  {tasks.length > 0 && <span className="seg-count">{tasks.length}</span>}
+                </button>
                 <button
                   type="button"
                   role="tab"
@@ -629,8 +650,8 @@ export default function App() {
                     className={`segmented-item${allQuestTab === 'side' ? ' active' : ''}`}
                     onClick={() => handleQuestTabChange('side')}
                   >
-                    {t.tabSideQuest}
-                    <span className="seg-count">{sideTasks.length}</span>
+                    {t.tabAllQuests}
+                    <span className="seg-count">{tasks.length}</span>
                   </button>
                 </div>
               )}
@@ -765,7 +786,7 @@ export default function App() {
             <div className="view-filters">
               <input
                 type="search"
-                placeholder={isStoryTab ? t.searchStoryPlaceholder : t.searchPlaceholder}
+                placeholder={isStoryTab ? t.searchStoryPlaceholder : t.searchAllPlaceholder}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="search-input"
@@ -790,6 +811,7 @@ export default function App() {
                   ))}
                 </select>
               ) : (
+                <>
                 <select
                   className="view-filter-select"
                   value={traderFilter}
@@ -802,10 +824,27 @@ export default function App() {
                   }}
                 >
                   <option value="all">{t.allTraders}</option>
-                  {sideTraders.map((tr) => (
+                  {allTraders.map((tr) => (
                     <option key={tr.id} value={tr.id}>{tr.name}</option>
                   ))}
                 </select>
+                <select
+                  className="view-filter-select"
+                  value={mapFilter}
+                  onChange={(e) => {
+                    setMapFilter(e.target.value);
+                    trackUsage('filter_changed', {
+                      filter: 'map',
+                      value: e.target.value,
+                    });
+                  }}
+                >
+                  <option value="all">{t.allMaps}</option>
+                  {allMaps.map((map) => (
+                    <option key={map.id} value={map.id}>{map.name}</option>
+                  ))}
+                </select>
+                </>
               )}
             </div>
           )}
@@ -903,7 +942,8 @@ export default function App() {
                   onStart={() => guardedStartTask(task.id)}
                   onComplete={() => guardedCompleteTask(task.id)}
                   onReset={() => guardedResetTask(task.id)}
-                  locked={logLockedIds?.has(task.id) ?? false}
+                  locked={isLogsMode}
+                  showActions={!isLogsMode}
                 />
               );
             })
@@ -918,6 +958,7 @@ export default function App() {
               tasksById={tasksById}
               taskStates={effectiveTaskStates}
               completedObjectives={progress.completedObjectives}
+              customMapMarkers={progress.customMapMarkers ?? {}}
               t={t}
               locale={locale}
               onStart={() => selectedId && guardedStartTask(selectedId)}
@@ -948,6 +989,7 @@ export default function App() {
             tasksById={tasksById}
             taskStates={effectiveTaskStates}
             completedObjectives={progress.completedObjectives}
+            customMapMarkers={progress.customMapMarkers ?? {}}
             t={t}
             locale={locale}
             onStart={() => selectedId && guardedStartTask(selectedId)}

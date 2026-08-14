@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import {
+  canRevealWeeklyCode,
   getSpanishAuthWeekKey,
   getWeeklyAccessCode,
   hasSiteAccessPasswords,
@@ -127,7 +128,7 @@ function siteAuthDevPlugin(): Plugin {
           sendJson(res, 401, { error: 'Unauthorized' });
           return;
         }
-        if (session.kind !== 'public') {
+        if (!canRevealWeeklyCode(session.kind)) {
           sendJson(res, 403, { error: 'Forbidden' });
           return;
         }

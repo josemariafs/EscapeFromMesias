@@ -74,6 +74,7 @@ export interface AdminChangeRow {
 export type AdminAccessKindKey =
   | 'public'
   | 'private'
+  | 'mv'
   | 'daily'
   | 'legacy'
   | 'admin'
@@ -159,7 +160,7 @@ export async function forceTaskSync(token: string): Promise<{
   };
 }
 
-export type AdminUsageAccessKind = 'public' | 'private' | 'daily' | 'legacy' | 'admin';
+export type AdminUsageAccessKind = 'public' | 'private' | 'mv' | 'daily' | 'legacy' | 'admin';
 export type AdminUsageAccessFilter = AdminUsageAccessKind | 'unknown';
 
 export interface AdminUsageEventRow {

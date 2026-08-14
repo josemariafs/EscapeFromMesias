@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
-export type SiteAuthKind = 'public' | 'private' | 'daily' | 'legacy' | 'admin';
+export type SiteAuthKind = 'public' | 'private' | 'mv' | 'daily' | 'legacy' | 'admin';
 
 const SITE_SESSION_PAYLOAD = 'efg-site-access-v1';
 /** Prefijo distinto al diario antiguo para invalidar códigos previos. */
@@ -126,6 +126,7 @@ export function getPermanentAccessEntries(): Array<{ kind: SiteAuthKind; passwor
 
   add('public', process.env.PERMANENT_TOKEN_PUBLIC);
   add('private', process.env.PERMANENT_TOKEN_PRIVATE);
+  add('mv', process.env.PERMANENT_TOKEN_MV);
   add('legacy', process.env.PERMANENT_TOKEN);
   return entries;
 }
@@ -137,6 +138,11 @@ function getAdminAccessPassword(): string | null {
 
 function adminSessionMaterial(password: string): string {
   return `${ADMIN_SESSION_PREFIX}${password}`;
+}
+
+/** Public y MV pueden ver el código semanal; private/admin/daily no. */
+export function canRevealWeeklyCode(kind: SiteAuthKind | null | undefined): boolean {
+  return kind === 'public' || kind === 'mv';
 }
 
 export function hasSiteAccessPasswords(): boolean {

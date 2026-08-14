@@ -1,5 +1,6 @@
 import type { MapPosition } from '../types';
 import mapProjections from '../data/mapProjections.json';
+import { resolveMapKey } from './maps';
 
 export interface MapProjectionConfig {
   transform: [number, number, number, number];
@@ -13,7 +14,7 @@ export interface MapProjectionConfig {
 const projections = mapProjections as unknown as Record<string, MapProjectionConfig>;
 
 export function getMapProjection(normalizedName: string): MapProjectionConfig | null {
-  return projections[normalizedName] ?? null;
+  return projections[resolveMapKey(normalizedName)] ?? null;
 }
 
 /** Misma rotación que tarkov.dev (applyRotation en Map.jsx). */

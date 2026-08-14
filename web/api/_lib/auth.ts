@@ -3,6 +3,7 @@ import type { VercelRequest } from '@vercel/node';
 import { resolveSiteSession } from './siteAccess.js';
 
 export {
+  canRevealWeeklyCode,
   createSiteSessionToken,
   getDailyAccessCode,
   getSpanishAuthDayKey,

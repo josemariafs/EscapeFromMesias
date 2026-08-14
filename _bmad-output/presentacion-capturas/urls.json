@@ -1,0 +1,19 @@
+{
+  "host": "imgbb",
+  "urls": {
+    "efg-01-login.png": "https://i.ibb.co/Xf1YQZbV/efg-01-login.png",
+    "efg-02-home.png": "https://i.ibb.co/KYtZ011/efg-02-home.png",
+    "efg-03-quests-all.png": "https://i.ibb.co/tTmXQ7nq/efg-03-quests-all.png",
+    "efg-04-quest-detail.png": "https://i.ibb.co/8LdMWPYQ/efg-04-quest-detail.png",
+    "efg-05-map-modal.png": "https://i.ibb.co/YF7zv12r/efg-05-map-modal.png",
+    "efg-06-story.png": "https://i.ibb.co/nqf0WyPd/efg-06-story.png",
+    "efg-07-story-detail.png": "https://i.ibb.co/nqf0WyPd/efg-06-story.png",
+    "efg-08-trader-levels.png": "https://i.ibb.co/mCqwrgW7/efg-08-trader-levels.png",
+    "efg-09-routes.png": "https://i.ibb.co/HfP5cvsY/efg-09-routes.png",
+    "efg-10-route-map.png": "https://i.ibb.co/V0hP4725/efg-10-route-map.png",
+    "efg-11-feedback.png": "https://i.ibb.co/n8zY8SXf/efg-11-feedback.png",
+    "efg-12-kb-report.png": "https://i.ibb.co/qYS7J3kH/efg-12-kb-report.png",
+    "efg-13-logs.png": "https://i.ibb.co/TxNrGHbX/efg-13-logs.png",
+    "efg-14-menu.png": "https://i.ibb.co/8LQVPXCR/efg-14-menu.png"
+  }
+}

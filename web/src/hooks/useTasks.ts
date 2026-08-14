@@ -5,6 +5,7 @@ import { loadBundledFallbackTasks } from '../data/tasksFallback';
 import type { Lang } from '../i18n/translations';
 import type { GameMode, Task } from '../types';
 import { TASKS_CACHE_SCHEMA } from '../types';
+import { enrichTasksWithZoneOverlay, type TaskZonesOverlay } from '../utils/enrichTaskZones';
 import {
   isCacheUsableFallback,
   isCacheValid,
@@ -12,6 +13,26 @@ import {
   readTaskCache,
   writeTaskCache,
 } from '../utils/taskCache';
+
+let zoneOverlayPromise: Promise<TaskZonesOverlay> | null = null;
+
+function loadZoneOverlay(): Promise<TaskZonesOverlay> {
+  if (!zoneOverlayPromise) {
+    zoneOverlayPromise = import('../data/task-zones-overlay.json').then(
+      (mod) => mod.default as TaskZonesOverlay,
+    );
+  }
+  return zoneOverlayPromise;
+}
+
+async function withZoneOverlay(tasks: Task[]): Promise<Task[]> {
+  try {
+    const overlay = await loadZoneOverlay();
+    return enrichTasksWithZoneOverlay(tasks, overlay);
+  } catch {
+    return tasks;
+  }
+}
 
 async function fetchTasksPreferLive(lang: Lang, gameMode: GameMode): Promise<{
   tasks: Task[];
@@ -60,14 +81,15 @@ export function useTasks(lang: Lang, gameMode: GameMode) {
       const cached = await readTaskCache(lang, gameMode);
 
       if (!force && cached && isCacheValid(cached, lang, gameMode)) {
-        setTasks(cached.tasks);
+        setTasks(await withZoneOverlay(cached.tasks));
         setLoading(false);
         return;
       }
 
       try {
         const { tasks: data } = await fetchTasksPreferLive(lang, gameMode);
-        setTasks(data);
+        const enriched = await withZoneOverlay(data);
+        setTasks(enriched);
         setUsingStaleCache(false);
         setApiError(null);
 
@@ -77,7 +99,7 @@ export function useTasks(lang: Lang, gameMode: GameMode) {
             lang,
             gameMode,
             fetchedAt: new Date().toISOString(),
-            tasks: data,
+            tasks: enriched,
           });
         } catch {
           // La carga online ya funcionó; ignorar fallos de caché.
@@ -87,12 +109,12 @@ export function useTasks(lang: Lang, gameMode: GameMode) {
         setApiError(message);
         // Orden de respaldo offline: caché IndexedDB → snapshot empaquetado.
         if (cached && isCacheUsableFallback(cached, lang, gameMode)) {
-          setTasks(cached.tasks);
+          setTasks(await withZoneOverlay(cached.tasks));
           setUsingStaleCache(true);
           setError(null);
         } else {
-          const bundled = await loadBundledFallbackTasks(lang);
-          setTasks(bundled);
+          const bundled = await loadBundledFallbackTasks(lang, gameMode);
+          setTasks(await withZoneOverlay(bundled));
           setUsingStaleCache(true);
           setError(null);
         }

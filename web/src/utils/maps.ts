@@ -32,52 +32,66 @@ export const ROUTE_MAPS: { key: string; name: string }[] = [
 ];
 
 export function getMapSvgUrl(normalizedName: string): string | null {
-  const file = MAP_SVG_FILES[normalizedName];
+  const key = resolveMapKey(normalizedName);
+  const file = MAP_SVG_FILES[key];
   return file ? `/maps/${file}` : null;
 }
 
 export function getTarkovDevMapUrl(normalizedName: string): string {
-  return `https://tarkov.dev/map/${normalizedName}`;
+  return `https://tarkov.dev/map/${resolveMapKey(normalizedName)}`;
 }
 
-/** Variantes de mapa que deben agruparse bajo el mapa base en la vista Activas. */
+/** Variantes de mapa que deben agruparse bajo el mapa base. */
 const MAP_GROUP_ALIASES: Record<string, string> = {
   'ground-zero-21': 'ground-zero',
   'ground-zero-tutorial': 'ground-zero',
   'night-factory': 'factory',
+  'the-lab-dark': 'the-lab',
 };
 
 /** Etiqueta mostrada para el grupo unificado (clave = normalizedName del mapa base). */
 const MAP_GROUP_LABELS: Record<string, string> = {
-  'factory': 'Factory',
+  factory: 'Factory',
   'ground-zero': 'Ground Zero',
+  'the-lab': 'The Lab',
 };
 
+/** Resuelve variantes (p.ej. The Lab Dark → The Lab) a la clave canónica. */
+export function resolveMapKey(normalizedName: string): string {
+  return MAP_GROUP_ALIASES[normalizedName] ?? normalizedName;
+}
+
 export function getMapGroupKey(map: GameMap): string {
-  return MAP_GROUP_ALIASES[map.normalizedName] ?? map.normalizedName;
+  return resolveMapKey(map.normalizedName);
 }
 
 export function getMapGroupLabel(map: GameMap): string {
   const key = getMapGroupKey(map);
   if (MAP_GROUP_LABELS[key]) return MAP_GROUP_LABELS[key];
   if (key === map.normalizedName) return map.name;
-  return map.name.replace(/\s+(21\+|Tutorial)$/i, '').trim();
+  return map.name
+    .replace(/\s+(21\+|Tutorial)$/i, '')
+    .replace(/\s*\(Dark\)\s*$/i, '')
+    .trim();
 }
 
 export function getTaskMaps(task: Task): GameMap[] {
   const maps = new Map<string, GameMap>();
 
-  if (task.map) {
-    maps.set(task.map.normalizedName, task.map);
-  }
+  const add = (gameMap: GameMap) => {
+    const key = getMapGroupKey(gameMap);
+    if (maps.has(key)) return;
+    maps.set(key, {
+      normalizedName: key,
+      name: getMapGroupLabel(gameMap),
+    });
+  };
+
+  if (task.map) add(task.map);
 
   for (const obj of task.objectives) {
-    for (const m of obj.maps) {
-      maps.set(m.normalizedName, m);
-    }
-    for (const zone of obj.zones ?? []) {
-      maps.set(zone.map.normalizedName, zone.map);
-    }
+    for (const m of obj.maps) add(m);
+    for (const zone of obj.zones ?? []) add(zone.map);
   }
 
   return [...maps.values()];
