@@ -56,7 +56,8 @@ const ACCESS_KIND_LABELS: Record<string, string> = {
   public: 'Clave pública',
   private: 'Clave privada',
   mv: 'Clave MV',
-  daily: 'Código semanal',
+  daily: 'Código semanal PUBLIC',
+  'daily-mv': 'Código semanal MV',
   legacy: 'Clave legacy',
   admin: 'Admin',
   unknown: 'Sin clasificar',
@@ -67,6 +68,7 @@ const ACCESS_STACK_ORDER: AdminAccessKindKey[] = [
   'private',
   'mv',
   'daily',
+  'daily-mv',
   'legacy',
   'admin',
   'unknown',
@@ -77,6 +79,7 @@ const ACCESS_STACK_COLORS: Record<AdminAccessKindKey, string> = {
   private: '#c9a227',
   mv: '#9b6bdb',
   daily: '#6a9fd8',
+  'daily-mv': '#3d7ec4',
   legacy: '#8a8a90',
   admin: '#d08050',
   unknown: '#4a5560',
@@ -93,6 +96,7 @@ function emptyAccessBuckets(): NonNullable<AdminDailyVisitRow['byAccess']> {
     private: { visits: 0, uniqueVisitors: 0 },
     mv: { visits: 0, uniqueVisitors: 0 },
     daily: { visits: 0, uniqueVisitors: 0 },
+    'daily-mv': { visits: 0, uniqueVisitors: 0 },
     legacy: { visits: 0, uniqueVisitors: 0 },
     admin: { visits: 0, uniqueVisitors: 0 },
     unknown: { visits: 0, uniqueVisitors: 0 },
@@ -1020,7 +1024,8 @@ export function AdminDashboardPage() {
                     <option value="public">Clave pública</option>
                     <option value="private">Clave privada</option>
                     <option value="mv">Clave MV</option>
-                    <option value="daily">Código semanal</option>
+                    <option value="daily">Código semanal PUBLIC</option>
+                    <option value="daily-mv">Código semanal MV</option>
                     <option value="legacy">Clave legacy</option>
                     <option value="admin">Admin</option>
                     <option value="unknown">Sin clasificar</option>
@@ -1033,6 +1038,7 @@ export function AdminDashboardPage() {
                       || row.accessKind === 'private'
                       || row.accessKind === 'mv'
                       || row.accessKind === 'daily'
+                      || row.accessKind === 'daily-mv'
                       || row.accessKind === 'legacy'
                       || row.accessKind === 'admin'
                       || row.accessKind === 'unknown'

@@ -5,7 +5,7 @@ import { getMadridCivilDayKey } from './siteAccess.js';
 /** Retención de eventos crudos y agregados diarios (Europe/Madrid). */
 export const USAGE_RETENTION_DAYS = 90;
 
-export const USAGE_ACCESS_KINDS = ['public', 'private', 'mv', 'daily', 'legacy', 'admin'] as const;
+export const USAGE_ACCESS_KINDS = ['public', 'private', 'mv', 'daily', 'daily-mv', 'legacy', 'admin'] as const;
 export type UsageAccessKind = (typeof USAGE_ACCESS_KINDS)[number];
 /** Filtro admin: claves reales + eventos sin access_kind. */
 export type UsageAccessFilter = UsageAccessKind | 'unknown';
@@ -285,6 +285,7 @@ function emptyAccessBuckets(): Record<
     private: { visits: 0, uniqueVisitors: 0 },
     mv: { visits: 0, uniqueVisitors: 0 },
     daily: { visits: 0, uniqueVisitors: 0 },
+    'daily-mv': { visits: 0, uniqueVisitors: 0 },
     legacy: { visits: 0, uniqueVisitors: 0 },
     admin: { visits: 0, uniqueVisitors: 0 },
     unknown: { visits: 0, uniqueVisitors: 0 },

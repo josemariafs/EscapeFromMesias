@@ -1,10 +1,11 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
-export type SiteAuthKind = 'public' | 'private' | 'mv' | 'daily' | 'legacy' | 'admin';
+export type SiteAuthKind = 'public' | 'private' | 'mv' | 'daily' | 'daily-mv' | 'legacy' | 'admin';
+export type WeeklyAudience = 'public' | 'mv';
 
 const SITE_SESSION_PAYLOAD = 'efg-site-access-v1';
-/** Prefijo distinto al diario antiguo para invalidar códigos previos. */
-const WEEKLY_CODE_PAYLOAD = 'efg-weekly-code-v1';
+/** v2: códigos independientes por audiencia (PUBLIC / MV). */
+const WEEKLY_CODE_PAYLOAD = 'efg-weekly-code-v2';
 const ADMIN_SESSION_PREFIX = 'admin:';
 const MADRID_TZ = 'Europe/Madrid';
 const WEEK_ROLLOVER_HOUR = 5;
@@ -78,39 +79,67 @@ export function getSpanishAuthDayKey(now = new Date()): string {
   return getSpanishAuthWeekKey(now);
 }
 
-function getWeeklyCodeSecret(): string | null {
-  const secret =
-    process.env.PERMANENT_TOKEN_PRIVATE?.trim()
-    || process.env.PERMANENT_TOKEN_PUBLIC?.trim()
-    || process.env.PERMANENT_TOKEN?.trim()
-    || '';
+function getWeeklyAudienceSecret(audience: WeeklyAudience): string | null {
+  const secret = audience === 'public'
+    ? process.env.PERMANENT_TOKEN_PUBLIC?.trim()
+    : process.env.PERMANENT_TOKEN_MV?.trim();
   return secret || null;
 }
 
-/** Código semanal de 4 dígitos (válido hasta el lunes 05:00 Europe/Madrid). */
-export function getWeeklyAccessCode(now = new Date()): string | null {
-  const secret = getWeeklyCodeSecret();
+function deriveWeeklyDigits(secret: string, weekKey: string, domain: string): string {
+  const digest = createHmac('sha256', secret)
+    .update(`${WEEKLY_CODE_PAYLOAD}:${domain}:${weekKey}`)
+    .digest();
+  return String(digest.readUInt32BE(0) % 10000).padStart(4, '0');
+}
+
+/** Código semanal de 4 dígitos por audiencia (válido hasta el lunes 05:00 Europe/Madrid). */
+export function getWeeklyAccessCode(audience: WeeklyAudience, now = new Date()): string | null {
+  const secret = getWeeklyAudienceSecret(audience);
   if (!secret) return null;
 
   const weekKey = getSpanishAuthWeekKey(now);
-  const digest = createHmac('sha256', secret)
-    .update(`${WEEKLY_CODE_PAYLOAD}:${weekKey}`)
-    .digest();
-  const num = digest.readUInt32BE(0) % 10000;
-  return String(num).padStart(4, '0');
+  const code = deriveWeeklyDigits(secret, weekKey, audience);
+  if (audience !== 'mv') return code;
+
+  const publicSecret = getWeeklyAudienceSecret('public');
+  if (!publicSecret) return code;
+
+  const publicCode = deriveWeeklyDigits(publicSecret, weekKey, 'public');
+  if (code !== publicCode) return code;
+
+  for (let n = 1; n < 10000; n += 1) {
+    const retry = deriveWeeklyDigits(secret, weekKey, `mv:collision:${n}`);
+    if (retry !== publicCode) return retry;
+  }
+  return null;
 }
 
-/** @deprecated Usar getWeeklyAccessCode. */
+/** Código que una sesión permanente puede revelar. Weekly / private / admin → null. */
+export function getRevealableWeeklyCode(
+  kind: SiteAuthKind | null | undefined,
+  now = new Date(),
+): string | null {
+  if (kind === 'public') return getWeeklyAccessCode('public', now);
+  if (kind === 'mv') return getWeeklyAccessCode('mv', now);
+  return null;
+}
+
+/** @deprecated Usar getWeeklyAccessCode('public'). */
 export function getDailyAccessCode(now = new Date()): string | null {
-  return getWeeklyAccessCode(now);
+  return getWeeklyAccessCode('public', now);
 }
 
 export function createSiteSessionToken(material: string): string {
   return createHmac('sha256', material).update(SITE_SESSION_PAYLOAD).digest('hex');
 }
 
-function weeklySessionMaterial(weekKey: string, code: string): string {
-  return `weekly:${weekKey}:${code}`;
+function weeklySessionMaterial(audience: WeeklyAudience, weekKey: string, code: string): string {
+  return `weekly:v2:${audience}:${weekKey}:${code}`;
+}
+
+function weeklyKind(audience: WeeklyAudience): SiteAuthKind {
+  return audience === 'public' ? 'daily' : 'daily-mv';
 }
 
 export function getPermanentAccessEntries(): Array<{ kind: SiteAuthKind; password: string }> {
@@ -140,7 +169,7 @@ function adminSessionMaterial(password: string): string {
   return `${ADMIN_SESSION_PREFIX}${password}`;
 }
 
-/** Public y MV pueden ver el código semanal; private/admin/daily no. */
+/** Solo tokens permanentes public/mv revelan su código; weekly/private/admin/legacy no. */
 export function canRevealWeeklyCode(kind: SiteAuthKind | null | undefined): boolean {
   return kind === 'public' || kind === 'mv';
 }
@@ -148,7 +177,8 @@ export function canRevealWeeklyCode(kind: SiteAuthKind | null | undefined): bool
 export function hasSiteAccessPasswords(): boolean {
   return (
     getPermanentAccessEntries().length > 0
-    || Boolean(getWeeklyCodeSecret())
+    || Boolean(getWeeklyAudienceSecret('public'))
+    || Boolean(getWeeklyAudienceSecret('mv'))
     || Boolean(getAdminAccessPassword())
   );
 }
@@ -181,11 +211,17 @@ export function resolveSiteLogin(
   }
 
   const weekKey = getSpanishAuthWeekKey(now);
-  const weekly = getWeeklyAccessCode(now);
-  if (weekly && safeEqualStrings(candidate, weekly)) {
-    // Si coincide con un permanente por azar, prevalece el permanente (matched ya set).
-    if (!matched) {
-      matched = { kind: 'daily', material: weeklySessionMaterial(weekKey, weekly) };
+  if (!matched) {
+    const audiences: WeeklyAudience[] = ['public', 'mv'];
+    for (const audience of audiences) {
+      const weekly = getWeeklyAccessCode(audience, now);
+      if (weekly && safeEqualStrings(candidate, weekly)) {
+        matched = {
+          kind: weeklyKind(audience),
+          material: weeklySessionMaterial(audience, weekKey, weekly),
+        };
+        break;
+      }
     }
   }
 
@@ -219,12 +255,17 @@ export function resolveSiteSession(
     }
   }
 
-  const weekKey = getSpanishAuthWeekKey(now);
-  const weekly = getWeeklyAccessCode(now);
-  if (weekly) {
-    const expected = createSiteSessionToken(weeklySessionMaterial(weekKey, weekly));
-    if (safeEqualStrings(token, expected)) {
-      matched = { ok: true, kind: 'daily', token: expected };
+  if (!matched) {
+    const weekKey = getSpanishAuthWeekKey(now);
+    const audiences: WeeklyAudience[] = ['public', 'mv'];
+    for (const audience of audiences) {
+      const weekly = getWeeklyAccessCode(audience, now);
+      if (!weekly) continue;
+      const expected = createSiteSessionToken(weeklySessionMaterial(audience, weekKey, weekly));
+      if (safeEqualStrings(token, expected)) {
+        matched = { ok: true, kind: weeklyKind(audience), token: expected };
+        break;
+      }
     }
   }
 

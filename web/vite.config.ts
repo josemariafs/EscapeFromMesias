@@ -4,8 +4,8 @@ import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import {
   canRevealWeeklyCode,
+  getRevealableWeeklyCode,
   getSpanishAuthWeekKey,
-  getWeeklyAccessCode,
   hasSiteAccessPasswords,
   resolveSiteLogin,
   resolveSiteSession,
@@ -123,7 +123,8 @@ function siteAuthDevPlugin(): Plugin {
         }
 
         const token = typeof body.token === 'string' ? body.token : '';
-        const session = resolveSiteSession(token);
+        const now = new Date();
+        const session = resolveSiteSession(token, now);
         if (!session.ok) {
           sendJson(res, 401, { error: 'Unauthorized' });
           return;
@@ -133,13 +134,13 @@ function siteAuthDevPlugin(): Plugin {
           return;
         }
 
-        const code = getWeeklyAccessCode();
+        const code = getRevealableWeeklyCode(session.kind, now);
         if (!code) {
           sendJson(res, 503, { error: 'Weekly code is not configured' });
           return;
         }
 
-        const weekKey = getSpanishAuthWeekKey();
+        const weekKey = getSpanishAuthWeekKey(now);
         sendJson(res, 200, {
           ok: true,
           code,

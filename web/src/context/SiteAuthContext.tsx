@@ -8,7 +8,7 @@ interface SiteAuthContextValue {
   canRevealDailyCode: boolean;
   /** Sesión iniciada con ADMIN_TOKEN: acceso al panel /admin. */
   canAccessAdmin: boolean;
-  /** Logo Escape From Gorditos (token public o código semanal). */
+  /** Logo Escape From Gorditos (token public o código semanal PUBLIC). */
   useGorditosLogo: boolean;
   /** Cierra sesión de la app y vuelve a la pantalla de contraseña. */
   logout: () => void;

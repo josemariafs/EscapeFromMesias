@@ -101,7 +101,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - Silently replace `useTasks` with `/api/tasks`.
 
 **Edge cases**
-- Weekly code: Europe/Madrid, Monday 05:00; reveal only for `public` sessions.
+- Weekly codes: Europe/Madrid, Monday 05:00. PUBLIC and MV each derive a distinct 4-digit code. Reveal only for permanent `public` / `mv` (own audience). `daily` / `daily-mv` cannot reveal.
 - Game mode (`regular` / `seasonal` / `pve`) affects task sources and route `environment`.
 - Logs sync needs Chromium File System Access.
 - Admin dashboard exists but is unwired — do not mount unless asked.

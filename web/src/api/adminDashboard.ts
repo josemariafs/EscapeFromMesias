@@ -76,6 +76,7 @@ export type AdminAccessKindKey =
   | 'private'
   | 'mv'
   | 'daily'
+  | 'daily-mv'
   | 'legacy'
   | 'admin'
   | 'unknown';
@@ -160,7 +161,7 @@ export async function forceTaskSync(token: string): Promise<{
   };
 }
 
-export type AdminUsageAccessKind = 'public' | 'private' | 'mv' | 'daily' | 'legacy' | 'admin';
+export type AdminUsageAccessKind = 'public' | 'private' | 'mv' | 'daily' | 'daily-mv' | 'legacy' | 'admin';
 export type AdminUsageAccessFilter = AdminUsageAccessKind | 'unknown';
 
 export interface AdminUsageEventRow {

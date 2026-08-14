@@ -117,6 +117,7 @@ function isAccessKind(value: string | undefined): boolean {
     || value === 'private'
     || value === 'mv'
     || value === 'daily'
+    || value === 'daily-mv'
     || value === 'legacy'
     || value === 'admin'
   );

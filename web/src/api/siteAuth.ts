@@ -1,4 +1,4 @@
-export type SiteAuthKind = 'public' | 'private' | 'mv' | 'daily' | 'legacy' | 'admin';
+export type SiteAuthKind = 'public' | 'private' | 'mv' | 'daily' | 'daily-mv' | 'legacy' | 'admin';
 
 export function canRevealWeeklyCode(kind: SiteAuthKind | null | undefined): boolean {
   return kind === 'public' || kind === 'mv';
@@ -23,6 +23,7 @@ export function getStoredSiteKind(): SiteAuthKind | null {
       || kind === 'private'
       || kind === 'mv'
       || kind === 'daily'
+      || kind === 'daily-mv'
       || kind === 'legacy'
       || kind === 'admin'
     ) {

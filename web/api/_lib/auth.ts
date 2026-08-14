@@ -6,6 +6,7 @@ export {
   canRevealWeeklyCode,
   createSiteSessionToken,
   getDailyAccessCode,
+  getRevealableWeeklyCode,
   getSpanishAuthDayKey,
   getSpanishAuthWeekKey,
   getWeeklyAccessCode,
@@ -14,6 +15,7 @@ export {
   resolveSiteLogin,
   resolveSiteSession,
   type SiteAuthKind,
+  type WeeklyAudience,
 } from './siteAccess.js';
 
 function safeEqualStrings(a: string, b: string): boolean {

@@ -18,9 +18,9 @@ Copy `web/.env.example` → `web/.env.local` (and/or Vercel project env for depl
 | `TURSO_DATABASE_URL` | libSQL URL |
 | `TURSO_AUTH_TOKEN` | Turso auth |
 | `ADMIN_TOKEN` | Bearer for admin writes / dashboard / cron fallback |
-| `PERMANENT_TOKEN_PUBLIC` | Site gate + weekly code reveal |
-| `PERMANENT_TOKEN_PRIVATE` | Site gate (no weekly code reveal) |
-| `PERMANENT_TOKEN_MV` | Site gate + weekly code reveal (like public) |
+| `PERMANENT_TOKEN_PUBLIC` | Site gate + reveal PUBLIC weekly code (Gorditos logos) |
+| `PERMANENT_TOKEN_PRIVATE` | Site gate (no weekly code; default logos) |
+| `PERMANENT_TOKEN_MV` | Site gate + reveal MV weekly code (default logos; code ≠ PUBLIC) |
 | `CRON_SECRET` | Optional; Vercel Cron Bearer for task sync |
 
 Never use `VITE_` prefix for these secrets.
