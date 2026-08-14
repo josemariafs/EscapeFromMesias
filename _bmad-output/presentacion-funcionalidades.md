@@ -1,18 +1,20 @@
 # Escape From Gorditos — tracker de misiones de Escape from Tarkov
 
-Web companion para llevar las quests de **Escape from Tarkov** (PvP Regular y PvP Seasonal / Kord Breach), ver dónde hay que ir en el mapa y planear rutas con el grupo.
+Web companion para **Escape from Tarkov**: PvP Regular y **PvP Seasonal / Kord Breach**.
+
+La gracia está en el **modo Logs**: conectas la carpeta de logs del juego y la app se actualiza sola mientras raidéas. Las misiones en curso se agrupan por mapa; al pulsar **Map** ves pines de quest, extractos y los **documentos de Kord Breach** (marcadores de la web + de la comunidad). También puedes pintar tus propios puntos y flechas.
 
 Sitio: [https://escapefromgorditos.com](https://escapefromgorditos.com)
 
-El progreso se guarda en el navegador (no usa cookies). Español e inglés.
+Español e inglés. El progreso vive en el navegador (no usa cookies).
 
 ---
 
 ## Acceso
 
-Pantalla estilo CRT. Entras con el código de acceso y listo.
+Pantalla estilo CRT. Entras con el código y listo.
 
-![Pantalla de acceso](https://i.ibb.co/RpqpQ8T7/efg16-01-login.png)
+![Pantalla de acceso](https://i.ibb.co/bgrnDcVh/efg16-01-login.png)
 
 ---
 
@@ -24,129 +26,101 @@ Tres entradas:
 - **PvP Zone** — misiones Regular
 - **PvP Season** — misiones Seasonal / Kord Breach
 
-Abajo, **Version News** con los cambios de la última versión. El pie muestra gente en línea, visitas, feedback y un botón para reportar documentos KB que falten en los mapas.
+Abajo, **Version News**. En el pie: gente en línea, visitas, feedback y **Report KB Document Marker** para mandar documentos que falten.
 
-![Pantalla de inicio](https://i.ibb.co/6JgSjzY2/efg16-02-home.png)
-
----
-
-## Tracker de misiones
-
-Listado tipo tabla con **Todas / Activas / Completadas**.
-
-Dentro de Todas puedes separar **Story** (campaña) y **Misiones** (traders).
-
-Filtros:
-
-- búsqueda por nombre o descripción
-- comerciante
-- mapa
-- nivel del PMC (`Lv`)
-- loyalty de traders (`LL`)
-
-Cada fila enseña mapa, ítems clave y el trader. **Iniciar** pone la misión en curso.
-
-![Listado de misiones](https://i.ibb.co/4wVKB028/efg16-03-quests-all.png)
+![Pantalla de inicio](https://i.ibb.co/Q39gXjVH/efg16-02-home.png)
 
 ---
 
-## Detalle de una misión
+## Modo Logs: se actualiza mientras juegas
 
-Al pulsar una quest se abre el detalle: estado, XP, nivel mínimo, requisitos, objetivos y enlace a la wiki.
+Arriba a la derecha: **Local** o **Logs**.
 
-Si hay coordenadas, salen **miniaturas del mapa con pines**. Si hay 3 o más mapas, van en acordeón (el primero abierto). Clic en la miniatura abre el mapa a pantalla completa.
+- **Local** — marcas tú Iniciar / Completar
+- **Logs** — el modo que importa si estás raidando
 
-![Detalle de misión con mapa](https://i.ibb.co/PvhySYZv/efg16-04-quest-detail.png)
+En Logs pulsas **Conectar carpeta de Logs** (Chrome o Edge) y eliges la carpeta `Logs` de Tarkov. La app lee los eventos del juego y **refresca el estado al instante**: aceptas una quest en el trader y aparece en Activas; la entregas y pasa a Completadas. No hay que tocar Iniciar/Completar a mano: los logs mandan.
 
-![Mapa a pantalla completa](https://i.ibb.co/XrGLZ0kM/efg16-05-map-modal.png)
+Sirve para Regular y para Seasonal. Cada modo tiene su progreso aparte.
 
----
+![Conectar carpeta de Logs](https://i.ibb.co/cSp7cCLN/efg16-13-logs.png)
 
-## Campaña Story
+Cuando hay misiones en curso, **Activas** las agrupa por mapa (Customs, Shoreline, Interchange…). Cada bloque enseña nombre, ítems clave, trader y el botón **Map**.
 
-Árbol de la campaña: disponibles en verde, bloqueadas en gris, unidas por prerrequisitos. Se puede filtrar por capítulo (Tour, Falling Skies, Boreas, etc.) y buscar objetivo.
-
-![Campaña Story](https://i.ibb.co/JWsJJfQm/efg16-06-story.png)
-
----
-
-## Loyalty de traders
-
-El botón **LL** abre el panel de loyalty. Se calcula solo según misiones hechas, y se puede ajustar a mano si hace falta.
-
-![Loyalty Level de comerciantes](https://i.ibb.co/5WJvtXrF/efg16-08-trader-levels.png)
+![Misiones activas agrupadas por mapa](https://i.ibb.co/BFNFtd8/efg16-15-activas-map.png)
 
 ---
 
-## Local o Logs
+## El botón Map de las misiones activas
 
-Dos formas de llevar el progreso:
+Ese **Map** abre el mapa de esa zona con todo lo que te importa en esa raid:
 
-- **Local** — marcas tú Iniciar / Completar / objetivos
-- **Logs** — conectas la carpeta de logs de Tarkov (Chrome/Edge) y el estado se lee de ahí. En Logs no se edita a mano
+- **Pines de las quests en curso** (dónde plantar, marcar, etc.)
+- Lista de objetivos de cada misión, para ir tachando
+- **Tus puntos y flechas**: clic en el mapa para marcar, arrastrar, crear flechas, deshacer
+- **Puntos fijos de la web**: extractos PMC / Scav y marcadores oficiales (se ocultan con el ojo)
+- **Documentos Key Document de Kord Breach**: los pone la web y la comunidad. Si en raid encuentras uno que no está, lo reportas y, al publicarse, lo ve todo el mundo
 
-![Modo Logs](https://i.ibb.co/Ps7RtNjn/efg16-13-logs.png)
+![Mapa de misiones activas](https://i.ibb.co/60KptRY1/efg16-16-activas-mapa.png)
 
----
+En Seasonal / Routes los documentos KB se ven igual: escudo azul **KB** sobre el mapa.
 
-## Rutas en el mapa
-
-Independiente de las quests. Eliges un mapa y pintas el recorrido del grupo.
-
-En la parrilla se ve cuántos **puntos fijos** (compartidos) tiene cada mapa.
-
-![Selector de mapas de rutas](https://i.ibb.co/wF3yrfB2/efg16-09-routes.png)
-
-Dentro del mapa:
-
-- colores por jugador (con nombre)
-- pines propios, se pueden arrastrar
-- flechas entre puntos
-- capas: **Key Document**, extractos PMC y Scav (se ocultan con el ojo)
-- deshacer / borrar ruta
-- zoom y arrastre
-
-![Editor de ruta en Customs](https://i.ibb.co/pvpGvvMB/efg16-10-route-map.png)
+![Documentos KB en el mapa](https://i.ibb.co/C3HrP4Bn/efg16-10-route-map.png)
 
 ---
 
-## Reportar un documento KB
+## Listado y detalle
 
-Si en raid encuentras un documento que aún no está en la app: **Report KB Document Marker**. Eliges entorno (PvP o Seasonal/Rutas), mapa, pinchas dónde va, pones etiqueta y subes captura. Un admin lo revisa y, si cuadra, se publica para todos.
+**Todas / Activas / Completadas**. Filtro por nombre, trader y mapa.
 
-![Reportar documento KB](https://i.ibb.co/DPWLFGwR/efg16-12-kb-report.png)
+![Listado de misiones](https://i.ibb.co/GYfSKx8/efg16-03-quests-all.png)
 
----
+Al clicar una misión: XP, requisitos, objetivos, wiki y miniaturas con pines. Si hay 3 o más mapas, van en acordeón. Clic en la miniatura abre el mapa grande.
 
-## Feedback
+![Detalle de misión](https://i.ibb.co/CsDHYzwr/efg16-04-quest-detail.png)
 
-**Reportar/Feedback** en el pie: título, mensaje y hasta 4 capturas (pegar con Ctrl+V o subir archivo).
-
-![Formulario de feedback](https://i.ibb.co/vC3PCYDj/efg16-11-feedback.png)
+![Mapa de la misión](https://i.ibb.co/xS5YHLcm/efg16-05-map-modal.png)
 
 ---
 
-## Idioma y wipe
+## Rutas (para el grupo)
 
-Arriba a la derecha: **ES / EN**.
+En **Routes Zone** eliges un mapa y pintas el recorrido: un color por jugador, pines, flechas, extractos y los mismos documentos KB. Independiente de las quests; sirve para quedar y marcar el plan.
 
-El menú **⋯** tiene **Wipe All** para borrar el progreso local del navegador (misiones, rutas personales, etc.). No toca los puntos fijos compartidos.
-
-![Menú Wipe All](https://i.ibb.co/fzbsdFtm/efg16-14-menu.png)
+![Selector de mapas](https://i.ibb.co/3YdXHPTT/efg16-09-routes.png)
 
 ---
 
-## Resumen rápido
+## Reportar un documento de Kord Breach
+
+**Report KB Document Marker** en el pie: eliges PvP o Seasonal/Rutas, el mapa, pinchas dónde va, etiqueta y captura. Un admin lo revisa y, si cuadra, se publica para todos.
+
+![Reportar documento KB](https://i.ibb.co/ZPrhD3v/efg16-12-kb-report.png)
+
+---
+
+## Feedback e idioma
+
+**Reportar/Feedback**: título, mensaje y hasta 4 capturas (Ctrl+V o subir).
+
+![Feedback](https://i.ibb.co/cXwhgNgg/efg16-11-feedback.png)
+
+Arriba: **ES / EN**. El menú **⋯** tiene **Wipe All** para borrar tu progreso local (no toca los puntos fijos compartidos).
+
+![Menú Wipe All](https://i.ibb.co/sv2RrPJg/efg16-14-menu.png)
+
+---
+
+## Resumen
 
 | Qué | Para qué |
 | --- | --- |
-| PvP Regular / Seasonal | Las dos ramas de misiones, sin mezclar progreso |
-| Tabla + detalle | Filtrar, iniciar y ver objetivos / wiki |
-| Mapas en la quest | Pines de plant/mark y mapa grande |
-| Story | Campaña en árbol, por capítulo |
-| LL + nivel | Requisitos de trader y PMC |
-| Local / Logs | A mano o leyendo los logs del juego |
-| Rutas | Recorridos de grupo + extractos + KB |
-| Report KB / Feedback | Aportar documentos o avisar de fallos |
+| **Modo Logs** | La app sigue tu wipe en vivo: aceptas/entregas en el juego y se refleja aquí |
+| **Activas + Map** | Misiones en curso por mapa, con pines, extractos y documentos KB |
+| **Tus marcas** | Puntos y flechas encima del mapa, para ti o el grupo |
+| **KB Kord Breach** | Documentos de la web + la comunidad; si falta uno, se reporta |
+| Regular / Seasonal | Dos ramas, progreso separado |
+| Rutas | Planear el recorrido, aparte de las quests |
+| Feedback | Avisar de fallos o ideas |
 
-Cualquier duda o fallo, el botón de feedback del pie.
+Cualquier duda, el botón de feedback del pie.

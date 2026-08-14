@@ -1,0 +1,6 @@
+node_modules/
+package-lock.json
+*.mjs
+urls.json
+urls16.json
+capture-manifest.json
