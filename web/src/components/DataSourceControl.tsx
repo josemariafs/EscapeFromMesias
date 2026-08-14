@@ -176,9 +176,14 @@ export function DataSourceControl({
                 {': '}
                 {errorMessage === NO_SESSION_FOLDERS_ERROR ? t.logsNoSessionsFoundError : errorMessage}
               </span>
-              <button type="button" className="btn btn-connect-logs" onClick={onReconnect}>
-                {t.logsRetry}
+              <button type="button" className="btn btn-connect-logs" onClick={onConnect}>
+                {t.logsChangeFolder}
               </button>
+              {errorMessage !== NO_SESSION_FOLDERS_ERROR && (
+                <button type="button" className="btn btn-connect-logs" onClick={onReconnect}>
+                  {t.logsRetry}
+                </button>
+              )}
             </>
           )}
           {status === 'syncing' && (

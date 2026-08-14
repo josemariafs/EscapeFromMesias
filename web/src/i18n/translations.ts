@@ -633,7 +633,7 @@ export const translations: Record<Lang, Translations> = {
     logsNoSessionsFoundError:
       'La carpeta seleccionada no contiene ninguna subcarpeta de sesión "log_AAAA.MM.DD_H-mm-ss…". '
       + 'Probablemente no es la carpeta "Logs" correcta: revisa que hayas entrado dentro de ella '
-      + '(no en una carpeta padre ni en una subcarpeta de sesión concreta) y vuelve a intentarlo.',
+      + '(no en una carpeta padre ni en una subcarpeta de sesión concreta) y elige otra carpeta.',
     logsRetry: 'Reintentar',
     logsPathHint:
       'Ruta habitual de los Logs de Tarkov:\n\n'
@@ -1007,7 +1007,7 @@ export const translations: Record<Lang, Translations> = {
     logsNoSessionsFoundError:
       'The selected folder has no "log_YYYY.MM.DD_H-mm-ss…" session subfolders. '
       + 'This usually means it is not the right "Logs" folder: make sure you opened it directly '
-      + '(not a parent folder or a specific session subfolder) and try again.',
+      + '(not a parent folder or a specific session subfolder) and pick a different folder.',
     logsRetry: 'Retry',
     logsPathHint:
       'Typical Tarkov Logs folder path:\n\n'

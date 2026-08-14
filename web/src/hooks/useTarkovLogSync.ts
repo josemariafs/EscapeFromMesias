@@ -401,8 +401,15 @@ export function useTarkovLogSync(enabled: boolean, gameMode: GameMode) {
         setErrorMessage(null);
       } catch (err) {
         if (runIdRef.current !== runId) return;
+        const message = err instanceof Error ? err.message : String(err);
         setStatus('error');
-        setErrorMessage(err instanceof Error ? err.message : String(err));
+        setErrorMessage(message);
+        if (message === NO_SESSION_FOLDERS_ERROR) {
+          directoryRef.current = null;
+          setFolderName(null);
+          setCanLivePoll(false);
+          void clearLogsDirHandle();
+        }
         return;
       }
 
@@ -459,7 +466,11 @@ export function useTarkovLogSync(enabled: boolean, gameMode: GameMode) {
 
   const reconnect = useCallback(async () => {
     const directory = directoryRef.current;
-    if (directory?.canPoll) {
+    if (!directory) {
+      await connect();
+      return;
+    }
+    if (directory.canPoll) {
       setStatus('connecting');
       setErrorMessage(null);
       try {
