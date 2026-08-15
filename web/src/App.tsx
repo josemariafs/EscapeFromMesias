@@ -671,6 +671,7 @@ export default function App() {
                 sessionCount={logSync.sessionCount}
                 totalSessionCount={logSync.totalSessionCount}
                 taskCount={Object.keys(logSync.taskStatusMap).length}
+                readableNotificationLogs={logSync.readableNotificationLogs}
                 wipeVersion={logSync.wipeVersion}
                 unmatchedTaskIds={unmatchedLogTaskIds}
                 unmatchedTaskStates={unmatchedLogTaskStates}

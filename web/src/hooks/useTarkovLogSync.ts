@@ -21,6 +21,7 @@ import {
   clearLogsDirHandle,
   isLogSyncSupported,
   pickLogsDirectory,
+  releaseLogsFileInput,
   tryRestoreLogsDirectory,
   type LogsDirectory,
   type SessionFolderInfo,
@@ -158,6 +159,8 @@ export function useTarkovLogSync(enabled: boolean, gameMode: GameMode) {
   const [sessionCount, setSessionCount] = useState(0);
   const [totalSessionCount, setTotalSessionCount] = useState(0);
   const [eventCount, setEventCount] = useState(0);
+  /** Sesiones cuyo notifications.log se pudo leer (aunque no tenga eventos de misión). */
+  const [readableNotificationLogs, setReadableNotificationLogs] = useState(0);
   const [wipeVersion, setWipeVersion] = useState<string | null>(null);
   const [breakpoints, setBreakpoints] = useState<WipeBreakpoint[]>([]);
   const [wipeStartSelection, setWipeStartSelectionState] = useState<string | null>(() => readStoredWipeStart());
@@ -240,6 +243,7 @@ export function useTarkovLogSync(enabled: boolean, gameMode: GameMode) {
         setSessionCount(0);
         setTotalSessionCount(folders.length);
         setEventCount(0);
+        setReadableNotificationLogs(0);
         setLastSyncedAt(new Date());
         setStatus('syncing');
         setErrorMessage(null);
@@ -302,6 +306,7 @@ export function useTarkovLogSync(enabled: boolean, gameMode: GameMode) {
     const runId = ++runIdRef.current;
     directoryRef.current = root;
     setCanLivePoll(root.canPoll);
+    setReadableNotificationLogs(0);
     baseMapRef.current = {};
     baseEventCountRef.current = 0;
     wipeSessionCountRef.current = 0;
@@ -363,8 +368,10 @@ export function useTarkovLogSync(enabled: boolean, gameMode: GameMode) {
           ?? resolvedProfiles[resolvedProfiles.length - 1]
           ?? null;
 
+        let readableNotif = 0;
         for (let i = 0; i < wipeFolders.length - 1; i++) {
           const text = await wipeFolders[i].readNotificationsText();
+          if (text.trim()) readableNotif += 1;
           const events = extractTaskEventsFromLogText(text);
           baseEventCountRef.current += events.length;
           baseMapRef.current = buildTaskStatusMap(events, baseMapRef.current);
@@ -377,6 +384,7 @@ export function useTarkovLogSync(enabled: boolean, gameMode: GameMode) {
           const latest = wipeFolders[wipeFolders.length - 1];
           latestFolderRef.current = latest;
           const text = await latest.readNotificationsText();
+          if (text.trim()) readableNotif += 1;
           const events = extractTaskEventsFromLogText(text);
           latestEventCount = events.length;
           combined = buildTaskStatusMap(events, baseMapRef.current);
@@ -393,6 +401,7 @@ export function useTarkovLogSync(enabled: boolean, gameMode: GameMode) {
         setSessionCount(wipeFolders.length);
         setTotalSessionCount(folders.length);
         setEventCount(baseEventCountRef.current + latestEventCount);
+        setReadableNotificationLogs(readableNotif);
         setWipeVersion(currentWipeRef.current?.version ?? null);
         setActiveProfileId(latestProfileId);
         setKnownProfiles(collectProfileInfos(folders, resolvedProfiles, modes));
@@ -510,12 +519,14 @@ export function useTarkovLogSync(enabled: boolean, gameMode: GameMode) {
     setSessionCount(0);
     setTotalSessionCount(0);
     setEventCount(0);
+    setReadableNotificationLogs(0);
     setWipeVersion(null);
     setBreakpoints([]);
     setResolvedWipeStartSession(null);
     setKnownProfiles([]);
     setActiveProfileId(null);
     await clearLogsDirHandle();
+    releaseLogsFileInput();
     setStatus(isLogSyncSupported() ? 'disconnected' : 'unsupported');
   }, [stopPolling]);
 
@@ -565,6 +576,7 @@ export function useTarkovLogSync(enabled: boolean, gameMode: GameMode) {
     sessionCount,
     totalSessionCount,
     eventCount,
+    readableNotificationLogs,
     wipeVersion,
     breakpoints,
     wipeStartSelection,

@@ -294,6 +294,7 @@ export interface Translations {
   logsPathHint: string;
   logsStats: (sessions: number, totalSessions: number, tasks: number, version: string | null) => string;
   logsNoEventsHint: string;
+  logsNoNotificationFilesHint: string;
   logStateDetected: (state: string) => string;
   logStateNotDetected: string;
   logLockedHint: string;
@@ -654,6 +655,10 @@ export const translations: Record<Lang, Translations> = {
       + '"Logs" correcta (la que contiene subcarpetas "log_AAAA.MM.DD_H-mm-ss…") y que dentro de cada una '
       + 'existe un archivo "notifications.log". Ten en cuenta que el juego solo conserva un número limitado '
       + 'de sesiones recientes: el progreso de partidas ya purgadas no se puede recuperar de los logs.',
+    logsNoNotificationFilesHint:
+      'Se encontraron carpetas de sesión, pero no se pudo leer ningún notifications.log. '
+      + 'Vuelve a elegir la carpeta Logs; si el juego está abierto, cierra la sesión o el cliente '
+      + 'para que el navegador pueda leer esos archivos.',
     logStateDetected: (state) => `Detectado en logs: ${state}`,
     logStateNotDetected: 'No detectado en los logs (misión anterior a las sesiones guardadas). El progreso solo se actualiza con eventos del juego.',
     logLockedHint: 'Detectado en los logs: el estado lo controla el juego, no editable.',
@@ -1028,6 +1033,10 @@ export const translations: Record<Lang, Translations> = {
       + '(the one containing "log_YYYY.MM.DD_H-mm-ss…" subfolders) and that each one contains a '
       + '"notifications.log" file. Note that the game only keeps a limited number of recent sessions: '
       + 'progress from already-purged sessions cannot be recovered from the logs.',
+    logsNoNotificationFilesHint:
+      'Session folders were found, but no notifications.log file could be read. '
+      + 'Pick the Logs folder again; if the game is running, close the raid or the client '
+      + 'so the browser can read those files.',
     logStateDetected: (state) => `Detected in logs: ${state}`,
     logStateNotDetected: 'Not detected in logs (task predates the saved sessions). Progress updates only from in-game events.',
     logLockedHint: 'Detected in logs: state is controlled by the game, not editable.',

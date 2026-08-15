@@ -23,6 +23,7 @@ interface DataSourceControlProps {
   sessionCount: number;
   totalSessionCount: number;
   taskCount: number;
+  readableNotificationLogs: number;
   wipeVersion: string | null;
   unmatchedTaskIds: string[];
   unmatchedTaskStates?: Record<string, TaskProgressState | string>;
@@ -54,6 +55,7 @@ export function DataSourceControl({
   sessionCount,
   totalSessionCount,
   taskCount,
+  readableNotificationLogs,
   wipeVersion,
   unmatchedTaskIds,
   unmatchedTaskStates = {},
@@ -227,7 +229,11 @@ export function DataSourceControl({
                     {t.logsStats(sessionCount, totalSessionCount, taskCount, wipeVersion)}
                   </p>
                   {taskCount === 0 && (
-                    <p className="logs-panel-hint logs-panel-hint--warn">{t.logsNoEventsHint}</p>
+                    <p className="logs-panel-hint logs-panel-hint--warn">
+                      {sessionCount > 0 && readableNotificationLogs === 0
+                        ? t.logsNoNotificationFilesHint
+                        : t.logsNoEventsHint}
+                    </p>
                   )}
                   {!canLivePoll && (
                     <p className="logs-panel-hint">{t.logsSnapshotHint}</p>
