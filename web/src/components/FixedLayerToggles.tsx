@@ -1,6 +1,7 @@
 import type { Translations } from '../i18n/translations';
 import {
   KB_MARKER_ICON_URL,
+  KB_UNDERGROUND_MARKER_ICON_URL,
   QUESTION_MARKER_ICON_URL,
   type FixedMarkerType,
   type FixedRoutePoint,
@@ -46,6 +47,7 @@ function layersPresent(
   const all: LayerMeta[] = [
     { id: 'default', iconUrl: DEFAULT_PIN_ICON_URL, title: t.adminMarkerTypeDefault },
     { id: 'kb', iconUrl: KB_MARKER_ICON_URL, title: t.adminMarkerTypeKeyDocument },
+    { id: 'kb-underground', iconUrl: KB_UNDERGROUND_MARKER_ICON_URL, title: t.adminMarkerTypeKeyDocumentUnderground },
     { id: 'question', iconUrl: QUESTION_MARKER_ICON_URL, title: t.adminMarkerTypeQuestion },
     { id: 'extract-pmc', iconUrl: EXTRACT_PMC_ICON_URL, title: t.routesExtractPmc },
     { id: 'extract-scav', iconUrl: EXTRACT_SCAV_ICON_URL, title: t.routesExtractScav },

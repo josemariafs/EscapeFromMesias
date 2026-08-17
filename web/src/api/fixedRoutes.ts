@@ -13,7 +13,7 @@ export interface CreateFixedRoutePointInput {
   color: string;
   label?: string | null;
   imageUrl?: string | null;
-  markerType?: 'default' | 'kb-document' | 'question' | 'kb' | null;
+  markerType?: 'default' | 'kb-document' | 'kb-underground' | 'question' | 'kb' | null;
 }
 
 export interface UpdateFixedRoutePointInput {
@@ -24,7 +24,7 @@ export interface UpdateFixedRoutePointInput {
   color?: string;
   label?: string | null;
   imageUrl?: string | null;
-  markerType?: 'default' | 'kb-document' | 'question' | 'kb' | null;
+  markerType?: 'default' | 'kb-document' | 'kb-underground' | 'question' | 'kb' | null;
 }
 
 async function parseErrorMessage(res: Response): Promise<string> {

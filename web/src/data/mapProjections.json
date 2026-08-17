@@ -211,6 +211,26 @@
     ],
     "svgBounds": null
   },
+  "icebreaker": {
+    "transform": [
+      2.0,
+      125.0,
+      3.5,
+      91.0
+    ],
+    "coordinateRotation": 180,
+    "bounds": [
+      [
+        77,
+        -64.5
+      ],
+      [
+        -65.5,
+        67.4
+      ]
+    ],
+    "svgBounds": null
+  },
   "woods": {
     "transform": [
       0.1855,

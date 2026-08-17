@@ -14,6 +14,7 @@ import {
   DEFAULT_ROUTE_POINT_COLOR,
   isIconMarkerType,
   isKeyDocumentMarkerType,
+  isUndergroundKeyDocumentMarkerType,
   markerTypeIconUrl,
   type FixedMarkerType,
   type FixedRoutePoint,
@@ -107,6 +108,7 @@ function fitImageSize(
 }
 
 function markerTypeTitle(markerType: FixedMarkerType | undefined, t: Translations): string {
+  if (isUndergroundKeyDocumentMarkerType(markerType)) return t.adminMarkerTypeKeyDocumentUnderground;
   if (isKeyDocumentMarkerType(markerType)) return t.adminMarkerTypeKeyDocument;
   if (markerType === 'question') return t.adminMarkerTypeQuestion;
   return t.adminMarkerTypeDefault;
@@ -717,7 +719,7 @@ export function MapViewerModal({
                   const documentStyle = isKeyDocumentMarkerType(point.markerType);
                   const imageCaption = imageCaptionForPoint(point);
                   const markerLabel = documentStyle
-                    ? (point.label?.trim() || t.adminMarkerTypeKeyDocument)
+                    ? (point.label?.trim() || markerTypeTitle(point.markerType, t))
                     : iconMarker
                       ? markerTypeTitle(point.markerType, t)
                       : (point.label?.trim() || String(index + 1));
@@ -732,6 +734,7 @@ export function MapViewerModal({
                         iconMarker ? 'route-map-marker--icon' : '',
                         point.markerType === 'question' ? 'route-map-marker--question' : '',
                         documentStyle ? 'route-map-marker--kb' : '',
+                        isUndergroundKeyDocumentMarkerType(point.markerType) ? 'route-map-marker--kb-underground' : '',
                         point.imageUrl ? 'route-map-marker--has-image' : '',
                         isHovered ? 'route-map-marker--hovered' : '',
                       ].filter(Boolean).join(' ')}

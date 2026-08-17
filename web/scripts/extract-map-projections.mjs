@@ -19,6 +19,7 @@ const keys = new Set([
   'the-lab',
   'ground-zero',
   'terminal',
+  'icebreaker',
 ]);
 
 const out = {};

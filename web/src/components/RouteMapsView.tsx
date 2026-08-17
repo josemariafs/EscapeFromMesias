@@ -16,7 +16,9 @@ import {
   DEFAULT_ROUTE_POINT_COLOR,
   isIconMarkerType,
   isKeyDocumentMarkerType,
+  isUndergroundKeyDocumentMarkerType,
   KB_MARKER_ICON_URL,
+  KB_UNDERGROUND_MARKER_ICON_URL,
   markerTypeIconUrl,
   QUESTION_MARKER_ICON_URL,
   ROUTE_POINT_COLORS,
@@ -55,6 +57,7 @@ const MARKER_DRAG_THRESHOLD_SQ = 25; // 5px
 export type RouteMapsViewMode = 'user' | 'admin';
 
 function markerTypeTitle(markerType: FixedMarkerType | undefined, t: Translations): string {
+  if (isUndergroundKeyDocumentMarkerType(markerType)) return t.adminMarkerTypeKeyDocumentUnderground;
   if (isKeyDocumentMarkerType(markerType)) return t.adminMarkerTypeKeyDocument;
   if (markerType === 'question') return t.adminMarkerTypeQuestion;
   return t.adminMarkerTypeDefault;
@@ -685,6 +688,17 @@ export function RouteMapsView({
                   </button>
                   <button
                     type="button"
+                    className={`route-maps-marker-type-btn route-maps-marker-type-btn--icon${draftMarkerType === 'kb-underground' ? ' active' : ''}`}
+                    aria-pressed={draftMarkerType === 'kb-underground'}
+                    aria-label={t.adminMarkerTypeKeyDocumentUnderground}
+                    title={t.adminMarkerTypeKeyDocumentUnderground}
+                    disabled={busy}
+                    onClick={() => onChangeDraftMarkerType('kb-underground')}
+                  >
+                    <img src={KB_UNDERGROUND_MARKER_ICON_URL} alt="" aria-hidden />
+                  </button>
+                  <button
+                    type="button"
                     className={`route-maps-marker-type-btn route-maps-marker-type-btn--icon${draftMarkerType === 'question' ? ' active' : ''}`}
                     aria-pressed={draftMarkerType === 'question'}
                     aria-label={t.adminMarkerTypeQuestion}
@@ -697,6 +711,9 @@ export function RouteMapsView({
                 </div>
                 {draftMarkerType === 'kb-document' && (
                   <p className="route-maps-layer-hint">{t.adminMarkerTypeKeyDocumentHint}</p>
+                )}
+                {draftMarkerType === 'kb-underground' && (
+                  <p className="route-maps-layer-hint">{t.adminMarkerTypeKeyDocumentUndergroundHint}</p>
                 )}
                 {draftMarkerType === 'question' && (
                   <p className="route-maps-layer-hint">{t.adminMarkerTypeQuestionHint}</p>
@@ -711,7 +728,7 @@ export function RouteMapsView({
                   className="route-color-name-input"
                   value={draftLabel}
                   placeholder={
-                    draftMarkerType === 'kb-document'
+                    isKeyDocumentMarkerType(draftMarkerType)
                       ? t.adminKeyDocumentLabelPlaceholder
                       : t.adminPointLabelPlaceholder
                   }
@@ -861,7 +878,7 @@ export function RouteMapsView({
                   const labelValue = editingLabels[point.id] ?? point.label ?? '';
                   const imageCaption = imageCaptionForPoint(point);
                   const pointLabel = documentStyle
-                    ? (point.label?.trim() || t.adminMarkerTypeKeyDocument)
+                    ? (point.label?.trim() || markerTypeTitle(point.markerType, t))
                     : iconMarker
                       ? markerTypeTitle(point.markerType, t)
                       : (point.label?.trim() || t.routesPointLabel(index + 1));
@@ -919,14 +936,25 @@ export function RouteMapsView({
                               </button>
                               <button
                                 type="button"
-                                className={`route-maps-marker-type-btn route-maps-marker-type-btn--icon${isKeyDocumentMarkerType(point.markerType) ? ' active' : ''}`}
-                                aria-pressed={isKeyDocumentMarkerType(point.markerType)}
+                                className={`route-maps-marker-type-btn route-maps-marker-type-btn--icon${point.markerType === 'kb-document' ? ' active' : ''}`}
+                                aria-pressed={point.markerType === 'kb-document'}
                                 aria-label={t.adminMarkerTypeKeyDocument}
                                 title={t.adminMarkerTypeKeyDocument}
                                 disabled={busy}
                                 onClick={() => onUpdateFixedMarkerType(point.id, 'kb-document')}
                               >
                                 <img src={KB_MARKER_ICON_URL} alt="" aria-hidden />
+                              </button>
+                              <button
+                                type="button"
+                                className={`route-maps-marker-type-btn route-maps-marker-type-btn--icon${point.markerType === 'kb-underground' ? ' active' : ''}`}
+                                aria-pressed={point.markerType === 'kb-underground'}
+                                aria-label={t.adminMarkerTypeKeyDocumentUnderground}
+                                title={t.adminMarkerTypeKeyDocumentUnderground}
+                                disabled={busy}
+                                onClick={() => onUpdateFixedMarkerType(point.id, 'kb-underground')}
+                              >
+                                <img src={KB_UNDERGROUND_MARKER_ICON_URL} alt="" aria-hidden />
                               </button>
                               <button
                                 type="button"
@@ -1371,7 +1399,7 @@ export function RouteMapsView({
             const documentStyle = isKeyDocumentMarkerType(point.markerType);
             const imageCaption = imageCaptionForPoint(point);
             const markerLabel = documentStyle
-              ? (point.label?.trim() || t.adminMarkerTypeKeyDocument)
+              ? (point.label?.trim() || markerTypeTitle(point.markerType, t))
               : iconMarker
                 ? markerTypeTitle(point.markerType, t)
                 : (point.label?.trim() || String(index + 1));
@@ -1388,6 +1416,7 @@ export function RouteMapsView({
                   iconMarker ? 'route-map-marker--icon' : '',
                   point.markerType === 'question' ? 'route-map-marker--question' : '',
                   documentStyle ? 'route-map-marker--kb' : '',
+                  isUndergroundKeyDocumentMarkerType(point.markerType) ? 'route-map-marker--kb-underground' : '',
                   isHovered ? 'route-map-marker--hovered' : '',
                   point.imageUrl ? 'route-map-marker--has-image' : '',
                   canDragFixed ? 'route-map-marker--draggable' : '',

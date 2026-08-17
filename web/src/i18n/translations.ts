@@ -198,6 +198,8 @@ export interface Translations {
   adminMarkerTypeDefault: string;
   adminMarkerTypeKeyDocument: string;
   adminMarkerTypeKeyDocumentHint: string;
+  adminMarkerTypeKeyDocumentUnderground: string;
+  adminMarkerTypeKeyDocumentUndergroundHint: string;
   adminKeyDocumentLabelPlaceholder: string;
   adminMarkerTypeQuestion: string;
   adminMarkerTypeQuestionHint: string;
@@ -533,6 +535,9 @@ export const translations: Record<Lang, Translations> = {
     adminMarkerTypeKeyDocument: 'Key Document',
     adminMarkerTypeKeyDocumentHint:
       'Pin KB con label opcional. El texto se muestra encima de la imagen al pasar el ratón o al abrirla.',
+    adminMarkerTypeKeyDocumentUnderground: 'KB subterráneo',
+    adminMarkerTypeKeyDocumentUndergroundHint:
+      'Mismo Key Document, con icono de subterráneo (flecha hacia abajo).',
     adminKeyDocumentLabelPlaceholder: '212 ROOM',
     adminMarkerTypeQuestion: 'Interrogación',
     adminMarkerTypeQuestionHint: 'Pin ? sin texto. El hover sigue mostrando la imagen.',
@@ -911,6 +916,9 @@ export const translations: Record<Lang, Translations> = {
     adminMarkerTypeKeyDocument: 'Key Document',
     adminMarkerTypeKeyDocumentHint:
       'KB pin with an optional label. The text appears above the image on hover and in the full view.',
+    adminMarkerTypeKeyDocumentUnderground: 'Underground KB',
+    adminMarkerTypeKeyDocumentUndergroundHint:
+      'Same Key Document, with an underground icon (down arrow).',
     adminKeyDocumentLabelPlaceholder: '212 ROOM',
     adminMarkerTypeQuestion: 'Question mark',
     adminMarkerTypeQuestionHint: '? pin with no text. Hover still shows the image.',

@@ -15,6 +15,7 @@ const MAP_SVG_FILES: Record<string, string> = {
   'the-lab': 'Labs.svg',
   'ground-zero': 'GroundZero.svg',
   terminal: 'Terminal.svg',
+  icebreaker: 'Icebreaker.jpg',
 };
 
 /** Mapas disponibles para el dibujador de rutas (independiente de misiones). */
@@ -29,6 +30,7 @@ export const ROUTE_MAPS: { key: string; name: string }[] = [
   { key: 'lighthouse', name: 'Lighthouse' },
   { key: 'streets-of-tarkov', name: 'Streets of Tarkov' },
   { key: 'the-lab', name: 'The Lab' },
+  { key: 'icebreaker', name: 'Icebreaker' },
 ];
 
 export function getMapSvgUrl(normalizedName: string): string | null {

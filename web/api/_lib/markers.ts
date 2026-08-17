@@ -1,4 +1,4 @@
-export const FIXED_MARKER_TYPES = ['default', 'kb-document', 'question'] as const;
+export const FIXED_MARKER_TYPES = ['default', 'kb-document', 'kb-underground', 'question'] as const;
 
 /** Valores legados aceptados en lectura/escritura y normalizados al canónico. */
 const LEGACY_MARKER_ALIASES: Record<string, FixedMarkerType> = {
@@ -11,7 +11,7 @@ export const DEFAULT_FIXED_MARKER_TYPE: FixedMarkerType = 'default';
 
 /** Marcadores con icono propio (sin número/texto sobre el mapa). */
 export function isIconMarkerType(value: string | null | undefined): boolean {
-  return value === 'kb' || value === 'kb-document' || value === 'question';
+  return value === 'kb' || value === 'kb-document' || value === 'kb-underground' || value === 'question';
 }
 
 /** Tipos que no permiten etiqueta persistida. */
@@ -20,7 +20,7 @@ export function isLabellessMarkerType(value: string | null | undefined): boolean
 }
 
 export function isKeyDocumentMarkerType(value: string | null | undefined): boolean {
-  return value === 'kb' || value === 'kb-document';
+  return value === 'kb' || value === 'kb-document' || value === 'kb-underground';
 }
 
 export function resolveMarkerType(value: string | null | undefined): FixedMarkerType {

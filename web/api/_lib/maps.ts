@@ -10,6 +10,7 @@ export const VALID_ROUTE_MAP_KEYS = new Set([
   'lighthouse',
   'streets-of-tarkov',
   'the-lab',
+  'icebreaker',
 ]);
 
 export function isValidMapKey(mapKey: string): boolean {

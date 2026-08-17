@@ -21,19 +21,27 @@ export interface RouteArrow {
 /** Preview de flecha mientras se arrastra. */
 export type RouteArrowDraft = Omit<RouteArrow, 'id'>;
 
-export type FixedMarkerType = 'default' | 'kb-document' | 'question';
+export type FixedMarkerType = 'default' | 'kb-document' | 'kb-underground' | 'question';
 
 export const DEFAULT_FIXED_MARKER_TYPE: FixedMarkerType = 'default';
 
 /** Icono del marcador Key Document. */
 export const KB_MARKER_ICON_URL = '/markers/kb-pin.png';
 
+/** Icono del marcador Key Document en subterráneo. */
+export const KB_UNDERGROUND_MARKER_ICON_URL = '/markers/kb-underground-pin.png';
+
 /** Icono del marcador de interrogación (sin etiqueta de texto). */
 export const QUESTION_MARKER_ICON_URL = '/markers/question-pin.svg';
 
 /** Pin con icono propio (sin número/texto sobre el mapa). */
 export function isIconMarkerType(markerType?: FixedMarkerType | string | null): boolean {
-  return markerType === 'kb' || markerType === 'kb-document' || markerType === 'question';
+  return (
+    markerType === 'kb'
+    || markerType === 'kb-document'
+    || markerType === 'kb-underground'
+    || markerType === 'question'
+  );
 }
 
 /** Tipos que no guardan label (solo icono + imagen opcional). */
@@ -47,10 +55,17 @@ export function allowsFixedPointLabel(markerType?: FixedMarkerType | string | nu
 
 /** Key Document: pin KB + label opcional encima de la imagen. */
 export function isKeyDocumentMarkerType(markerType?: FixedMarkerType | string | null): boolean {
-  return markerType === 'kb' || markerType === 'kb-document';
+  return markerType === 'kb' || markerType === 'kb-document' || markerType === 'kb-underground';
+}
+
+export function isUndergroundKeyDocumentMarkerType(
+  markerType?: FixedMarkerType | string | null,
+): boolean {
+  return markerType === 'kb-underground';
 }
 
 export function markerTypeIconUrl(markerType?: FixedMarkerType | string | null): string | null {
+  if (isUndergroundKeyDocumentMarkerType(markerType)) return KB_UNDERGROUND_MARKER_ICON_URL;
   if (isKeyDocumentMarkerType(markerType)) return KB_MARKER_ICON_URL;
   if (markerType === 'question') return QUESTION_MARKER_ICON_URL;
   return null;
@@ -79,6 +94,7 @@ export interface FixedRoutePoint extends RoutePoint {
   /**
    * Estilo del pin en el mapa.
    * - `kb-document` (Key Document): icono KB + label encima de la imagen
+   * - `kb-underground`: mismo comportamiento, icono KB de subterráneo
    * - `question`: icono ? sin label
    */
   markerType?: FixedMarkerType;

@@ -1,14 +1,25 @@
 import { useCallback, useState } from 'react';
-import { isKeyDocumentMarkerType, type FixedMarkerType } from '../types/routes';
+import {
+  isKeyDocumentMarkerType,
+  isUndergroundKeyDocumentMarkerType,
+  type FixedMarkerType,
+} from '../types/routes';
 import type { ExtractFaction } from '../utils/mapExtracts';
 
-export type FixedLayerId = 'default' | 'kb' | 'question' | 'extract-pmc' | 'extract-scav';
+export type FixedLayerId =
+  | 'default'
+  | 'kb'
+  | 'kb-underground'
+  | 'question'
+  | 'extract-pmc'
+  | 'extract-scav';
 
 export type FixedLayerVisibility = Record<FixedLayerId, boolean>;
 
 export const FIXED_LAYER_IDS: FixedLayerId[] = [
   'default',
   'kb',
+  'kb-underground',
   'question',
   'extract-pmc',
   'extract-scav',
@@ -20,6 +31,7 @@ const STORAGE_KEY = 'efg-fixed-layer-visibility:v2';
 const DEFAULT_VISIBILITY: FixedLayerVisibility = {
   default: true,
   kb: true,
+  'kb-underground': true,
   question: true,
   'extract-pmc': false,
   'extract-scav': false,
@@ -40,6 +52,7 @@ function readStored(): FixedLayerVisibility {
 }
 
 export function fixedMarkerLayerId(markerType?: FixedMarkerType | null): FixedLayerId {
+  if (isUndergroundKeyDocumentMarkerType(markerType)) return 'kb-underground';
   if (isKeyDocumentMarkerType(markerType)) return 'kb';
   if (markerType === 'question') return 'question';
   return 'default';

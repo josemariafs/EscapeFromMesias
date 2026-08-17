@@ -5488,6 +5488,10 @@ table.task-table td.task-table-cell-trader {
   filter: drop-shadow(0 2px 6px rgba(0, 200, 255, 0.4));
 }
 
+.route-map-marker--kb-underground.route-map-marker--hovered .route-map-marker-icon {
+  filter: drop-shadow(0 2px 6px rgba(0, 200, 255, 0.55));
+}
+
 .route-map-marker--question.route-map-marker--hovered .route-map-marker-icon {
   filter: drop-shadow(0 2px 6px rgba(240, 193, 74, 0.45));
 }
