@@ -9,7 +9,7 @@ import {
   type FixedRoutePointRow,
 } from '../_lib/db.js';
 import { normalizeRouteEnvironment } from '../_lib/environment.js';
-import { applyCors, handleOptions, readJsonBody, serverError } from '../_lib/http.js';
+import { applyCors, handleOptions, readJsonBody, sendJson, serverError } from '../_lib/http.js';
 import { normalizeImageUrl } from '../_lib/image.js';
 import { isValidMapKey } from '../_lib/maps.js';
 import {
@@ -34,12 +34,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (handleOptions(req, res)) return;
 
   try {
-    if (!isAuthorized(req)) {
-      applyCors(res);
-      res.status(401).json(unauthorizedBody());
-      return;
-    }
-
     const id = typeof req.query.id === 'string' ? req.query.id : '';
     if (!id) {
       applyCors(res);
@@ -49,6 +43,31 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     await ensureSchema();
     const db = getDb();
+
+    if (req.method === 'GET') {
+      const existing = await db.execute({
+        sql: `SELECT id, map_key, environment, left_pct, top_pct, color, label, image_url, marker_type, created_at, updated_at
+              FROM fixed_route_points WHERE id = ?`,
+        args: [id],
+      });
+      if (existing.rows.length === 0) {
+        applyCors(res);
+        res.status(404).json({ error: 'Not found' });
+        return;
+      }
+      sendJson(req, res, 200, {
+        point: rowToDto(existing.rows[0] as unknown as FixedRoutePointRow),
+      }, {
+        cacheControl: 'public, s-maxage=300, stale-while-revalidate=3600, max-age=120',
+      });
+      return;
+    }
+
+    if (!isAuthorized(req)) {
+      applyCors(res);
+      res.status(401).json(unauthorizedBody());
+      return;
+    }
 
     if (req.method === 'DELETE') {
       const result = await db.execute({
@@ -186,7 +205,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           marker_type: markerType,
           created_at: current.created_at,
           updated_at: now,
-        }),
+        }, { includeImage: body.imageUrl !== undefined }),
       });
       return;
     }

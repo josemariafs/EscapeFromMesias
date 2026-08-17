@@ -1,12 +1,20 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { gzipSync } from 'node:zlib';
 import { ensureSchema } from '../_lib/db.js';
-import { applyCors, handleOptions, serverError } from '../_lib/http.js';
+import {
+  applyCors,
+  etagMatches,
+  handleOptions,
+  sendJson,
+  sendNotModified,
+  serverError,
+} from '../_lib/http.js';
 import {
   readTaskSnapshot,
   type TaskSyncLang,
 } from '../_lib/taskSync.js';
 import type { GameMode } from '../_lib/eftTypes.js';
+
+const TASKS_CACHE_CONTROL = 'public, s-maxage=900, stale-while-revalidate=86400, max-age=300';
 
 function parseGameMode(value: unknown): GameMode | null {
   if (value === 'regular' || value === 'pve' || value === 'seasonal') return value;
@@ -55,7 +63,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
-    const body = JSON.stringify({
+    const etag = snapshot.meta.contentHash
+      ? `"${snapshot.meta.contentHash}"`
+      : undefined;
+    if (etag && etagMatches(req.headers['if-none-match'], etag)) {
+      sendNotModified(res, TASKS_CACHE_CONTROL, etag);
+      return;
+    }
+
+    sendJson(req, res, 200, {
       tasks: snapshot.tasks,
       fetchedAt: snapshot.meta.fetchedAt,
       updatedAt: snapshot.meta.updatedAt,
@@ -64,20 +80,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       schemaVersion: snapshot.meta.schemaVersion,
       gameMode,
       lang,
+    }, {
+      cacheControl: TASKS_CACHE_CONTROL,
+      etag,
     });
-
-    applyCors(res);
-    res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.setHeader('Cache-Control', 'public, max-age=300');
-
-    const acceptEncoding = String(req.headers['accept-encoding'] ?? '');
-    if (acceptEncoding.includes('gzip') && body.length > 64_000) {
-      res.setHeader('Content-Encoding', 'gzip');
-      res.status(200).send(gzipSync(Buffer.from(body, 'utf8')));
-      return;
-    }
-
-    res.status(200).send(body);
   } catch (err) {
     serverError(res, err);
   }

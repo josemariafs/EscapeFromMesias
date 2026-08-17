@@ -16,6 +16,7 @@ import {
   isKeyDocumentMarkerType,
   isUndergroundKeyDocumentMarkerType,
   markerTypeIconUrl,
+  pointHasImage,
   type FixedMarkerType,
   type FixedRoutePoint,
   type RouteArrow,
@@ -89,6 +90,8 @@ interface MapViewerModalProps {
   onAddRouteArrow?: (fromLeft: number, fromTop: number, toLeft: number, toTop: number) => void;
   /** Clic en una flecha → eliminarla. */
   onRemoveRouteArrow?: (arrowId: string) => void;
+  /** Carga perezosa de capturas de pines fijos (el listado ya no incluye imageUrl). */
+  onEnsureFixedImage?: (pointId: string) => Promise<string | undefined>;
 }
 
 function fitImageSize(
@@ -200,6 +203,7 @@ export function MapViewerModal({
   routeDrawColor = DEFAULT_ROUTE_POINT_COLOR,
   onAddRouteArrow,
   onRemoveRouteArrow,
+  onEnsureFixedImage,
 }: MapViewerModalProps) {
   const canEditRoutePoints = Boolean(
     onAddRoutePoint
@@ -252,6 +256,7 @@ export function MapViewerModal({
   } | null>(null);
   const imageWrapRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+  const hoverTokenRef = useRef(0);
   const legendPointRefs = useRef<Map<string, HTMLLabelElement>>(new Map());
   /** Modo explícito: por defecto el arrastre panea el mapa; solo con esto se dibuja flecha. */
   const [arrowDrawMode, setArrowDrawMode] = useState(false);
@@ -735,7 +740,7 @@ export function MapViewerModal({
                         point.markerType === 'question' ? 'route-map-marker--question' : '',
                         documentStyle ? 'route-map-marker--kb' : '',
                         isUndergroundKeyDocumentMarkerType(point.markerType) ? 'route-map-marker--kb-underground' : '',
-                        point.imageUrl ? 'route-map-marker--has-image' : '',
+                        pointHasImage(point) ? 'route-map-marker--has-image' : '',
                         isHovered ? 'route-map-marker--hovered' : '',
                       ].filter(Boolean).join(' ')}
                       style={{
@@ -745,7 +750,7 @@ export function MapViewerModal({
                         zIndex: isHovered ? 4 : 3,
                       } as CSSProperties}
                       title={
-                        point.imageUrl
+                        pointHasImage(point)
                           ? (imageCaption || undefined)
                           : (iconMarker ? markerLabel : (point.label?.trim() || t.routesFixedSection))
                       }
@@ -757,28 +762,39 @@ export function MapViewerModal({
                             : (point.label?.trim() || t.routesPointLabel(index + 1))
                       }
                       onMouseEnter={(e) => {
-                        if (!point.imageUrl || imageModal) return;
+                        if (!pointHasImage(point) || imageModal) return;
+                        const token = ++hoverTokenRef.current;
                         const rect = e.currentTarget.getBoundingClientRect();
-                        setImageTooltip({
-                          pointId: point.id,
-                          x: rect.left + rect.width / 2,
-                          y: rect.top,
-                          src: point.imageUrl,
-                          label: imageCaption,
-                          documentStyle,
-                        });
-                      }}
-                      onMouseLeave={() => setImageTooltip(null)}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (point.imageUrl) {
-                          setImageTooltip(null);
-                          setImageModal({
-                            src: point.imageUrl,
+                        void (async () => {
+                          const src = point.imageUrl ?? await onEnsureFixedImage?.(point.id);
+                          if (!src || token !== hoverTokenRef.current) return;
+                          setImageTooltip({
+                            pointId: point.id,
+                            x: rect.left + rect.width / 2,
+                            y: rect.top,
+                            src,
                             label: imageCaption,
                             documentStyle,
                           });
-                        }
+                        })();
+                      }}
+                      onMouseLeave={() => {
+                        hoverTokenRef.current += 1;
+                        setImageTooltip(null);
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!pointHasImage(point)) return;
+                        void (async () => {
+                          const src = point.imageUrl ?? await onEnsureFixedImage?.(point.id);
+                          if (!src) return;
+                          setImageTooltip(null);
+                          setImageModal({
+                            src,
+                            label: imageCaption,
+                            documentStyle,
+                          });
+                        })();
                       }}
                     >
                       <span className="route-map-marker-body">

@@ -12,7 +12,7 @@ import {
   DEFAULT_ROUTE_ENVIRONMENT,
   normalizeRouteEnvironment,
 } from '../_lib/environment.js';
-import { applyCors, handleOptions, readJsonBody, serverError } from '../_lib/http.js';
+import { applyCors, handleOptions, readJsonBody, sendJson, serverError } from '../_lib/http.js';
 import { normalizeImageUrl } from '../_lib/image.js';
 import { isValidMapKey } from '../_lib/maps.js';
 import {
@@ -50,16 +50,46 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return;
       }
 
+      const rawMapKey = Array.isArray(req.query.mapKey) ? req.query.mapKey[0] : req.query.mapKey;
+      const mapKey = typeof rawMapKey === 'string' ? rawMapKey.trim() : '';
+      const rawImages = Array.isArray(req.query.images) ? req.query.images[0] : req.query.images;
+      const includeImages = rawImages === '1' || rawImages === 'true';
+
+      if (includeImages) {
+        if (!isValidMapKey(mapKey)) {
+          applyCors(res);
+          res.status(400).json({ error: 'mapKey is required when images=1' });
+          return;
+        }
+        const result = await db.execute({
+          sql: `SELECT id, map_key, environment, left_pct, top_pct, color, label, image_url, marker_type, created_at, updated_at
+                FROM fixed_route_points
+                WHERE environment = ? AND map_key = ?
+                ORDER BY created_at ASC`,
+          args: [envParsed.value, mapKey],
+        });
+        const points = result.rows.map((row) => rowToDto(row as unknown as FixedRoutePointRow));
+        sendJson(req, res, 200, { points, environment: envParsed.value, mapKey }, {
+          cacheControl: 'public, s-maxage=120, stale-while-revalidate=600, max-age=60',
+        });
+        return;
+      }
+
       const result = await db.execute({
-        sql: `SELECT id, map_key, environment, left_pct, top_pct, color, label, image_url, marker_type, created_at, updated_at
+        sql: `SELECT id, map_key, environment, left_pct, top_pct, color, label,
+                     CASE WHEN image_url IS NOT NULL AND length(image_url) > 0 THEN 1 ELSE 0 END AS has_image,
+                     marker_type, created_at, updated_at
               FROM fixed_route_points
               WHERE environment = ?
               ORDER BY map_key ASC, created_at ASC`,
         args: [envParsed.value],
       });
-      const points = result.rows.map((row) => rowToDto(row as unknown as FixedRoutePointRow));
-      applyCors(res);
-      res.status(200).json({ points, environment: envParsed.value });
+      const points = result.rows.map((row) =>
+        rowToDto(row as unknown as FixedRoutePointRow, { includeImage: false }),
+      );
+      sendJson(req, res, 200, { points, environment: envParsed.value }, {
+        cacheControl: 'public, s-maxage=60, stale-while-revalidate=300, max-age=30',
+      });
       return;
     }
 

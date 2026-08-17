@@ -91,6 +91,8 @@ export interface FixedRoutePoint extends RoutePoint {
   environment: RouteEnvironment;
   /** URL http(s) o data URL de imagen para tooltip en hover. */
   imageUrl?: string;
+  /** El listado público omite `imageUrl`; este flag indica que hay captura. */
+  hasImage?: boolean;
   /**
    * Estilo del pin en el mapa.
    * - `kb-document` (Key Document): icono KB + label encima de la imagen
@@ -143,3 +145,7 @@ export const ROUTE_POINT_COLORS = [
 ] as const;
 
 export const DEFAULT_ROUTE_POINT_COLOR = ROUTE_POINT_COLORS[0];
+
+export function pointHasImage(point: Pick<FixedRoutePoint, 'imageUrl' | 'hasImage'>): boolean {
+  return Boolean(point.imageUrl) || Boolean(point.hasImage);
+}

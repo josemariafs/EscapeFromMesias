@@ -263,6 +263,8 @@ export function AdminRoutesPage() {
           onUpdateFixedMarkerType={(id, markerType) => { void handleUpdateMarkerType(id, markerType); }}
           fixedLoading={fixed.loading}
           fixedError={fixed.error}
+          onEnsureFixedImage={fixed.ensureImage}
+          onPrefetchFixedImages={fixed.prefetchMapImages}
           busy={busy}
           title={t.adminRoutesTitle}
           hint={

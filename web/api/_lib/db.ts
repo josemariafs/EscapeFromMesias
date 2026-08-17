@@ -32,6 +32,7 @@ export interface FixedRoutePointDto {
   color: string;
   label?: string;
   imageUrl?: string;
+  hasImage?: boolean;
   markerType: FixedMarkerType;
   source: 'fixed';
   createdAt: string;
@@ -261,7 +262,16 @@ export function resolveRowEnvironment(value: string | null | undefined): RouteEn
   return isRouteEnvironment(value) ? value : DEFAULT_ROUTE_ENVIRONMENT;
 }
 
-export function rowToDto(row: FixedRoutePointRow): FixedRoutePointDto {
+export function rowToDto(
+  row: FixedRoutePointRow & { has_image?: number | boolean | null },
+  opts?: { includeImage?: boolean },
+): FixedRoutePointDto {
+  const includeImage = opts?.includeImage !== false;
+  const imageUrl = includeImage ? (row.image_url ?? undefined) : undefined;
+  const hasImage =
+    Boolean(row.image_url)
+    || Number(row.has_image) === 1
+    || row.has_image === true;
   return {
     id: row.id,
     mapKey: row.map_key,
@@ -270,7 +280,8 @@ export function rowToDto(row: FixedRoutePointRow): FixedRoutePointDto {
     top: row.top_pct,
     color: row.color,
     label: row.label ?? undefined,
-    imageUrl: row.image_url ?? undefined,
+    imageUrl,
+    hasImage,
     markerType: resolveMarkerType(row.marker_type),
     source: 'fixed',
     createdAt: row.created_at,

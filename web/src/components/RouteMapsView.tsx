@@ -20,6 +20,7 @@ import {
   KB_MARKER_ICON_URL,
   KB_UNDERGROUND_MARKER_ICON_URL,
   markerTypeIconUrl,
+  pointHasImage,
   QUESTION_MARKER_ICON_URL,
   ROUTE_POINT_COLORS,
   type FixedMarkerType,
@@ -106,6 +107,8 @@ interface RouteMapsViewProps {
   onUpdateFixedLabel?: (pointId: string, label: string) => void;
   onUpdateFixedImage?: (pointId: string, file: File | null) => void;
   onUpdateFixedMarkerType?: (pointId: string, markerType: FixedMarkerType) => void;
+  onEnsureFixedImage?: (pointId: string) => Promise<string | undefined>;
+  onPrefetchFixedImages?: (mapKey: string) => Promise<void>;
   fixedLoading?: boolean;
   fixedError?: string | null;
   busy?: boolean;
@@ -181,6 +184,8 @@ export function RouteMapsView({
   onUpdateFixedLabel,
   onUpdateFixedImage,
   onUpdateFixedMarkerType,
+  onEnsureFixedImage,
+  onPrefetchFixedImages,
   fixedLoading = false,
   fixedError = null,
   busy = false,
@@ -250,6 +255,7 @@ export function RouteMapsView({
   const pointListItemRefs = useRef<Map<string, HTMLLIElement>>(new Map());
   const draftImageInputRef = useRef<HTMLInputElement>(null);
   const pointImageInputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
+  const hoverTokenRef = useRef(0);
   const dragStartClientRef = useRef<{ x: number; y: number } | null>(null);
   const dragMovedRef = useRef(false);
   const dragStateRef = useRef(dragState);
@@ -466,6 +472,34 @@ export function RouteMapsView({
       setImageTooltip(null);
     }
   }, []);
+
+  const hoverFixedPoint = useCallback(async (
+    point: FixedRoutePoint,
+    anchorEl: HTMLElement,
+    options?: { scrollList?: boolean },
+  ) => {
+    const token = ++hoverTokenRef.current;
+    const imageCaption = imageCaptionForPoint(point);
+    const documentStyle = isKeyDocumentMarkerType(point.markerType);
+    setPointHovered(point.id, { scrollList: options?.scrollList });
+    let src = point.imageUrl;
+    if (!src && point.hasImage && onEnsureFixedImage) {
+      src = await onEnsureFixedImage(point.id);
+    }
+    if (token !== hoverTokenRef.current) return;
+    setPointHovered(point.id, {
+      scrollList: options?.scrollList,
+      imageUrl: src,
+      label: imageCaption,
+      documentStyle,
+      anchorEl,
+    });
+  }, [onEnsureFixedImage, setPointHovered]);
+
+  useEffect(() => {
+    if (!isAdmin || !selectedMapKey || !onPrefetchFixedImages) return;
+    void onPrefetchFixedImages(selectedMapKey);
+  }, [isAdmin, onPrefetchFixedImages, selectedMapKey]);
 
   const updateImageSize = useCallback(() => {
     const area = mapAreaRef.current;
@@ -894,15 +928,17 @@ export function RouteMapsView({
                         iconMarker ? 'route-maps-point-item--icon' : '',
                         isHovered ? 'route-maps-point-item--hovered' : '',
                       ].filter(Boolean).join(' ') || undefined}
-                      onMouseEnter={(e) => setPointHovered(point.id, isAdmin
-                        ? undefined
-                        : {
-                            imageUrl: point.imageUrl,
-                            label: imageCaption,
-                            documentStyle,
-                            anchorEl: e.currentTarget,
-                          })}
-                      onMouseLeave={() => setPointHovered(null)}
+                      onMouseEnter={(e) => {
+                        if (isAdmin) {
+                          setPointHovered(point.id);
+                          return;
+                        }
+                        void hoverFixedPoint(point, e.currentTarget);
+                      }}
+                      onMouseLeave={() => {
+                        hoverTokenRef.current += 1;
+                        setPointHovered(null);
+                      }}
                     >
                       {/* En admin el selector de tipo ya muestra el icono; evita el KB duplicado. */}
                       {!isAdmin && (
@@ -1020,9 +1056,9 @@ export function RouteMapsView({
                                 disabled={busy}
                                 onClick={() => pointImageInputRefs.current.get(point.id)?.click()}
                               >
-                                {point.imageUrl ? t.adminPointImageUpload : t.adminPointImage}
+                                {pointHasImage(point) ? t.adminPointImageUpload : t.adminPointImage}
                               </button>
-                              {point.imageUrl && (
+                              {pointHasImage(point) && (
                                 <button
                                   type="button"
                                   className="btn btn-wipe"
@@ -1056,7 +1092,7 @@ export function RouteMapsView({
                       ) : (
                         <span className="route-maps-point-label">
                           {pointLabel}
-                          {point.imageUrl && (
+                          {pointHasImage(point) && (
                             <span className="route-maps-has-image" aria-hidden title={t.adminPointImage}>
                               <svg viewBox="0 0 16 16" width="12" height="12">
                                 <rect
@@ -1418,7 +1454,7 @@ export function RouteMapsView({
                   documentStyle ? 'route-map-marker--kb' : '',
                   isUndergroundKeyDocumentMarkerType(point.markerType) ? 'route-map-marker--kb-underground' : '',
                   isHovered ? 'route-map-marker--hovered' : '',
-                  point.imageUrl ? 'route-map-marker--has-image' : '',
+                  pointHasImage(point) ? 'route-map-marker--has-image' : '',
                   canDragFixed ? 'route-map-marker--draggable' : '',
                   isDragging ? 'route-map-marker--dragging' : '',
                 ].filter(Boolean).join(' ')}
@@ -1429,7 +1465,7 @@ export function RouteMapsView({
                   zIndex: isDragging ? 6 : isHovered ? 4 : 3,
                 } as CSSProperties}
                 title={
-                  point.imageUrl
+                  pointHasImage(point)
                     ? (imageCaption || t.routesPointImageModal)
                     : isAdmin
                       ? (iconMarker ? t.adminDeletePoint : (point.label?.trim() || t.adminDeletePoint))
@@ -1444,16 +1480,11 @@ export function RouteMapsView({
                 }
                 onMouseEnter={(e) => {
                   if (imageModal || dragState) return;
-                  setPointHovered(point.id, {
-                    scrollList: true,
-                    imageUrl: point.imageUrl,
-                    label: imageCaption,
-                    documentStyle,
-                    anchorEl: e.currentTarget,
-                  });
+                  void hoverFixedPoint(point, e.currentTarget, { scrollList: true });
                 }}
                 onMouseLeave={() => {
                   if (dragState) return;
+                  hoverTokenRef.current += 1;
                   setPointHovered(null);
                 }}
                 onPointerDown={(e) => {
@@ -1466,8 +1497,11 @@ export function RouteMapsView({
                 onClick={(e) => {
                   e.stopPropagation();
                   if (consumeDragClick()) return;
-                  if (point.imageUrl) {
-                    openPointImageModal(point.imageUrl, imageCaption, documentStyle);
+                  if (pointHasImage(point)) {
+                    void (async () => {
+                      const src = point.imageUrl ?? await onEnsureFixedImage?.(point.id);
+                      if (src) openPointImageModal(src, imageCaption, documentStyle);
+                    })();
                     return;
                   }
                   if (isAdmin && onRemoveFixedPoint && !busy) {

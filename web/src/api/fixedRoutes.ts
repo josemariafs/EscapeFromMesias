@@ -55,6 +55,31 @@ export async function fetchFixedRoutes(
   return Array.isArray(data.points) ? data.points : [];
 }
 
+export async function fetchFixedRoutePoint(id: string): Promise<FixedRoutePoint> {
+  const res = await fetch(`/api/fixed-routes/${encodeURIComponent(id)}`);
+  if (!res.ok) {
+    throw new Error(await parseErrorMessage(res));
+  }
+  const data = (await res.json()) as { point: FixedRoutePoint };
+  if (!data.point?.id) {
+    throw new Error('Invalid fixed route point');
+  }
+  return data.point;
+}
+
+export async function fetchFixedRouteImages(
+  environment: RouteEnvironment,
+  mapKey: string,
+): Promise<FixedRoutePoint[]> {
+  const params = new URLSearchParams({ environment, mapKey, images: '1' });
+  const res = await fetch(`/api/fixed-routes?${params.toString()}`);
+  if (!res.ok) {
+    throw new Error(await parseErrorMessage(res));
+  }
+  const data = (await res.json()) as FixedRoutesResponse;
+  return Array.isArray(data.points) ? data.points : [];
+}
+
 export async function verifyAdminToken(token: string): Promise<void> {
   const res = await fetch('/api/admin/dashboard?view=ping', {
     headers: { Authorization: `Bearer ${token}` },

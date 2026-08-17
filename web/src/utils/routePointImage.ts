@@ -1,8 +1,8 @@
 /** Límite de caracteres para data URLs / URLs guardadas en Turso. */
 export const MAX_FIXED_POINT_IMAGE_CHARS = 600_000;
 
-const MAX_EDGE_PX = 960;
-const JPEG_QUALITY = 0.82;
+const MAX_EDGE_PX = 720;
+const JPEG_QUALITY = 0.72;
 
 export function isValidFixedPointImageUrl(value: string): boolean {
   const trimmed = value.trim();

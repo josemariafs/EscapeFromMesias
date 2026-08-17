@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 import { fetchOnlineCount, sendPresenceHeartbeat } from '../api/siteStats';
 import { readOrCreateVisitorId } from '../utils/visitorId';
 
-const HEARTBEAT_MS = 25_000;
-const POLL_MS = 20_000;
+const HEARTBEAT_MS = 50_000;
 
 /** Heartbeat + conteo de usuarios con actividad reciente en la web. */
 export function useOnlinePresence() {
@@ -32,22 +31,11 @@ export function useOnlinePresence() {
       }
     };
 
-    const poll = async () => {
-      try {
-        apply(await fetchOnlineCount());
-      } catch {
-        // ignore
-      }
-    };
-
     void heartbeat();
 
     const heartbeatTimer = window.setInterval(() => {
       void heartbeat();
     }, HEARTBEAT_MS);
-    const pollTimer = window.setInterval(() => {
-      void poll();
-    }, POLL_MS);
 
     const onVisibility = () => {
       if (document.visibilityState === 'visible') {
@@ -59,7 +47,6 @@ export function useOnlinePresence() {
     return () => {
       cancelled = true;
       window.clearInterval(heartbeatTimer);
-      window.clearInterval(pollTimer);
       document.removeEventListener('visibilitychange', onVisibility);
     };
   }, []);

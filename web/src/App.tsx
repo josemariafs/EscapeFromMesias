@@ -117,7 +117,7 @@ export default function App() {
     undoLast,
     clearMap,
   } = useRouteMaps(routeEnvironment);
-  const fixedRoutes = useFixedRouteMaps(routeEnvironment);
+  const fixedRoutes = useFixedRouteMaps(routeEnvironment, { enabled: appUsage !== 'home' });
   const mapExtracts = useMapExtracts(lang, gameMode);
 
   // En modo Logs, el estado de las misiones se deriva de los eventos leídos de los logs de
@@ -776,6 +776,8 @@ export default function App() {
             }}
             fixedLoading={fixedRoutes.loading}
             fixedError={fixedRoutes.error}
+            onEnsureFixedImage={fixedRoutes.ensureImage}
+            onPrefetchFixedImages={fixedRoutes.prefetchMapImages}
             t={t}
           />
         ) : (
@@ -859,6 +861,7 @@ export default function App() {
               routeArrows={routeArrowsData}
               routeDrawColor={selectedColor}
               fixedRouteMaps={fixedRoutes.routes}
+              onEnsureFixedImage={fixedRoutes.ensureImage}
               mapExtracts={mapExtracts.extracts}
               routeColorLabels={colorLabels}
               selectedId={selectedId}

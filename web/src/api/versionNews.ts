@@ -7,7 +7,7 @@ export interface VersionNews {
 const VERSION_NEWS_URL = '/api/stats/visit?view=version-news';
 
 export async function fetchVersionNews(): Promise<VersionNews> {
-  const res = await fetch(VERSION_NEWS_URL, { cache: 'no-store' });
+  const res = await fetch(VERSION_NEWS_URL);
   if (!res.ok) {
     throw new Error(`version-news ${res.status}`);
   }

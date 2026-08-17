@@ -29,6 +29,7 @@ interface ActiveTasksViewProps {
   routeArrows?: RouteArrowsData;
   routeDrawColor?: string;
   fixedRouteMaps?: FixedRouteMapsData;
+  onEnsureFixedImage?: (pointId: string) => Promise<string | undefined>;
   mapExtracts?: MapExtractsData;
   routeColorLabels?: RouteColorLabels;
   selectedId: string | null;
@@ -67,6 +68,7 @@ export function ActiveTasksView({
   routeArrows = {},
   routeDrawColor,
   fixedRouteMaps = {},
+  onEnsureFixedImage,
   mapExtracts = {},
   routeColorLabels = {},
   selectedId,
@@ -138,6 +140,7 @@ export function ActiveTasksView({
           routeArrows={routeArrows[openMap.normalizedName] ?? []}
           routeDrawColor={routeDrawColor}
           fixedRoutePoints={fixedRouteMaps[openMap.normalizedName] ?? []}
+          onEnsureFixedImage={onEnsureFixedImage}
           mapExtracts={mapExtracts[openMap.normalizedName] ?? []}
           colorLabels={routeColorLabels}
           tarkovDevUrl={getTarkovDevMapUrl(openMap.normalizedName)}

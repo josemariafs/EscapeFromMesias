@@ -88,7 +88,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (req.method === 'GET') {
         const data = await getVersionNews();
         applyCors(res);
-        res.setHeader('Cache-Control', 'no-store');
+        res.setHeader('Cache-Control', 'public, s-maxage=120, stale-while-revalidate=600, max-age=30');
         res.status(200).json(data);
         return;
       }
@@ -122,6 +122,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'GET') {
       const impressions = await readImpressions();
       applyCors(res);
+      res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300, max-age=15');
       res.status(200).json({ impressions });
       return;
     }

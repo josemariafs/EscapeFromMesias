@@ -4,7 +4,7 @@ import { applyCors, handleOptions, readJsonBody, serverError } from '../_lib/htt
 
 const VISITOR_ID_RE = /^[a-zA-Z0-9_-]{8,80}$/;
 /** Ventana para considerar a un visitante "online". */
-const ONLINE_WINDOW_MS = 60_000;
+const ONLINE_WINDOW_MS = 90_000;
 
 interface PresenceBody {
   visitorId?: string;
@@ -35,6 +35,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'GET') {
       const online = await countOnline();
       applyCors(res);
+      res.setHeader('Cache-Control', 'public, s-maxage=15, stale-while-revalidate=45, max-age=10');
       res.status(200).json({ online, windowMs: ONLINE_WINDOW_MS });
       return;
     }
