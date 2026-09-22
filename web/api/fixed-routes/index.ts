@@ -43,7 +43,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const rawEnv = Array.isArray(req.query.environment)
         ? req.query.environment[0]
         : req.query.environment;
-      const envParsed = normalizeRouteEnvironment(rawEnv ?? DEFAULT_ROUTE_ENVIRONMENT);
+      const wantAll = rawEnv === 'all' || rawEnv === '*';
+      const envParsed = wantAll
+        ? ({ ok: true as const, value: DEFAULT_ROUTE_ENVIRONMENT })
+        : normalizeRouteEnvironment(rawEnv ?? DEFAULT_ROUTE_ENVIRONMENT);
       if (envParsed.ok === false) {
         applyCors(res);
         res.status(400).json({ error: envParsed.error });
@@ -62,32 +65,50 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           return;
         }
         const result = await db.execute({
-          sql: `SELECT id, map_key, environment, left_pct, top_pct, color, label, image_url, marker_type, created_at, updated_at
-                FROM fixed_route_points
-                WHERE environment = ? AND map_key = ?
-                ORDER BY created_at ASC`,
-          args: [envParsed.value, mapKey],
+          sql: wantAll
+            ? `SELECT id, map_key, environment, left_pct, top_pct, color, label, image_url, marker_type, created_at, updated_at
+               FROM fixed_route_points
+               WHERE map_key = ?
+               ORDER BY created_at ASC`
+            : `SELECT id, map_key, environment, left_pct, top_pct, color, label, image_url, marker_type, created_at, updated_at
+               FROM fixed_route_points
+               WHERE environment = ? AND map_key = ?
+               ORDER BY created_at ASC`,
+          args: wantAll ? [mapKey] : [envParsed.value, mapKey],
         });
         const points = result.rows.map((row) => rowToDto(row as unknown as FixedRoutePointRow));
-        sendJson(req, res, 200, { points, environment: envParsed.value, mapKey }, {
+        sendJson(req, res, 200, {
+          points,
+          environment: wantAll ? 'all' : envParsed.value,
+          mapKey,
+        }, {
           cacheControl: 'public, s-maxage=120, stale-while-revalidate=600, max-age=60',
         });
         return;
       }
 
       const result = await db.execute({
-        sql: `SELECT id, map_key, environment, left_pct, top_pct, color, label,
-                     CASE WHEN image_url IS NOT NULL AND length(image_url) > 0 THEN 1 ELSE 0 END AS has_image,
-                     marker_type, created_at, updated_at
-              FROM fixed_route_points
-              WHERE environment = ?
-              ORDER BY map_key ASC, created_at ASC`,
-        args: [envParsed.value],
+        sql: wantAll
+          ? `SELECT id, map_key, environment, left_pct, top_pct, color, label,
+                    CASE WHEN image_url IS NOT NULL AND length(image_url) > 0 THEN 1 ELSE 0 END AS has_image,
+                    marker_type, created_at, updated_at
+             FROM fixed_route_points
+             ORDER BY map_key ASC, created_at ASC`
+          : `SELECT id, map_key, environment, left_pct, top_pct, color, label,
+                    CASE WHEN image_url IS NOT NULL AND length(image_url) > 0 THEN 1 ELSE 0 END AS has_image,
+                    marker_type, created_at, updated_at
+             FROM fixed_route_points
+             WHERE environment = ?
+             ORDER BY map_key ASC, created_at ASC`,
+        args: wantAll ? [] : [envParsed.value],
       });
       const points = result.rows.map((row) =>
         rowToDto(row as unknown as FixedRoutePointRow, { includeImage: false }),
       );
-      sendJson(req, res, 200, { points, environment: envParsed.value }, {
+      sendJson(req, res, 200, {
+        points,
+        environment: wantAll ? 'all' : envParsed.value,
+      }, {
         cacheControl: 'public, s-maxage=60, stale-while-revalidate=300, max-age=30',
       });
       return;

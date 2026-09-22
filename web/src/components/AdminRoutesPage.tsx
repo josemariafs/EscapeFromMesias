@@ -3,14 +3,12 @@ import { useAdminAuth } from '../hooks/useAdminAuth';
 import { useFixedRouteMaps } from '../hooks/useFixedRouteMaps';
 import { useMapExtracts } from '../hooks/useMapExtracts';
 import { useLanguage } from '../i18n/useLanguage';
-import type { GameMode } from '../types';
 import {
   allowsFixedPointLabel,
   DEFAULT_FIXED_MARKER_TYPE,
   DEFAULT_ROUTE_POINT_COLOR,
   isLabellessMarkerType,
   type FixedMarkerType,
-  type RouteEnvironment,
 } from '../types/routes';
 import { fileToCompressedDataUrl } from '../utils/routePointImage';
 import { AdminLoginCard } from './AdminLoginCard';
@@ -20,10 +18,8 @@ import { RouteMapsView } from './RouteMapsView';
 export function AdminRoutesPage() {
   const { lang, t } = useLanguage();
   const auth = useAdminAuth();
-  const [environment, setEnvironment] = useState<RouteEnvironment>('seasonal');
-  const fixed = useFixedRouteMaps(environment);
-  const extractGameMode: GameMode = environment === 'regular' ? 'regular' : 'seasonal';
-  const mapExtracts = useMapExtracts(lang, extractGameMode);
+  const fixed = useFixedRouteMaps('seasonal');
+  const mapExtracts = useMapExtracts(lang, 'seasonal');
   const [selectedMapKey, setSelectedMapKey] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string>(DEFAULT_ROUTE_POINT_COLOR);
   const [draftLabel, setDraftLabel] = useState('');
@@ -34,13 +30,6 @@ export function AdminRoutesPage() {
 
   const token = auth.token;
   const fixedPoints = selectedMapKey ? fixed.getPoints(selectedMapKey) : [];
-
-  const handleEnvironmentChange = (next: RouteEnvironment) => {
-    if (next === environment) return;
-    setEnvironment(next);
-    setSelectedMapKey(null);
-    setActionError(null);
-  };
 
   const handleLogout = () => {
     auth.logout();
@@ -60,7 +49,6 @@ export function AdminRoutesPage() {
         label: allowsFixedPointLabel(draftMarkerType) ? (draftLabel.trim() || null) : null,
         imageUrl: draftImageUrl,
         markerType: draftMarkerType,
-        environment,
       });
     } catch (err) {
       setActionError(err instanceof Error ? err.message : t.adminLoginError);
@@ -71,7 +59,6 @@ export function AdminRoutesPage() {
     draftImageUrl,
     draftLabel,
     draftMarkerType,
-    environment,
     fixed,
     selectedColor,
     selectedMapKey,
@@ -208,28 +195,6 @@ export function AdminRoutesPage() {
         navReports={t.adminReportsNav}
         logoutLabel={t.adminLogout}
         onLogout={handleLogout}
-        secondary={(
-          <div className="segmented admin-env-segmented" role="tablist" aria-label={t.routeEnvironmentHint}>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={environment === 'regular'}
-              className={`segmented-item${environment === 'regular' ? ' active' : ''}`}
-              onClick={() => handleEnvironmentChange('regular')}
-            >
-              {t.routeEnvironmentRegular}
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={environment === 'seasonal'}
-              className={`segmented-item${environment === 'seasonal' ? ' active' : ''}`}
-              onClick={() => handleEnvironmentChange('seasonal')}
-            >
-              {t.routeEnvironmentSeasonal}
-            </button>
-          </div>
-        )}
       />
       {actionError && <p className="admin-action-error">{actionError}</p>}
       <div className="admin-routes-body">
@@ -267,11 +232,7 @@ export function AdminRoutesPage() {
           onPrefetchFixedImages={fixed.prefetchMapImages}
           busy={busy}
           title={t.adminRoutesTitle}
-          hint={
-            environment === 'regular'
-              ? t.routeEnvironmentRegular
-              : t.routeEnvironmentSeasonal
-          }
+          hint={t.adminRoutesHint}
           t={t}
         />
       </div>

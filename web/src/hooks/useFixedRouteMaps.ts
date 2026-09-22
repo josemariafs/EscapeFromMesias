@@ -26,7 +26,7 @@ function groupByMap(points: FixedRoutePoint[]): FixedRouteMapsData {
 }
 
 export function useFixedRouteMaps(
-  environment: RouteEnvironment,
+  _environment: RouteEnvironment = 'seasonal',
   options?: { enabled?: boolean },
 ) {
   const enabled = options?.enabled !== false;
@@ -46,14 +46,13 @@ export function useFixedRouteMaps(
     setLoading(true);
     setError(null);
     try {
-      const data = await fetchFixedRoutes(environment);
-      setPoints(data);
+      setPoints(await fetchFixedRoutes('all'));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load fixed routes');
     } finally {
       setLoading(false);
     }
-  }, [enabled, environment]);
+  }, [enabled]);
 
   useEffect(() => {
     void reload();
@@ -97,7 +96,7 @@ export function useFixedRouteMaps(
     );
     if (!needsFetch) return;
 
-    const promise = fetchFixedRouteImages(environment, mapKey)
+    const promise = fetchFixedRouteImages(mapKey)
       .then((withImages) => {
         const byId = new Map(withImages.map((point) => [point.id, point]));
         setPoints((prev) => prev.map((point) => {
@@ -115,7 +114,7 @@ export function useFixedRouteMaps(
       });
     mapInflightRef.current.set(mapKey, promise);
     return promise;
-  }, [environment]);
+  }, []);
 
   const routes = useMemo(() => groupByMap(points), [points]);
 
@@ -130,11 +129,11 @@ export function useFixedRouteMaps(
   ) => {
     const point = await createFixedRoutePoint(token, {
       ...input,
-      environment: input.environment ?? environment,
+      environment: input.environment ?? 'seasonal',
     });
     setPoints((prev) => [...prev, point]);
     return point;
-  }, [environment]);
+  }, []);
 
   const patchPoint = useCallback(
     async (token: string, id: string, input: UpdateFixedRoutePointInput) => {
@@ -154,26 +153,19 @@ export function useFixedRouteMaps(
       }
       try {
         const point = await updateFixedRoutePoint(token, id, input);
-        setPoints((prev) => {
-          // Respuestas antiguas sin `environment` se tratan como el bucket actual.
-          const pointEnv = point.environment ?? environment;
-          if (pointEnv !== environment) {
-            return prev.filter((p) => p.id !== id);
-          }
-          return prev.map((p) => {
-            if (p.id !== id) return p;
-            const nextImageUrl = point.hasImage === false
-              ? undefined
-              : (point.imageUrl ?? p.imageUrl);
-            return {
-              ...p,
-              ...point,
-              environment: pointEnv,
-              imageUrl: nextImageUrl,
-              hasImage: point.hasImage ?? Boolean(nextImageUrl),
-            };
-          });
-        });
+        setPoints((prev) => prev.map((p) => {
+          if (p.id !== id) return p;
+          const nextImageUrl = point.hasImage === false
+            ? undefined
+            : (point.imageUrl ?? p.imageUrl);
+          return {
+            ...p,
+            ...point,
+            environment: point.environment ?? p.environment,
+            imageUrl: nextImageUrl,
+            hasImage: point.hasImage ?? Boolean(nextImageUrl),
+          };
+        }));
         return point;
       } catch (err) {
         // Si falla el guardado, recargar para no dejar una posición falsa en UI.
@@ -181,7 +173,7 @@ export function useFixedRouteMaps(
         throw err;
       }
     },
-    [environment, reload],
+    [reload],
   );
 
   const removePoint = useCallback(async (token: string, id: string) => {

@@ -400,7 +400,7 @@ export const translations: Record<Lang, Translations> = {
     kbReportFooterButton: 'Report KB Document Marker',
     kbReportTitle: 'Nuevo punto KordBreach',
     kbReportHint:
-      'Elige mapa y entorno, coloca el marcador, adjunta una captura y envíalo. Un admin lo revisará antes de publicarlo.',
+      'Elige un mapa, coloca el marcador, adjunta una captura y envíalo. Un admin lo revisará antes de publicarlo.',
     kbReportEnvironment: 'Entorno',
     kbReportMap: 'Mapa',
     kbReportPlaceHint: 'Haz clic en el mapa para colocar el marcador',
@@ -781,7 +781,7 @@ export const translations: Record<Lang, Translations> = {
     kbReportFooterButton: 'Report KB Document Marker',
     kbReportTitle: 'New KordBreach point',
     kbReportHint:
-      'Pick a map and environment, place the marker, attach a screenshot, then submit. An admin will review it before publishing.',
+      'Pick a map, place the marker, attach a screenshot, then submit. An admin will review it before publishing.',
     kbReportEnvironment: 'Environment',
     kbReportMap: 'Map',
     kbReportPlaceHint: 'Click the map to place the marker',

@@ -14,17 +14,13 @@ import {
   useMapPanZoom,
 } from '../hooks/useMapPanZoom';
 import type { Translations } from '../i18n/translations';
-import {
-  KB_MARKER_ICON_URL,
-  type RouteEnvironment,
-} from '../types/routes';
+import { KB_MARKER_ICON_URL } from '../types/routes';
 import { getMapSvgUrl, ROUTE_MAPS } from '../utils/maps';
 import { fileToCompressedDataUrl } from '../utils/routePointImage';
 
 interface KbDocumentReportModalProps {
   open: boolean;
   onClose: () => void;
-  defaultEnvironment: RouteEnvironment;
   t: Translations;
 }
 
@@ -47,14 +43,12 @@ function fitImageSize(
 export function KbDocumentReportModal({
   open,
   onClose,
-  defaultEnvironment,
   t,
 }: KbDocumentReportModalProps) {
   const titleId = useId();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 
-  const [environment, setEnvironment] = useState<RouteEnvironment>(defaultEnvironment);
   const [mapKey, setMapKey] = useState<string>(ROUTE_MAPS[0]?.key ?? 'customs');
   const [pin, setPin] = useState<{ left: number; top: number } | null>(null);
   const [label, setLabel] = useState('');
@@ -79,7 +73,6 @@ export function KbDocumentReportModal({
   } = useMapPanZoom(mapKey);
 
   const reset = useCallback(() => {
-    setEnvironment(defaultEnvironment);
     setMapKey(ROUTE_MAPS[0]?.key ?? 'customs');
     setPin(null);
     setLabel('');
@@ -88,7 +81,7 @@ export function KbDocumentReportModal({
     setError(null);
     setDone(false);
     setImageSize({ width: 0, height: 0 });
-  }, [defaultEnvironment]);
+  }, []);
 
   const updateImageSize = useCallback(() => {
     const area = mapAreaRef.current;
@@ -109,13 +102,12 @@ export function KbDocumentReportModal({
       reset();
       return;
     }
-    setEnvironment(defaultEnvironment);
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && !busy) onClose();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose, busy, reset, defaultEnvironment]);
+  }, [open, onClose, busy, reset]);
 
   useEffect(() => {
     if (!open || !mapUrl) return undefined;
@@ -177,7 +169,7 @@ export function KbDocumentReportModal({
     setError(null);
     const result = await submitKbDocumentReport({
       mapKey,
-      environment,
+      environment: 'seasonal',
       left: pin.left,
       top: pin.top,
       label: label.trim() || undefined,
@@ -234,32 +226,6 @@ export function KbDocumentReportModal({
             <p className="kb-report-hint">{t.kbReportHint}</p>
 
             <div className="kb-report-top-row">
-              <fieldset className="kb-report-fieldset">
-                <legend>{t.kbReportEnvironment}</legend>
-                <div className="segmented" role="radiogroup" aria-label={t.kbReportEnvironment}>
-                  <button
-                    type="button"
-                    role="radio"
-                    aria-checked={environment === 'regular'}
-                    className={`segmented-item${environment === 'regular' ? ' active' : ''}`}
-                    onClick={() => setEnvironment('regular')}
-                    disabled={busy}
-                  >
-                    {t.routeEnvironmentRegular}
-                  </button>
-                  <button
-                    type="button"
-                    role="radio"
-                    aria-checked={environment === 'seasonal'}
-                    className={`segmented-item${environment === 'seasonal' ? ' active' : ''}`}
-                    onClick={() => setEnvironment('seasonal')}
-                    disabled={busy}
-                  >
-                    {t.routeEnvironmentSeasonal}
-                  </button>
-                </div>
-              </fieldset>
-
               <label className="kb-report-field">
                 <span>{t.kbReportMap}</span>
                 <select

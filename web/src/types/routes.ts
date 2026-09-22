@@ -72,9 +72,10 @@ export function markerTypeIconUrl(markerType?: FixedMarkerType | string | null):
 }
 
 /**
- * Bucket de mapas PVP:
- * - `regular`: PVP Zone (marcadores solo en ese modo)
- * - `seasonal`: temporada + pantalla Routes (compartidos)
+ * Bucket de mapas PVP (rutas personales del usuario):
+ * - `regular`: PVP Zone
+ * - `seasonal`: temporada + pantalla Routes
+ * Los puntos fijos de admin se muestran igual en Regular y Seasonal.
  */
 export type RouteEnvironment = 'regular' | 'seasonal';
 

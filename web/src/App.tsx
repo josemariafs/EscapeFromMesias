@@ -418,7 +418,6 @@ export default function App() {
       <KbDocumentReportModal
         open={kbReportOpen}
         onClose={() => setKbReportOpen(false)}
-        defaultEnvironment={routeEnvironment}
         t={t}
       />
     </>
@@ -1035,7 +1034,6 @@ export default function App() {
       <KbDocumentReportModal
         open={kbReportOpen}
         onClose={() => setKbReportOpen(false)}
-        defaultEnvironment={routeEnvironment}
         t={t}
       />
     </div>
