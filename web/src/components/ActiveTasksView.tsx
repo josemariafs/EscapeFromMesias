@@ -104,6 +104,15 @@ export function ActiveTasksView({
   const groups = isCompletedList
     ? groupTasksByMap(listedTasks, t.anyMap)
     : groupActiveTasksByMap(listedTasks, completedObjectives, t.anyMap);
+  const [selectedMap, setSelectedMap] = useState<string>('all');
+  const activeMapFilter =
+    selectedMap === 'all' || groups.some((group) => group.map.normalizedName === selectedMap)
+      ? selectedMap
+      : 'all';
+  const visibleGroups =
+    activeMapFilter === 'all'
+      ? groups
+      : groups.filter((group) => group.map.normalizedName === activeMapFilter);
   const emptyLabel = isCompletedList ? t.noCompletedTasks : t.noActiveTasks;
   const countLabel = isCompletedList ? t.completedByMap : t.activeByMap;
 
@@ -125,9 +134,12 @@ export function ActiveTasksView({
   }
 
   const openMapSvgUrl = openMap ? getMapSvgUrl(openMap.normalizedName) : null;
+  const isMapFiltered = activeMapFilter !== 'all';
 
   return (
-    <div className={`active-tasks-view${isTable ? ' active-tasks-view-table' : ''}`}>
+    <div
+      className={`active-tasks-view${isTable ? ' active-tasks-view-table' : ''}${isTable && isMapFiltered ? ' active-tasks-view-one-column' : ''}`}
+    >
       {openMap && openMapSvgUrl && (
         <MapViewerModal
           mapName={openMap.name}
@@ -177,7 +189,51 @@ export function ActiveTasksView({
           }
         />
       )}
-      {groups.map(({ map, tasks: mapTasks }) => (
+      {groups.length > 1 &&
+        (isCompletedList ? (
+          <div className="map-filter-bar" role="group" aria-label={t.allMaps}>
+            <button
+              type="button"
+              className={`map-filter-chip${activeMapFilter === 'all' ? ' active' : ''}`}
+              aria-pressed={activeMapFilter === 'all'}
+              onClick={() => setSelectedMap('all')}
+            >
+              {t.allMaps}
+              <span className="map-filter-count">{listedTasks.length}</span>
+            </button>
+            {groups.map(({ map, tasks: mapTasks }) => (
+              <button
+                key={map.normalizedName}
+                type="button"
+                className={`map-filter-chip${activeMapFilter === map.normalizedName ? ' active' : ''}`}
+                aria-pressed={activeMapFilter === map.normalizedName}
+                onClick={() => setSelectedMap(map.normalizedName)}
+              >
+                {map.name}
+                <span className="map-filter-count">{mapTasks.length}</span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="map-filter-bar map-filter-bar--select">
+            <select
+              className="view-filter-select map-filter-select"
+              value={activeMapFilter}
+              aria-label={t.allMaps}
+              onChange={(e) => setSelectedMap(e.target.value)}
+            >
+              <option value="all">
+                {t.allMaps} ({listedTasks.length})
+              </option>
+              {groups.map(({ map, tasks: mapTasks }) => (
+                <option key={map.normalizedName} value={map.normalizedName}>
+                  {map.name} ({mapTasks.length})
+                </option>
+              ))}
+            </select>
+          </div>
+        ))}
+      {visibleGroups.map(({ map, tasks: mapTasks }) => (
         <section key={map.normalizedName} className="map-section">
           <header className="map-section-header">
             <h2>{map.name}</h2>

@@ -2265,6 +2265,67 @@ a.home-usage-card {
   gap: 1.25rem;
 }
 
+.active-tasks-view-table.active-tasks-view-one-column {
+  grid-template-columns: 1fr;
+}
+
+.map-filter-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.active-tasks-view-table > .map-filter-bar {
+  grid-column: 1 / -1;
+}
+
+.map-filter-bar--select .map-filter-select {
+  flex: 1 1 12rem;
+  max-width: 20rem;
+}
+
+.map-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.7rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.map-filter-chip:hover {
+  border-color: var(--accent-dim);
+  color: var(--text);
+}
+
+.map-filter-chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1b1305;
+}
+
+.map-filter-count {
+  padding: 0 0.4rem;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.map-filter-chip.active .map-filter-count {
+  background: rgba(0, 0, 0, 0.16);
+}
+
 @media (max-width: 1100px) {
   .active-tasks-view-table {
     grid-template-columns: 1fr;
