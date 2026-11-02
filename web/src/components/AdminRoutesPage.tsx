@@ -209,6 +209,9 @@ export function AdminRoutesPage() {
           mapExtracts={
             selectedMapKey ? mapExtracts.extracts[selectedMapKey] ?? [] : []
           }
+          mapPmcSpawns={
+            selectedMapKey ? mapExtracts.pmcSpawns[selectedMapKey] ?? [] : []
+          }
           selectedColor={selectedColor}
           colorLabels={{}}
           onChangeColor={setSelectedColor}

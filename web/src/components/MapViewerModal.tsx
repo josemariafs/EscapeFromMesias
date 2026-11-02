@@ -43,6 +43,11 @@ import {
   type MapExtractMarker,
 } from '../utils/mapExtracts';
 import {
+  PMC_SPAWN_COLOR,
+  PMC_SPAWN_ICON_URL,
+  type MapPmcSpawnMarker,
+} from '../utils/mapSpawns';
+import {
   getAllMapMarkers,
   getTasksWithoutMapMarkers,
 } from '../utils/mapMarkers';
@@ -57,6 +62,32 @@ import {
   type MapFloatingTooltipData,
 } from './MapFloatingTooltip';
 
+type MapQuestWikiLayout = 'underVendor' | 'placeList';
+
+function MapQuestWikiLink({
+  wikiLink,
+  t,
+  layout = 'underVendor',
+}: {
+  wikiLink: string | null | undefined;
+  t: Translations;
+  layout?: MapQuestWikiLayout;
+}) {
+  if (!wikiLink) return null;
+  return (
+    <a
+      className={`wiki-btn wiki-btn--map-legend${layout === 'placeList' ? ' wiki-btn--map-place' : ''}`}
+      href={wikiLink}
+      target="_blank"
+      rel="noreferrer"
+      title={t.viewWiki}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <span className="wiki-btn-brand">WIKI</span>
+    </a>
+  );
+}
+
 interface MapViewerModalProps {
   mapName: string;
   mapKey: string;
@@ -70,6 +101,8 @@ interface MapViewerModalProps {
   fixedRoutePoints?: FixedRoutePoint[];
   /** Extracciones PMC/SCAV automáticas del mapa. */
   mapExtracts?: MapExtractMarker[];
+  /** Spawns PMC automáticos del mapa. */
+  mapPmcSpawns?: MapPmcSpawnMarker[];
   colorLabels?: RouteColorLabels;
   tarkovDevUrl: string;
   t: Translations;
@@ -190,6 +223,7 @@ export function MapViewerModal({
   routePoints = [],
   fixedRoutePoints = [],
   mapExtracts = [],
+  mapPmcSpawns = [],
   colorLabels = {},
   tarkovDevUrl,
   t,
@@ -228,6 +262,10 @@ export function MapViewerModal({
         isExtractLayerVisible(extract.faction, fixedLayerVisibility),
       ),
     [mapExtracts, fixedLayerVisibility],
+  );
+  const visiblePmcSpawns = useMemo(
+    () => (fixedLayerVisibility['pmc-spawn'] ? mapPmcSpawns : []),
+    [mapPmcSpawns, fixedLayerVisibility],
   );
   const [placingTaskId, setPlacingTaskId] = useState<string | null>(null);
   const [mapTooltip, setMapTooltip] = useState<(MapFloatingTooltipData & { id: string }) | null>(
@@ -401,16 +439,19 @@ export function MapViewerModal({
   const hasRightLegend =
     fixedRoutePoints.length > 0
     || mapExtracts.length > 0
+    || mapPmcSpawns.length > 0
     || markers.length > 0
     || tasksWithoutMarkers.length > 0;
   const hasLegend = hasLeftLegend || hasRightLegend;
   const hasRouteMarkers =
     visibleFixedPoints.length > 0 ||
     visibleExtracts.length > 0 ||
+    visiblePmcSpawns.length > 0 ||
     routePoints.length > 0 ||
     routeArrows.length > 0 ||
     fixedRoutePoints.length > 0 ||
     mapExtracts.length > 0 ||
+    mapPmcSpawns.length > 0 ||
     canEditRoutePoints;
   const canProject = imageSize.width > 0 && areaSize.width > 0;
 
@@ -651,6 +692,55 @@ export function MapViewerModal({
             )}
             {canProject && (markers.length > 0 || hasRouteMarkers) && (
               <div className="map-modal-markers map-modal-markers--overlay">
+                {visiblePmcSpawns.map((spawn) => {
+                  const pos = projectMarker(spawn.left, spawn.top);
+                  if (!pos) return null;
+                  const isHovered = mapTooltip?.id === spawn.id;
+                  return (
+                    <button
+                      key={spawn.id}
+                      type="button"
+                      className={[
+                        'route-map-marker',
+                        'route-map-marker--fixed',
+                        'route-map-marker--icon',
+                        'route-map-marker--pmc-spawn',
+                        isHovered ? 'route-map-marker--hovered' : '',
+                      ].filter(Boolean).join(' ')}
+                      style={{
+                        left: pos.x,
+                        top: pos.y,
+                        '--route-marker-color': PMC_SPAWN_COLOR,
+                        zIndex: isHovered ? 4 : 2,
+                      } as CSSProperties}
+                      aria-label={t.routesPmcSpawnTooltip}
+                      onMouseEnter={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        setMapTooltip({
+                          id: spawn.id,
+                          x: rect.left + rect.width / 2,
+                          y: rect.top,
+                          title: t.routesPmcSpawns,
+                          subtitle: t.routesPmcSpawnTooltip,
+                          iconSrc: PMC_SPAWN_ICON_URL,
+                          iconAlt: t.routesPmcSpawns,
+                          accent: PMC_SPAWN_COLOR,
+                        });
+                      }}
+                      onMouseLeave={() => setMapTooltip(null)}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <span className="route-map-marker-body">
+                        <img
+                          className="route-map-marker-icon route-map-marker-icon--spawn"
+                          src={PMC_SPAWN_ICON_URL}
+                          alt=""
+                          draggable={false}
+                        />
+                      </span>
+                    </button>
+                  );
+                })}
                 {visibleExtracts.map((extract) => {
                   const pos = projectMarker(extract.left, extract.top);
                   if (!pos) return null;
@@ -1096,7 +1186,7 @@ export function MapViewerModal({
                 <span aria-hidden>{rightLegendCollapsed ? '‹' : '›'}</span>
               </button>
               <div className="map-modal-legend-body">
-              {(fixedRoutePoints.length > 0 || mapExtracts.length > 0) && (
+              {(fixedRoutePoints.length > 0 || mapExtracts.length > 0 || mapPmcSpawns.length > 0) && (
                 <div className="map-modal-legend-section">
                   <h4>
                     {t.routesFixedPoints(fixedRoutePoints.length + mapExtracts.length)}
@@ -1104,6 +1194,7 @@ export function MapViewerModal({
                   <FixedLayerToggles
                     fixedPoints={fixedRoutePoints}
                     extracts={mapExtracts}
+                    pmcSpawns={mapPmcSpawns}
                     visibility={fixedLayerVisibility}
                     onToggle={toggleFixedLayer}
                     t={t}
@@ -1120,6 +1211,7 @@ export function MapViewerModal({
                   </h4>
                   <ul className="map-modal-legend-list">
                     {legendEntries.map((entry) => {
+                      const wikiLink = tasksById.get(entry.taskId)?.wikiLink;
                       const tooltipLines = entry.points
                         .map((point) =>
                           point.custom
@@ -1214,14 +1306,19 @@ export function MapViewerModal({
                               </div>
                             </div>
                             <div className="map-modal-legend-aside">
-                              {entry.traderImage && (
-                                <img
-                                  className="map-modal-legend-trader"
-                                  src={entry.traderImage}
-                                  alt={entry.traderName}
-                                  title={entry.traderName}
-                                  draggable={false}
-                                />
+                              {(entry.traderImage || wikiLink) && (
+                                <div className="map-modal-legend-vendor">
+                                  {entry.traderImage && (
+                                    <img
+                                      className="map-modal-legend-trader"
+                                      src={entry.traderImage}
+                                      alt={entry.traderName}
+                                      title={entry.traderName}
+                                      draggable={false}
+                                    />
+                                  )}
+                                  <MapQuestWikiLink wikiLink={wikiLink} t={t} />
+                                </div>
                               )}
                               {entry.custom && (
                                 <button
@@ -1279,20 +1376,27 @@ export function MapViewerModal({
                             );
                           }}
                         >
-                          <button
-                            type="button"
-                            className={`map-modal-place-btn${placingTaskId === task.id ? ' is-active' : ''}`}
-                            onClick={() => {
-                              setPlacingTaskId((current) =>
-                                current === task.id ? null : task.id,
-                              );
-                            }}
-                          >
-                            <strong>{task.name}</strong>
-                            {placingTaskId === task.id && (
-                              <span>{t.mapPlaceClickHint}</span>
-                            )}
-                          </button>
+                          <div className="map-modal-place-row">
+                            <button
+                              type="button"
+                              className={`map-modal-place-btn${placingTaskId === task.id ? ' is-active' : ''}`}
+                              onClick={() => {
+                                setPlacingTaskId((current) =>
+                                  current === task.id ? null : task.id,
+                                );
+                              }}
+                            >
+                              <strong>{task.name}</strong>
+                              {placingTaskId === task.id && (
+                                <span>{t.mapPlaceClickHint}</span>
+                              )}
+                            </button>
+                            <MapQuestWikiLink
+                              wikiLink={task.wikiLink}
+                              t={t}
+                              layout="placeList"
+                            />
+                          </div>
                         </li>
                       );
                     })}

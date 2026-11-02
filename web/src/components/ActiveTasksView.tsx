@@ -8,6 +8,7 @@ import type {
   RouteMapsData,
 } from '../types/routes';
 import type { MapExtractsData } from '../utils/mapExtracts';
+import type { MapPmcSpawnsData } from '../utils/mapSpawns';
 import { groupActiveTasksByMap, groupTasksByMap } from '../utils/objectives';
 import {
   ANY_MAP_ID,
@@ -31,6 +32,7 @@ interface ActiveTasksViewProps {
   fixedRouteMaps?: FixedRouteMapsData;
   onEnsureFixedImage?: (pointId: string) => Promise<string | undefined>;
   mapExtracts?: MapExtractsData;
+  mapPmcSpawns?: MapPmcSpawnsData;
   routeColorLabels?: RouteColorLabels;
   selectedId: string | null;
   t: Translations;
@@ -70,6 +72,7 @@ export function ActiveTasksView({
   fixedRouteMaps = {},
   onEnsureFixedImage,
   mapExtracts = {},
+  mapPmcSpawns = {},
   routeColorLabels = {},
   selectedId,
   t,
@@ -154,6 +157,7 @@ export function ActiveTasksView({
           fixedRoutePoints={fixedRouteMaps[openMap.normalizedName] ?? []}
           onEnsureFixedImage={onEnsureFixedImage}
           mapExtracts={mapExtracts[openMap.normalizedName] ?? []}
+          mapPmcSpawns={mapPmcSpawns[openMap.normalizedName] ?? []}
           colorLabels={routeColorLabels}
           tarkovDevUrl={getTarkovDevMapUrl(openMap.normalizedName)}
           t={t}

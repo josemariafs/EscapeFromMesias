@@ -45,6 +45,11 @@ import {
   extractMarkerColor,
   type MapExtractMarker,
 } from '../utils/mapExtracts';
+import {
+  PMC_SPAWN_COLOR,
+  PMC_SPAWN_ICON_URL,
+  type MapPmcSpawnMarker,
+} from '../utils/mapSpawns';
 import { getMapSvgUrl, ROUTE_MAPS } from '../utils/maps';
 import { FixedLayerToggles } from './FixedLayerToggles';
 import { RouteMapArrows } from './RouteMapArrows';
@@ -82,6 +87,8 @@ interface RouteMapsViewProps {
   fixedPoints?: FixedRoutePoint[];
   /** Extracciones PMC/SCAV del mapa seleccionado (automáticas). */
   mapExtracts?: MapExtractMarker[];
+  /** Spawns PMC del mapa seleccionado (automáticos). */
+  mapPmcSpawns?: MapPmcSpawnMarker[];
   selectedColor: string;
   colorLabels: RouteColorLabels;
   onChangeColor: (color: string) => void;
@@ -159,6 +166,7 @@ export function RouteMapsView({
   arrows = [],
   fixedPoints = [],
   mapExtracts = [],
+  mapPmcSpawns = [],
   selectedColor,
   colorLabels,
   onChangeColor,
@@ -237,9 +245,14 @@ export function RouteMapsView({
     [mapExtracts, fixedLayerVisibility],
   );
 
+  const visiblePmcSpawns = useMemo(
+    () => (fixedLayerVisibility['pmc-spawn'] ? mapPmcSpawns : []),
+    [mapPmcSpawns, fixedLayerVisibility],
+  );
+
   const fixedTotalCount = fixedPoints.length + mapExtracts.length;
   const anyFixedLayerVisible =
-    visibleFixedPoints.length > 0 || visibleExtracts.length > 0;
+    visibleFixedPoints.length > 0 || visibleExtracts.length > 0 || visiblePmcSpawns.length > 0;
   const [dragState, setDragState] = useState<{
     id: string;
     kind: 'personal' | 'fixed';
@@ -846,6 +859,7 @@ export function RouteMapsView({
           <FixedLayerToggles
             fixedPoints={fixedPoints}
             extracts={mapExtracts}
+            pmcSpawns={mapPmcSpawns}
             visibility={fixedLayerVisibility}
             onToggle={toggleFixedLayer}
             t={t}
@@ -1350,6 +1364,66 @@ export function RouteMapsView({
           removeLabel={t.routesRemoveArrow}
         />
         <div className="map-modal-markers map-modal-markers--overlay">
+          {visiblePmcSpawns.map((spawn) => {
+            const pos = projectMarker(spawn.left, spawn.top);
+            if (!pos) return null;
+            const isHovered =
+              hoveredPointId === spawn.id || extractTooltip?.id === spawn.id;
+            return (
+              <button
+                key={spawn.id}
+                type="button"
+                className={[
+                  'route-map-marker',
+                  'route-map-marker--fixed',
+                  'route-map-marker--icon',
+                  'route-map-marker--pmc-spawn',
+                  isHovered ? 'route-map-marker--hovered' : '',
+                ].filter(Boolean).join(' ')}
+                style={{
+                  left: pos.x,
+                  top: pos.y,
+                  '--route-marker-color': PMC_SPAWN_COLOR,
+                  zIndex: isHovered ? 4 : 2,
+                } as CSSProperties}
+                aria-label={t.routesPmcSpawnTooltip}
+                onMouseEnter={(e) => {
+                  if (imageModal || dragState) return;
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  setPointHovered(spawn.id, {
+                    scrollList: false,
+                    label: t.routesPmcSpawns,
+                    anchorEl: e.currentTarget,
+                  });
+                  setExtractTooltip({
+                    id: spawn.id,
+                    x: rect.left + rect.width / 2,
+                    y: rect.top,
+                    title: t.routesPmcSpawns,
+                    subtitle: t.routesPmcSpawnTooltip,
+                    iconSrc: PMC_SPAWN_ICON_URL,
+                    iconAlt: t.routesPmcSpawns,
+                    accent: PMC_SPAWN_COLOR,
+                  });
+                }}
+                onMouseLeave={() => {
+                  if (dragState) return;
+                  setPointHovered(null);
+                  setExtractTooltip(null);
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <span className="route-map-marker-body">
+                  <img
+                    className="route-map-marker-icon route-map-marker-icon--spawn"
+                    src={PMC_SPAWN_ICON_URL}
+                    alt=""
+                    draggable={false}
+                  />
+                </span>
+              </button>
+            );
+          })}
           {visibleExtracts.map((extract) => {
             const pos = projectMarker(extract.left, extract.top);
             if (!pos) return null;

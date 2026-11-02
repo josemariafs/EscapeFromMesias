@@ -11,6 +11,7 @@ import {
   EXTRACT_SCAV_ICON_URL,
   type MapExtractMarker,
 } from '../utils/mapExtracts';
+import { PMC_SPAWN_ICON_URL, type MapPmcSpawnMarker } from '../utils/mapSpawns';
 import {
   type FixedLayerId,
   type FixedLayerVisibility,
@@ -29,12 +30,14 @@ interface LayerMeta {
 function layersPresent(
   fixedPoints: FixedRoutePoint[],
   extracts: MapExtractMarker[],
+  pmcSpawns: MapPmcSpawnMarker[],
   t: Translations,
 ): LayerMeta[] {
   const present = new Set<FixedLayerId>();
   for (const point of fixedPoints) {
     present.add(fixedMarkerLayerId(point.markerType as FixedMarkerType | undefined));
   }
+  if (pmcSpawns.length > 0) present.add('pmc-spawn');
   for (const extract of extracts) {
     if (extract.faction === 'scav') present.add('extract-scav');
     else if (extract.faction === 'pmc') present.add('extract-pmc');
@@ -45,6 +48,7 @@ function layersPresent(
   }
 
   const all: LayerMeta[] = [
+    { id: 'pmc-spawn', iconUrl: PMC_SPAWN_ICON_URL, title: t.routesPmcSpawns },
     { id: 'default', iconUrl: DEFAULT_PIN_ICON_URL, title: t.adminMarkerTypeDefault },
     { id: 'kb', iconUrl: KB_MARKER_ICON_URL, title: t.adminMarkerTypeKeyDocument },
     { id: 'kb-underground', iconUrl: KB_UNDERGROUND_MARKER_ICON_URL, title: t.adminMarkerTypeKeyDocumentUnderground },
@@ -59,6 +63,7 @@ function layersPresent(
 interface FixedLayerTogglesProps {
   fixedPoints: FixedRoutePoint[];
   extracts: MapExtractMarker[];
+  pmcSpawns?: MapPmcSpawnMarker[];
   visibility: FixedLayerVisibility;
   onToggle: (layer: FixedLayerId) => void;
   t: Translations;
@@ -67,11 +72,12 @@ interface FixedLayerTogglesProps {
 export function FixedLayerToggles({
   fixedPoints,
   extracts,
+  pmcSpawns = [],
   visibility,
   onToggle,
   t,
 }: FixedLayerTogglesProps) {
-  const layers = layersPresent(fixedPoints, extracts, t);
+  const layers = layersPresent(fixedPoints, extracts, pmcSpawns, t);
   if (layers.length === 0) return null;
 
   return (

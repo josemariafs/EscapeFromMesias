@@ -734,6 +734,11 @@ export default function App() {
                 ? mapExtracts.extracts[selectedRouteMapKey] ?? []
                 : []
             }
+            mapPmcSpawns={
+              selectedRouteMapKey
+                ? mapExtracts.pmcSpawns[selectedRouteMapKey] ?? []
+                : []
+            }
             selectedColor={selectedColor}
             colorLabels={colorLabels}
             onChangeColor={setSelectedColor}
@@ -862,6 +867,7 @@ export default function App() {
               fixedRouteMaps={fixedRoutes.routes}
               onEnsureFixedImage={fixedRoutes.ensureImage}
               mapExtracts={mapExtracts.extracts}
+              mapPmcSpawns={mapExtracts.pmcSpawns}
               routeColorLabels={colorLabels}
               selectedId={selectedId}
               t={t}

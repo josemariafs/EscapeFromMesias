@@ -3110,9 +3110,25 @@ a.home-usage-card {
 
 .map-modal-legend-aside {
   display: flex;
-  align-items: stretch;
+  align-items: flex-start;
   gap: 0.3rem;
   flex-shrink: 0;
+}
+
+.map-modal-legend-vendor {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.25rem;
+  width: 3.1rem;
+  flex-shrink: 0;
+}
+
+.map-modal-legend-vendor .map-modal-legend-trader {
+  width: 100%;
+  height: 3.1rem;
+  min-height: 0;
+  flex: 0 0 auto;
 }
 
 .map-modal-legend-trader {
@@ -3306,6 +3322,18 @@ button.route-map-marker {
   color: inherit;
 }
 
+.map-modal-place-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.map-modal-place-row .map-modal-place-btn {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+
 .map-modal-place-btn {
   display: flex;
   flex-direction: column;
@@ -3328,6 +3356,12 @@ button.route-map-marker {
 .map-modal-place-btn.is-active {
   border-color: var(--accent);
   background: rgba(229, 226, 0, 0.08);
+}
+
+.map-modal-place-btn strong {
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.25;
 }
 
 .map-modal-place-btn span {
@@ -3985,6 +4019,33 @@ button.route-map-marker {
   font-weight: 800;
   letter-spacing: 0.14em;
   color: #9fd9cf;
+}
+
+.wiki-btn--map-legend {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  max-width: 3.1rem;
+  max-height: 2.35rem;
+  padding: 0.3rem 0.35rem;
+}
+
+.map-modal-legend-vendor .wiki-btn--map-legend {
+  align-self: stretch;
+  width: 100%;
+}
+
+.wiki-btn--map-place {
+  flex: 0 0 3.1rem;
+  width: 3.1rem;
+  align-self: center;
+}
+
+.wiki-btn--map-legend .wiki-btn-brand {
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  line-height: 1;
 }
 
 .task-detail section {
@@ -5508,6 +5569,15 @@ table.task-table td.task-table-cell-trader {
   margin: 0;
   background: transparent;
   box-shadow: none;
+}
+
+.route-map-marker--pmc-spawn {
+  padding: 0;
+  margin: -0.15rem;
+}
+
+.route-map-marker-icon--spawn {
+  width: 1.45rem;
 }
 
 .route-map-marker--extract {

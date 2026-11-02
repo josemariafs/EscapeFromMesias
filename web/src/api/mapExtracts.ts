@@ -4,6 +4,11 @@ import {
   type MapExtractMarker,
   type MapExtractsData,
 } from '../utils/mapExtracts';
+import {
+  projectPmcSpawnToMap,
+  type MapPmcSpawnMarker,
+  type MapPmcSpawnsData,
+} from '../utils/mapSpawns';
 
 const JSON_API_BASE = 'https://json.tarkov.dev';
 
@@ -17,11 +22,23 @@ interface JsonMapExtract {
   outline?: MapPosition[] | null;
 }
 
+interface JsonMapSpawn {
+  position?: MapPosition | null;
+  sides?: string[] | null;
+  zoneName?: string | null;
+}
+
 interface JsonMapWithExtracts {
   id: string;
   name: string;
   normalizedName: string;
   extracts?: JsonMapExtract[] | null;
+  spawns?: JsonMapSpawn[] | null;
+}
+
+export interface MapGeoData {
+  extracts: MapExtractsData;
+  pmcSpawns: MapPmcSpawnsData;
 }
 
 function translate(dict: LocaleDict | undefined, key: string | null | undefined, fallback = ''): string {
@@ -50,11 +67,11 @@ async function fetchJson<T>(path: string): Promise<T> {
   }
 }
 
-/** Extracciones PMC/SCAV/shared por mapa, proyectadas a % sobre el SVG. */
-export async function fetchMapExtracts(
+/** Extracciones y spawns PMC por mapa, proyectados a % sobre el SVG. */
+export async function fetchMapGeoData(
   lang: 'es' | 'en' = 'es',
   gameMode: GameMode = 'regular',
-): Promise<MapExtractsData> {
+): Promise<MapGeoData> {
   const mode = toJsonGameMode(gameMode);
   const [mapsRes, mapsLocaleRes] = await Promise.all([
     fetchJson<{ data: { maps: Record<string, JsonMapWithExtracts> } }>(`/${mode}/maps`),
@@ -63,23 +80,35 @@ export async function fetchMapExtracts(
 
   const mapsLocale = mapsLocaleRes.data ?? {};
   const byMap: MapExtractsData = {};
+  const spawnsByMap: MapPmcSpawnsData = {};
 
   for (const raw of Object.values(mapsRes.data?.maps ?? {})) {
-    if (!raw?.normalizedName || !Array.isArray(raw.extracts) || raw.extracts.length === 0) {
-      continue;
+    if (!raw?.normalizedName) continue;
+
+    if (Array.isArray(raw.extracts)) {
+      for (const extract of raw.extracts) {
+        if (!extract?.id) continue;
+        const name = translate(mapsLocale, extract.name, extract.name ?? extract.id);
+        const marker = projectExtractToMap(raw.normalizedName, {
+          ...extract,
+          name,
+        });
+        if (!marker) continue;
+        const list = byMap[marker.mapKey] ?? (byMap[marker.mapKey] = []);
+        if (list.some((existing) => existing.id === marker.id)) continue;
+        list.push(marker);
+      }
     }
 
-    for (const extract of raw.extracts) {
-      if (!extract?.id) continue;
-      const name = translate(mapsLocale, extract.name, extract.name ?? extract.id);
-      const marker = projectExtractToMap(raw.normalizedName, {
-        ...extract,
-        name,
+    if (Array.isArray(raw.spawns)) {
+      raw.spawns.forEach((spawn, spawnIndex) => {
+        if (!(spawn.sides ?? []).includes('pmc')) return;
+        const marker = projectPmcSpawnToMap(raw.normalizedName, spawn, spawnIndex);
+        if (!marker) return;
+        const list = spawnsByMap[marker.mapKey] ?? (spawnsByMap[marker.mapKey] = []);
+        if (list.some((existing) => existing.id === marker.id)) return;
+        list.push(marker);
       });
-      if (!marker) continue;
-      const list = byMap[marker.mapKey] ?? (byMap[marker.mapKey] = []);
-      if (list.some((existing) => existing.id === marker.id)) continue;
-      list.push(marker);
     }
   }
 
@@ -87,7 +116,16 @@ export async function fetchMapExtracts(
     list.sort((a, b) => a.name.localeCompare(b.name) || a.faction.localeCompare(b.faction));
   }
 
-  return byMap;
+  return { extracts: byMap, pmcSpawns: spawnsByMap };
 }
 
-export type { MapExtractMarker, MapExtractsData };
+/** Extracciones PMC/SCAV/shared por mapa, proyectadas a % sobre el SVG. */
+export async function fetchMapExtracts(
+  lang: 'es' | 'en' = 'es',
+  gameMode: GameMode = 'regular',
+): Promise<MapExtractsData> {
+  const { extracts } = await fetchMapGeoData(lang, gameMode);
+  return extracts;
+}
+
+export type { MapExtractMarker, MapExtractsData, MapPmcSpawnMarker, MapPmcSpawnsData };

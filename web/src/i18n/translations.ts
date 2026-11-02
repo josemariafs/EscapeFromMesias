@@ -169,6 +169,8 @@ export interface Translations {
   routesFixedLayers: string;
   routesShowLayer: (name: string) => string;
   routesHideLayer: (name: string) => string;
+  routesPmcSpawns: string;
+  routesPmcSpawnTooltip: string;
   routesExtractPmc: string;
   routesExtractScav: string;
   routesExtractShared: string;
@@ -505,6 +507,8 @@ export const translations: Record<Lang, Translations> = {
     routesFixedLayers: 'Capas del mapa',
     routesShowLayer: (name) => `Mostrar ${name}`,
     routesHideLayer: (name) => `Ocultar ${name}`,
+    routesPmcSpawns: 'Spawns PMC',
+    routesPmcSpawnTooltip: 'Punto de spawn PMC',
     routesExtractPmc: 'Extractos PMC',
     routesExtractScav: 'Extractos Scav',
     routesExtractShared: 'Extracto compartido',
@@ -886,6 +890,8 @@ export const translations: Record<Lang, Translations> = {
     routesFixedLayers: 'Map layers',
     routesShowLayer: (name) => `Show ${name}`,
     routesHideLayer: (name) => `Hide ${name}`,
+    routesPmcSpawns: 'PMC spawns',
+    routesPmcSpawnTooltip: 'PMC spawn point',
     routesExtractPmc: 'PMC extracts',
     routesExtractScav: 'Scav extracts',
     routesExtractShared: 'Shared extract',

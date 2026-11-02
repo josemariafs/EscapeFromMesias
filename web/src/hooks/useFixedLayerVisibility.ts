@@ -11,6 +11,7 @@ export type FixedLayerId =
   | 'kb'
   | 'kb-underground'
   | 'question'
+  | 'pmc-spawn'
   | 'extract-pmc'
   | 'extract-scav';
 
@@ -21,6 +22,7 @@ export const FIXED_LAYER_IDS: FixedLayerId[] = [
   'kb',
   'kb-underground',
   'question',
+  'pmc-spawn',
   'extract-pmc',
   'extract-scav',
 ];
@@ -33,6 +35,7 @@ const DEFAULT_VISIBILITY: FixedLayerVisibility = {
   kb: true,
   'kb-underground': true,
   question: true,
+  'pmc-spawn': false,
   'extract-pmc': false,
   'extract-scav': false,
 };
